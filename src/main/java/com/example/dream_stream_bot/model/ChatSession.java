@@ -1,11 +1,17 @@
 package com.example.dream_stream_bot.model;
 
-import com.example.dream_stream_bot.dreamstream.OpenAiApiWithProxy;
-import com.theokanning.openai.completion.chat.*;
+import com.example.dream_stream_bot.utils.OpenAiServiceBuilder;
+import com.theokanning.openai.completion.chat.ChatCompletionChunk;
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 import io.reactivex.Flowable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Scanner;
 
 public class ChatSession {
 
@@ -14,8 +20,12 @@ public class ChatSession {
     private final List<ChatMessage> messages = new ArrayList<>();
 
     public ChatSession(String token, String prompt) {
-        OpenAiApiWithProxy api = new OpenAiApiWithProxy(token);
-        service = new OpenAiService(api.GetApi());
+
+        service = new OpenAiServiceBuilder()
+                .setToken(token)
+                .setProxyHost("localhost")
+                .setProxyPort(1337)
+                .build();
 
         chatCompletionRequest = init(prompt);
     }
