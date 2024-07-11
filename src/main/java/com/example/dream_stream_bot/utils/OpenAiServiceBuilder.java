@@ -15,7 +15,7 @@ import static com.theokanning.openai.service.OpenAiService.*;
 public class OpenAiServiceBuilder {
 
     private String token;
-    Duration timeout = Duration.ofSeconds(5);
+    private Duration timeout = Duration.ofSeconds(5);
     private String proxyHost;
     private int proxyPort = 1337;
 
