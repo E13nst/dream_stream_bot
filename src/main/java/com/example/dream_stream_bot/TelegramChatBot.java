@@ -15,6 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,17 +24,32 @@ import java.util.concurrent.ConcurrentMap;
 @Component
 @AllArgsConstructor
 public class TelegramChatBot extends TelegramLongPollingBot {
+
+    private static final int DEFAULT_PROXY_PORT = 1337;
+
     private final BotConfig botConfig;
     private final OpenAiConfig openAiConfig;
     private static final Logger logger = LoggerFactory.getLogger(TelegramChatBot.class);
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
 //    private static final String token = System.getenv("OPENAI_TOKEN");
+    private static final String proxyHost = System.getenv("PROXY_HOST");
+    private static final String proxyPortEnv = System.getenv("PROXY_PORT");
+    private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
+
     private static final List<String> botNames = Arrays.asList("Dalek", "Далек", "Далека", "Далеку");
-    private static final String prompt = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры." +
+    private static final String prompt = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры. " +
             "При общении тоже задавай вопросы осбеседнику. " +
-            "Обращайся к собеседнику по имени, можешь использовать разные вариации этого имени." +
+            "Обращайся к собеседнику по имени, можешь использовать разные вариации этого имени. " +
             "С тобой общаются через telegram в личных и групповых чатах.";
+
+    private static InetSocketAddress proxySocketAddress;
+
+    static {
+        if (proxyHost != null && !proxyHost.isBlank()) {
+            proxySocketAddress = new InetSocketAddress(proxyHost, proxyPort);
+        }
+    }
 
     public static boolean containsBotName(String text) {
         return botNames.stream().anyMatch(text::contains);
@@ -73,7 +89,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             default:
                 try {
                     if (!chats.containsKey(user.getId())) {
-                        ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt);
+                        ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
                         chats.put(user.getId(), chatSession);
                         text = greet(user, text);
                     }
@@ -104,7 +120,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         try {
 
             if (!chats.containsKey(user.getId())) {
-                ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt);
+                ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
                 chats.put(user.getId(), chatSession);
 //                text = greet(user, text);
             }
@@ -129,7 +145,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
         try {
             if (!chats.containsKey(user.getId())) {
-                ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt);
+                ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
                 chats.put(user.getId(), chatSession);
                 text = greet(user, text);
             }

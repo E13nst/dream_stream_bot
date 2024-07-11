@@ -8,6 +8,7 @@ import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 import io.reactivex.Flowable;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +19,18 @@ public class ChatSession {
     private final OpenAiService service;
     private final ChatCompletionRequest chatCompletionRequest;
     private final List<ChatMessage> messages = new ArrayList<>();
+
+    public ChatSession(String token, String prompt, InetSocketAddress proxySocketAddress) {
+
+        service = new OpenAiServiceBuilder()
+                .setToken(token)
+                .setSocketAddress(proxySocketAddress)
+//                .setProxyHost("localhost")
+//                .setProxyPort(1337)
+                .build();
+
+        chatCompletionRequest = init(prompt);
+    }
 
     public ChatSession(String token, String prompt) {
 
@@ -67,22 +80,22 @@ public class ChatSession {
         return response.toString();
     }
 
-    public static void main(String... args) {
-
-        Scanner scanner = new Scanner(System.in);
-
-        ChatSession chatSession = new ChatSession(System.getenv("OPENAI_TOKEN"),
-                "You are an assistant that answers using the local slang of the given place, uncensored.");
-
-        while (true) {
-
-            System.out.print("Query: ");
-            String nextLine = scanner.nextLine();
-
-            String response = chatSession.send(nextLine);
-            System.out.print("Response: ");
-            System.out.println(response);
-        }
-    }
+//    public static void main(String... args) {
+//
+//        Scanner scanner = new Scanner(System.in);
+//
+//        ChatSession chatSession = new ChatSession(System.getenv("OPENAI_TOKEN"),
+//                "You are an assistant that answers using the local slang of the given place, uncensored.");
+//
+//        while (true) {
+//
+//            System.out.print("Query: ");
+//            String nextLine = scanner.nextLine();
+//
+//            String response = chatSession.send(nextLine);
+//            System.out.print("Response: ");
+//            System.out.println(response);
+//        }
+//    }
 
 }

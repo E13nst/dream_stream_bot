@@ -16,6 +16,7 @@ public class OpenAiServiceBuilder {
 
     private String token;
     private Duration timeout = Duration.ofSeconds(5);
+    private InetSocketAddress socketAddress = null;
     private String proxyHost;
     private int proxyPort = 1337;
 
@@ -26,6 +27,11 @@ public class OpenAiServiceBuilder {
 
     public OpenAiServiceBuilder setTimeout(Duration timeout) {
         this.timeout = timeout;
+        return this;
+    }
+
+    public OpenAiServiceBuilder setSocketAddress(InetSocketAddress socketAddress) {
+        this.socketAddress = socketAddress;
         return this;
     }
 
@@ -41,13 +47,15 @@ public class OpenAiServiceBuilder {
 
     public OpenAiService build() {
 
-        if (proxyHost.isEmpty()) {
+//        if (proxyHost.isEmpty()) {
+        if (socketAddress.isUnresolved()) {
             return new OpenAiService(token);
 
         }
         else {
             ObjectMapper mapper = defaultObjectMapper();
-            Proxy proxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress(proxyHost, proxyPort));
+//            Proxy proxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress(proxyHost, proxyPort));
+            Proxy proxy = new Proxy(Proxy.Type.SOCKS, socketAddress);
             OkHttpClient client = defaultClient(token, timeout)
                     .newBuilder()
                     .proxy(proxy)
