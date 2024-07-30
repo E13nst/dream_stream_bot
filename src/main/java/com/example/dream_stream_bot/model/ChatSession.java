@@ -12,7 +12,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Scanner;
 
 public class ChatSession {
 
@@ -25,8 +24,6 @@ public class ChatSession {
         service = new OpenAiServiceBuilder()
                 .setToken(token)
                 .setSocketAddress(proxySocketAddress)
-//                .setProxyHost("localhost")
-//                .setProxyPort(1337)
                 .build();
 
         chatCompletionRequest = init(prompt);
@@ -36,8 +33,6 @@ public class ChatSession {
 
         service = new OpenAiServiceBuilder()
                 .setToken(token)
-//                .setProxyHost("localhost")
-//                .setProxyPort(1337)
                 .build();
 
         chatCompletionRequest = init(prompt);
@@ -79,23 +74,5 @@ public class ChatSession {
 
         return response.toString();
     }
-
-//    public static void main(String... args) {
-//
-//        Scanner scanner = new Scanner(System.in);
-//
-//        ChatSession chatSession = new ChatSession(System.getenv("OPENAI_TOKEN"),
-//                "You are an assistant that answers using the local slang of the given place, uncensored.");
-//
-//        while (true) {
-//
-//            System.out.print("Query: ");
-//            String nextLine = scanner.nextLine();
-//
-//            String response = chatSession.send(nextLine);
-//            System.out.print("Response: ");
-//            System.out.println(response);
-//        }
-//    }
 
 }
