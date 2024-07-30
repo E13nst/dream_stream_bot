@@ -11,3 +11,5 @@ services:
     restart: always
     environment:
       - JAVA_OPTS=-Xms512m -Xmx1024m
+    env_file:
+      - .env.app
