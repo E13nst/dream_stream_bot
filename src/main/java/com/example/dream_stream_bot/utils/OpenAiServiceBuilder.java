@@ -48,7 +48,7 @@ public class OpenAiServiceBuilder {
     public OpenAiService build() {
 
 //        if (proxyHost.isEmpty()) {
-        if (socketAddress.isUnresolved()) {
+        if (socketAddress == null) {
             return new OpenAiService(token);
 
         }

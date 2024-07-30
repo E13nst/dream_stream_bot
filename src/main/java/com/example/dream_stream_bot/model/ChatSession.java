@@ -22,17 +22,12 @@ public class ChatSession {
 
     public ChatSession(String token, String prompt, InetSocketAddress proxySocketAddress) {
 
-        var serviceBuilder = new OpenAiServiceBuilder().setToken(token);
-//                .setSocketAddress(proxySocketAddress)
+        service = new OpenAiServiceBuilder()
+                .setToken(token)
+                .setSocketAddress(proxySocketAddress)
 //                .setProxyHost("localhost")
 //                .setProxyPort(1337)
-//                .build();
-
-        if (proxySocketAddress == null)
-            service = serviceBuilder.build();
-        else {
-            service = serviceBuilder.setSocketAddress(proxySocketAddress).build();
-        }
+                .build();
 
         chatCompletionRequest = init(prompt);
     }
