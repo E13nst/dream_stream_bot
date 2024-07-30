@@ -100,7 +100,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                     sendMessage(message.getChatId(), user, answer);
 
                 } catch (Exception e) {
-                    throw new RuntimeException("Exception");
+                    throw new RuntimeException("Exception", e);
                 }
         }
     }
