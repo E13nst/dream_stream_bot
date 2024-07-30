@@ -77,7 +77,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handlePersonalMessage(Message message) {
+    private void    handlePersonalMessage(Message message) {
         // Логика обработки персонального сообщения
         User user = message.getFrom();
         String text = message.getText();
@@ -89,6 +89,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             default:
                 try {
                     if (!chats.containsKey(user.getId())) {
+                        logger.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
                         ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
                         chats.put(user.getId(), chatSession);
                         text = greet(user, text);

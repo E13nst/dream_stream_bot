@@ -22,12 +22,16 @@ public class ChatSession {
 
     public ChatSession(String token, String prompt, InetSocketAddress proxySocketAddress) {
 
-        service = new OpenAiServiceBuilder()
-                .setToken(token)
-                .setSocketAddress(proxySocketAddress)
+        var serviceBuilder = new OpenAiServiceBuilder().setToken(token);
+//                .setSocketAddress(proxySocketAddress)
 //                .setProxyHost("localhost")
 //                .setProxyPort(1337)
-                .build();
+//                .build();
+
+        if (!proxySocketAddress.isUnresolved())
+            service = serviceBuilder.setSocketAddress(proxySocketAddress).build();
+        else
+            service = serviceBuilder.build();
 
         chatCompletionRequest = init(prompt);
     }
@@ -36,8 +40,8 @@ public class ChatSession {
 
         service = new OpenAiServiceBuilder()
                 .setToken(token)
-                .setProxyHost("localhost")
-                .setProxyPort(1337)
+//                .setProxyHost("localhost")
+//                .setProxyPort(1337)
                 .build();
 
         chatCompletionRequest = init(prompt);
