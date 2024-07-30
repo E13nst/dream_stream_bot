@@ -77,7 +77,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void    handlePersonalMessage(Message message) {
+    void handlePersonalMessage(Message message) {
         // Логика обработки персонального сообщения
         User user = message.getFrom();
         String text = message.getText();
@@ -105,7 +105,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleGroupMessage(Message message) {
+    void handleGroupMessage(Message message) {
         // Логика обработки сообщения из группового чата
         logger.debug("handleGroupMessage");
         if (containsBotName(message.getText())) {
@@ -113,7 +113,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleReplyToBotMessage(Message message) {
+    void handleReplyToBotMessage(Message message) {
         // Логика обработки ответа на сообщение бота
         User user = message.getFrom();
         String text = message.getText();
@@ -139,7 +139,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void handleMentionedMessage(Message message) {
+    void handleMentionedMessage(Message message) {
         // Логика обработки сообщения, адресованного боту
         User user = message.getFrom();
         String text = message.getText();

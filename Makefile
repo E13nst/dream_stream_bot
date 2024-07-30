@@ -17,7 +17,7 @@ docker-build: build
 
 # Запуск Docker контейнера
 docker-run: docker-build
-	docker-compose up --build
+	docker-compose up --build -d
 
 # Остановка и удаление Docker контейнера
 docker-down:
@@ -29,3 +29,7 @@ clean:
 	docker rmi $(DOCKER_IMAGE):latest
 
 .PHONY: all build docker-build docker-run docker-down clean
+
+# Запуск автотестов с использованием Maven
+test: build
+	mvn test
