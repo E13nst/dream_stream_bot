@@ -34,3 +34,4 @@ build/
 /src/main/java/com/example/dream_stream_bot/example/
 /src/main/resources/application.properties
 /proxy.sh
+/.env.app

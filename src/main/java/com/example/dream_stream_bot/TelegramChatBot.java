@@ -79,6 +79,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handlePersonalMessage(Message message) {
         // Логика обработки персонального сообщения
+        String token = openAiConfig.getToken();
+
         User user = message.getFrom();
         String text = message.getText();
 
@@ -90,7 +92,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 try {
                     if (!chats.containsKey(user.getId())) {
                         logger.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
-                        ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
+                        ChatSession chatSession = new ChatSession(token, prompt, proxySocketAddress);
                         chats.put(user.getId(), chatSession);
                         text = greet(user, text);
                     }
@@ -107,6 +109,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handleGroupMessage(Message message) {
         // Логика обработки сообщения из группового чата
+        String token = openAiConfig.getToken();
+
         logger.debug("handleGroupMessage");
         if (containsBotName(message.getText())) {
             handleMentionedMessage(message);
@@ -115,13 +119,15 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handleReplyToBotMessage(Message message) {
         // Логика обработки ответа на сообщение бота
+        String token = openAiConfig.getToken();
+
         User user = message.getFrom();
         String text = message.getText();
 
         try {
 
             if (!chats.containsKey(user.getId())) {
-                ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
+                ChatSession chatSession = new ChatSession(token, prompt, proxySocketAddress);
                 chats.put(user.getId(), chatSession);
 //                text = greet(user, text);
             }
@@ -141,12 +147,14 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handleMentionedMessage(Message message) {
         // Логика обработки сообщения, адресованного боту
+        String token = openAiConfig.getToken();
+
         User user = message.getFrom();
         String text = message.getText();
 
         try {
             if (!chats.containsKey(user.getId())) {
-                ChatSession chatSession = new ChatSession(openAiConfig.getToken(), prompt, proxySocketAddress);
+                ChatSession chatSession = new ChatSession(token, prompt, proxySocketAddress);
                 chats.put(user.getId(), chatSession);
                 text = greet(user, text);
             }
