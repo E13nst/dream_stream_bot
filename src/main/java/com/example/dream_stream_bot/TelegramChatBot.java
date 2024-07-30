@@ -79,7 +79,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handlePersonalMessage(Message message) {
         // Логика обработки персонального сообщения
-        String token = openAiConfig.getToken();
+        String token = System.getenv("OPENAI_TOKEN");
 
         User user = message.getFrom();
         String text = message.getText();
@@ -109,7 +109,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handleGroupMessage(Message message) {
         // Логика обработки сообщения из группового чата
-        String token = openAiConfig.getToken();
+        String token = System.getenv("OPENAI_TOKEN");
 
         logger.debug("handleGroupMessage");
         if (containsBotName(message.getText())) {
@@ -119,7 +119,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handleReplyToBotMessage(Message message) {
         // Логика обработки ответа на сообщение бота
-        String token = openAiConfig.getToken();
+        String token = System.getenv("OPENAI_TOKEN");
 
         User user = message.getFrom();
         String text = message.getText();
@@ -147,7 +147,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     void handleMentionedMessage(Message message) {
         // Логика обработки сообщения, адресованного боту
-        String token = openAiConfig.getToken();
+        String token = System.getenv("OPENAI_TOKEN");
 
         User user = message.getFrom();
         String text = message.getText();
