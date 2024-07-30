@@ -28,10 +28,11 @@ public class ChatSession {
 //                .setProxyPort(1337)
 //                .build();
 
-        if (!proxySocketAddress.isUnresolved())
-            service = serviceBuilder.setSocketAddress(proxySocketAddress).build();
-        else
+        if (proxySocketAddress == null)
             service = serviceBuilder.build();
+        else {
+            service = serviceBuilder.setSocketAddress(proxySocketAddress).build();
+        }
 
         chatCompletionRequest = init(prompt);
     }
