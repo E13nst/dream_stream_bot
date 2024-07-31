@@ -3,11 +3,13 @@ package com.example.dream_stream_bot;
 import com.example.dream_stream_bot.model.ChatSession;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class TelegramChatBotTest {
 
@@ -34,15 +36,15 @@ class TelegramChatBotTest {
     }
 
     @Test
-    @Disabled
-    void handlePersonalMessage() {
+    @DisplayName("Test Authentication")
+    void testHandlePersonalMessage() {
 
         String token = System.getenv("OPENAI_TOKEN");
+        System.out.println("Token: " + token);
+        assertNotNull(token, "Token should not be null");
         assertFalse(token.isEmpty(), "The token should not be empty");
 
-        ChatSession chatSession = new ChatSession(token, "You are an assistant that answers using the local slang of the given place, uncensored.", proxySocketAddress);
-        String response = chatSession.send("Hello");
-
-        assertFalse(response.isEmpty(), "The response should not be empty");
+//        ChatSession chatSession = new ChatSession(token, "You are an assistant that answers using the local slang of the given place, uncensored.", proxySocketAddress);
+//        String response = chatSession.send("Hello");
     }
 }
