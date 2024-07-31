@@ -30,7 +30,6 @@
 		<java.version>21</java.version>
 		<allure.version>2.25.0</allure.version>
 		<aspectj.version>1.9.21</aspectj.version>
-		<token>Value</token>
 	</properties>
 
 	<dependencyManagement>
@@ -113,11 +112,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<systemPropertyVariables>
-						<token>test</token>
-					</systemPropertyVariables>
-				</configuration>
 			</plugin>
 
 			<plugin>
@@ -125,9 +119,6 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.3.1</version>
 				<configuration>
-					<environmentVariables>
-						<OPENAI_TOKEN>${env.OPENAI_TOKEN}</OPENAI_TOKEN>
-					</environmentVariables>
 					<argLine>
 						-javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
 					</argLine>
