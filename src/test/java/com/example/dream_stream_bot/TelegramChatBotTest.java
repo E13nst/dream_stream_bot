@@ -37,13 +37,12 @@ class TelegramChatBotTest {
     @Disabled
     void handlePersonalMessage() {
 
-//        String token = System.getenv("OPENAI_TOKEN");
-        String token = System.getenv("token");
+        String token = System.getenv("OPENAI_TOKEN");
         assertFalse(token.isEmpty(), "The token should not be empty");
 
-//        ChatSession chatSession = new ChatSession(token, "You are an assistant that answers using the local slang of the given place, uncensored.", proxySocketAddress);
-//        String response = chatSession.send("Hello");
+        ChatSession chatSession = new ChatSession(token, "You are an assistant that answers using the local slang of the given place, uncensored.", proxySocketAddress);
+        String response = chatSession.send("Hello");
 
-//        assertFalse(response.isEmpty(), "The response should not be empty");
+        assertFalse(response.isEmpty(), "The response should not be empty");
     }
 }
