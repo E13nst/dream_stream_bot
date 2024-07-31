@@ -31,5 +31,5 @@ clean:
 .PHONY: all build docker-build docker-run docker-down clean
 
 # Запуск автотестов с использованием Maven
-test: build
+test:
 	mvn clean test
