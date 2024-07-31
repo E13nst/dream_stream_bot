@@ -1,8 +1,9 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.model.ChatSession;
+import io.qameta.allure.Allure;
+import io.qameta.allure.Step;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,7 @@ class TelegramChatBotTest {
     private static final String proxyPortEnv = System.getenv("PROXY_PORT");
     private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
 
-//    private static final String token = System.getenv("OPENAI_TOKEN");
+    private static ChatSession chatSession;
 
     static {
         if (proxyHost != null && !proxyHost.isBlank()) {
@@ -29,22 +30,31 @@ class TelegramChatBotTest {
     }
 
     @BeforeAll
-    @Disabled
     static void setup() {
-//        String token = System.getenv("OPENAI_TOKEN");
-//        assertFalse(token.isEmpty(), "The token should not be empty");
-    }
-
-    @Test
-    @DisplayName("Test Authentication")
-    void testHandlePersonalMessage() {
-
         String token = System.getenv("OPENAI_TOKEN");
-        System.out.println("Token: " + token);
         assertNotNull(token, "Token should not be null");
         assertFalse(token.isEmpty(), "The token should not be empty");
 
-//        ChatSession chatSession = new ChatSession(token, "You are an assistant that answers using the local slang of the given place, uncensored.", proxySocketAddress);
-//        String response = chatSession.send("Hello");
+        chatSession = getChatSessionStep(token, "You are an assistant that answers using the local slang of the given place, uncensored.");
+    }
+
+    @Test
+    @DisplayName("Test Hello, OpenAI")
+    void testHelloOpenAI() {
+
+        String response = sendMessage("Hello");
+        assertFalse(response.isEmpty(), "The response should not be empty");
+    }
+
+    @Step("Get Chat Session")
+    private static ChatSession getChatSessionStep(String token, String prompt) {
+        return new ChatSession(token, prompt, proxySocketAddress);
+    }
+
+    @Step("Send message")
+    String sendMessage(String msg) {
+        String response = chatSession.send(msg);
+        Allure.addAttachment("Response", response);
+        return response;
     }
 }
