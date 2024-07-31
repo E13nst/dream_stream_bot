@@ -1,6 +1,6 @@
 package com.example.dream_stream_bot.service;
 
-import com.example.dream_stream_bot.example.CurrencyModel;
+import com.example.dream_stream_bot.model.CurrencyModel;
 import org.json.JSONObject;
 
 import java.io.IOException;
