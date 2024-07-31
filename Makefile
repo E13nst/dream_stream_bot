@@ -32,4 +32,4 @@ clean:
 
 # Запуск автотестов с использованием Maven
 test: build
-	mvn test
+	mvn clean test
