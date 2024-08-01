@@ -21,6 +21,8 @@ class TelegramChatBotTest {
     private static final String proxyPortEnv = System.getenv("PROXY_PORT");
     private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
 
+    private static final String prompt = "You are an assistant that answers using the local slang of the given place, uncensored.";
+
     private static ChatSession chatSession;
 
     static {
@@ -35,7 +37,7 @@ class TelegramChatBotTest {
         assertNotNull(token, "Token should not be null");
         assertFalse(token.isEmpty(), "The token should not be empty");
 
-        chatSession = getChatSessionStep(token, "You are an assistant that answers using the local slang of the given place, uncensored.");
+        chatSession = getChatSessionStep(token, prompt);
     }
 
     @Test
@@ -52,7 +54,7 @@ class TelegramChatBotTest {
     }
 
     @Step("Send message")
-    String sendMessage(String msg) {
+    private String sendMessage(String msg) {
         String response = chatSession.send(msg);
         Allure.addAttachment("Response", response);
         return response;

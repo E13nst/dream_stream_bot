@@ -1,7 +1,6 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.config.OpenAiConfig;
 import com.example.dream_stream_bot.model.ChatSession;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
@@ -9,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
@@ -28,11 +26,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final int DEFAULT_PROXY_PORT = 1337;
 
     private final BotConfig botConfig;
-    private final OpenAiConfig openAiConfig;
     private static final Logger logger = LoggerFactory.getLogger(TelegramChatBot.class);
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
-//    private static final String token = System.getenv("OPENAI_TOKEN");
+    private static final String token = System.getenv("OPENAI_TOKEN");
     private static final String proxyHost = System.getenv("PROXY_HOST");
     private static final String proxyPortEnv = System.getenv("PROXY_PORT");
     private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
@@ -55,7 +52,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         return botNames.stream().anyMatch(text::contains);
     }
 
-    public static String greet(User user, String text) {
+    public static String addUserName(User user, String text) {
         return String.format("Я %s. %s", user.getFirstName(), text);
     }
 
@@ -64,22 +61,29 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         logger.debug("REPLY TO MESSAGE: " + replyToMessage.getText());
 
         String repliedMessageUserName = replyToMessage.getFrom().getUserName();
+
         if (repliedMessageUserName != null && repliedMessageUserName.equals(getBotUsername())) {
 
-            return String.format("%s: \n> %s : \"%s\"\n\n%s",
-                    message.getFrom().getFirstName(),
+            return String.format("%s писал: \"%s\"\n %s",
                     replyToMessage.getFrom().getFirstName(),
                     replyToMessage.getText(),
                     message.getText()
             );
+
+//            return String.format("%s: \n> %s : \"%s\"\n\n%s",
+//                    message.getFrom().getFirstName(),
+//                    replyToMessage.getFrom().getFirstName(),
+//                    replyToMessage.getText(),
+//                    message.getText()
+//            );
+
         } else {
             return message.getText();
         }
     }
 
+    // Обработчик персональных сообщений
     void handlePersonalMessage(Message message) {
-        // Логика обработки персонального сообщения
-        String token = System.getenv("OPENAI_TOKEN");
 
         User user = message.getFrom();
         String text = message.getText();
@@ -92,9 +96,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 try {
                     if (!chats.containsKey(user.getId())) {
                         logger.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
-                        ChatSession chatSession = new ChatSession(token, prompt, proxySocketAddress);
-                        chats.put(user.getId(), chatSession);
-                        text = greet(user, text);
+                        chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+                        text = addUserName(user, text);
                     }
 
                     String answer = chats.get(user.getId()).send(text);
@@ -107,9 +110,51 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
+    // Обработчик ответов на сообщения бота
+    void handleReplyToBotMessage(Message message) {
+
+        User user = message.getFrom();
+        String text = message.getText();
+
+        try {
+
+            if (!chats.containsKey(user.getId())) {
+                chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+                text = addUserName(user, text);
+            }
+
+//            text = reply(message);
+
+            logger.info("text: " + text);
+            String answer = chats.get(user.getId()).send(text);
+
+            sendMessage(message.getChatId(), user, answer, message.getMessageId());
+        } catch (Exception e) {
+            throw new RuntimeException("Exception");
+        }
+    }
+
+    // Обработчик сообщений, адресованных боту (@botName)
+    void handleMentionedMessage(Message message) {
+        User user = message.getFrom();
+        String text = message.getText();
+
+        try {
+            if (!chats.containsKey(user.getId())) {
+                chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+                text = addUserName(user, text);
+            }
+
+            String answer = chats.get(user.getId()).send(text);
+
+            sendMessage(message.getChatId(), user, answer, message.getMessageId());
+        } catch (Exception e) {
+            throw new RuntimeException("Exception", e);
+        }
+    }
+
+    // Обработчик сообщений группового чата
     void handleGroupMessage(Message message) {
-        // Логика обработки сообщения из группового чата
-        String token = System.getenv("OPENAI_TOKEN");
 
         logger.debug("handleGroupMessage");
         if (containsBotName(message.getText())) {
@@ -117,65 +162,16 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    void handleReplyToBotMessage(Message message) {
-        // Логика обработки ответа на сообщение бота
-        String token = System.getenv("OPENAI_TOKEN");
-
-        User user = message.getFrom();
-        String text = message.getText();
-
-        try {
-
-            if (!chats.containsKey(user.getId())) {
-                ChatSession chatSession = new ChatSession(token, prompt, proxySocketAddress);
-                chats.put(user.getId(), chatSession);
-//                text = greet(user, text);
-            }
-
-
-            text = reply(message);
-
-            logger.info("text: " + text);
-            String answer = chats.get(user.getId()).send(text);
-
-            sendMessage(message.getChatId(), user, answer, message.getMessageId());
-        } catch (Exception e) {
-            System.exit(1);
-            throw new RuntimeException("Exception");
-        }
-    }
-
-    void handleMentionedMessage(Message message) {
-        // Логика обработки сообщения, адресованного боту
-        String token = System.getenv("OPENAI_TOKEN");
-
-        User user = message.getFrom();
-        String text = message.getText();
-
-        try {
-            if (!chats.containsKey(user.getId())) {
-                ChatSession chatSession = new ChatSession(token, prompt, proxySocketAddress);
-                chats.put(user.getId(), chatSession);
-                text = greet(user, text);
-            }
-
-            String answer = chats.get(user.getId()).send(text);
-
-            sendMessage(message.getChatId(), user, answer, message.getMessageId());
-        } catch (Exception e) {
-//            System.exit(1);
-            throw new RuntimeException("Exception", e);
-        }
-    }
-
     @Override
     public String getBotUsername() {
-        return botConfig.getBotName();
+        return System.getenv("BOT_NAME");
+//        return botConfig.getBotName();
     }
 
     @Override
     public String getBotToken() {
-        return botConfig.getToken();
+        return System.getenv("BOT_TOKEN");
+//        return botConfig.getToken();
     }
 
     @Override
@@ -185,26 +181,31 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
             if (update.hasMessage()) {
                 Message message = update.getMessage();
-                Chat chat = message.getChat();
 
                 logger.info(message.toString());
                 logger.info(String.format("%s: %s", message.getFrom().getUserName(), message.getText()));
 
                 // Персональное сообщение
-                if (chat.isUserChat()) {
+                if (message.getChat().isUserChat()) {
                     handlePersonalMessage(message);
                 }
-                // Ответ на сообщение бота
+
+                // Ответ на сообщение
                 else if (message.isReply()) {
                     Message repliedToMessage = message.getReplyToMessage();
                     String repliedMessageUserName = repliedToMessage.getFrom().getUserName();
-                    if (repliedMessageUserName != null && repliedMessageUserName.equals(getBotUsername())) {
+
+                    // Ответ на сообщение бота
+                    if (getBotUsername().equals(repliedMessageUserName)) {
                         handleReplyToBotMessage(message);
+
+                    // Ответ на любое сообщение содерит имя бота
                     } else if (containsBotName(message.getText())) {
                         handleMentionedMessage(message);
                     }
                 }
-                // Сообщение, адресованое боту
+
+                // Сообщение в групповом чате
                 else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
                     if (message.getText() != null && message.getText().contains("@" + getBotUsername())) {
                         handleMentionedMessage(message);
