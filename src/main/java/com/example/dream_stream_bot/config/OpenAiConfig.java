@@ -11,4 +11,5 @@ import org.springframework.context.annotation.PropertySource;
 public class OpenAiConfig {
     @Value("${openai.token}")
     String token;
+    String prompt;
 }

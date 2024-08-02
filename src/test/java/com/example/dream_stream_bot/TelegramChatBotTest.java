@@ -9,20 +9,18 @@ import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TelegramChatBotTest {
 
-    private static InetSocketAddress proxySocketAddress;
-
+    private static final String DEFAULT_PROMPT = "You are an assistant that answers using the local slang of the given place, uncensored.";
+    private static final int PROMPT_MAX_LENGTH = 4096;
     private static final int DEFAULT_PROXY_PORT = 1337;
     private static final String proxyHost = System.getenv("PROXY_HOST");
     private static final String proxyPortEnv = System.getenv("PROXY_PORT");
     private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
 
-    private static final String prompt = "You are an assistant that answers using the local slang of the given place, uncensored.";
-
+    private static InetSocketAddress proxySocketAddress;
     private static ChatSession chatSession;
 
     static {
@@ -37,7 +35,16 @@ class TelegramChatBotTest {
         assertNotNull(token, "Token should not be null");
         assertFalse(token.isEmpty(), "The token should not be empty");
 
-        chatSession = getChatSessionStep(token, prompt);
+        chatSession = getChatSessionStep(token, DEFAULT_PROMPT);
+    }
+
+    @Test
+    @DisplayName("Test prompt length")
+    void testPromptLength() {
+
+        String prompt = System.getenv("OPENAI_TOKEN");
+        assertNotNull(prompt, "Prompt should not be null");
+        assertTrue(prompt.length() < PROMPT_MAX_LENGTH, "The string should be shorter than 4096 characters");
     }
 
     @Test

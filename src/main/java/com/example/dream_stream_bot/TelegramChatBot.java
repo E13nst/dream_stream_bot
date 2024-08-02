@@ -1,7 +1,10 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
+import com.example.dream_stream_bot.config.OpenAiConfig;
 import com.example.dream_stream_bot.model.ChatSession;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,16 +29,18 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final int DEFAULT_PROXY_PORT = 1337;
 
     private final BotConfig botConfig;
+    private static final OpenAiConfig openAiConfig = new OpenAiConfig();
     private static final Logger logger = LoggerFactory.getLogger(TelegramChatBot.class);
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
+    private static String prompt = System.getenv("OPENAI_PROMPT");
     private static final String token = System.getenv("OPENAI_TOKEN");
     private static final String proxyHost = System.getenv("PROXY_HOST");
     private static final String proxyPortEnv = System.getenv("PROXY_PORT");
     private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
 
     private static final List<String> botNames = Arrays.asList("Dalek", "Далек", "Далека", "Далеку");
-    private static final String prompt = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры. " +
+    private static final String DEFAULT_PROMPT = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры. " +
             "При общении тоже задавай вопросы осбеседнику. " +
             "Обращайся к собеседнику по имени, можешь использовать разные вариации этого имени. " +
             "С тобой общаются через telegram в личных и групповых чатах.";
@@ -43,8 +48,14 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static InetSocketAddress proxySocketAddress;
 
     static {
+
+
         if (proxyHost != null && !proxyHost.isBlank()) {
             proxySocketAddress = new InetSocketAddress(proxyHost, proxyPort);
+        }
+
+        if (prompt == null || prompt.isBlank()) {
+            prompt = DEFAULT_PROMPT;
         }
     }
 
@@ -120,7 +131,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
             if (!chats.containsKey(user.getId())) {
                 chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
-                text = addUserName(user, text);
+                if (message.isUserMessage())
+                    text = addUserName(user, text);
             }
 
 //            text = reply(message);
@@ -130,7 +142,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
             sendMessage(message.getChatId(), user, answer, message.getMessageId());
         } catch (Exception e) {
-            throw new RuntimeException("Exception");
+            throw new RuntimeException("Exception", e);
         }
     }
 
@@ -157,8 +169,49 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     void handleGroupMessage(Message message) {
 
         logger.debug("handleGroupMessage");
-        if (containsBotName(message.getText())) {
-            handleMentionedMessage(message);
+
+        User user = message.getFrom();
+        String text = message.getText();
+
+
+        try {
+
+            if (containsBotName(message.getText())) {
+                handleMentionedMessage(message);
+            }
+
+            if (message.getChat().isSuperGroupChat()) {
+
+                if (!chats.containsKey(user.getId()))
+                    chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+
+                String answer = chats.get(user.getId()).send(text);
+                sendMessage(message.getChatId(), user, answer, message.getMessageId());
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Exception", e);
+        }
+    }
+
+    // Обработчик сообщений канала
+    void handleSuperGroupMessage(Message message) {
+
+        logger.debug("handleGroupMessage");
+
+        User user = message.getFrom();
+        String text = message.getText();
+
+        try {
+
+            if (!chats.containsKey(user.getId()))
+                chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+
+            String answer = chats.get(user.getId()).send(text);
+            sendMessage(message.getChatId(), user, answer, message.getMessageId());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Exception", e);
         }
     }
 
@@ -179,43 +232,58 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
         if (update.hasMessage() && update.getMessage().hasText()) {
 
-            if (update.hasMessage()) {
-                Message message = update.getMessage();
+            ObjectMapper objectMapper = new ObjectMapper();
 
-                logger.info(message.toString());
-                logger.info(String.format("%s: %s", message.getFrom().getUserName(), message.getText()));
+            Message message = update.getMessage();
+            logger.info(message.toString());
 
-                // Персональное сообщение
-                if (message.getChat().isUserChat()) {
-                    handlePersonalMessage(message);
-                }
+            try {
+                String jsonString = objectMapper.writeValueAsString(message);
+                logger.info(jsonString);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
 
-                // Ответ на сообщение
-                else if (message.isReply()) {
-                    Message repliedToMessage = message.getReplyToMessage();
-                    String repliedMessageUserName = repliedToMessage.getFrom().getUserName();
+            logger.info(String.format("%s: %s", message.getFrom().getUserName(), message.getText()));
 
-                    // Ответ на сообщение бота
-                    if (getBotUsername().equals(repliedMessageUserName)) {
-                        handleReplyToBotMessage(message);
+            // Персональное сообщение
+            if (message.getChat().isUserChat()) {
+                handlePersonalMessage(message);
+            }
+
+            // Ответ на сообщение
+            else if (message.isReply()) {
+                Message repliedToMessage = message.getReplyToMessage();
+                String repliedMessageUserName = repliedToMessage.getFrom().getUserName();
+
+                // Ответ на сообщение бота
+                if (getBotUsername().equals(repliedMessageUserName)) {
+                    handleReplyToBotMessage(message);
 
                     // Ответ на любое сообщение содерит имя бота
-                    } else if (containsBotName(message.getText())) {
-                        handleMentionedMessage(message);
-                    }
+                } else if (containsBotName(message.getText())) {
+                    handleMentionedMessage(message);
                 }
+            }
 
-                // Сообщение в групповом чате
-                else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
-                    if (message.getText() != null && message.getText().contains("@" + getBotUsername())) {
-                        handleMentionedMessage(message);
-                    } else {
-                        // Любое сообщение в групповом чате
-                        handleGroupMessage(message);
-                    }
+            // Сообщение в групповом чате
+            else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
+                if (message.getText() != null && message.getText().contains("@" + getBotUsername())) {
+                    handleMentionedMessage(message);
+                } else {
+                    // Любое сообщение в групповом чате
+                    handleGroupMessage(message);
+                }
+            }
+
+            // Сообщение в канале
+            else if (message.getChat().isSuperGroupChat()) {
+                if (message.getText() != null && !message.isUserMessage()) {
+                    handleSuperGroupMessage(message);
                 }
             }
         }
+
     }
 
     private void startCommandReceived(Long chatId, User user) {
