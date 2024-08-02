@@ -35,4 +35,5 @@ test:
 	mvn clean test
 
 # Экспорт переменных окружения
-env: export $(grep -v '^#' .env.app | xargs)
+exp:
+    export $(grep -v '^#' .env.app | xargs)

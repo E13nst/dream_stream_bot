@@ -15,6 +15,8 @@ import java.util.List;
 
 public class ChatSession {
 
+//    private static final String MODEL = "gpt-3.5-turbo";
+    private static final String MODEL = "gpt-4o-mini";
     private final OpenAiService service;
     private final ChatCompletionRequest chatCompletionRequest;
     private final List<ChatMessage> messages = new ArrayList<>();
@@ -45,7 +47,7 @@ public class ChatSession {
 
         return ChatCompletionRequest
                 .builder()
-                .model("gpt-3.5-turbo-0613")
+                .model(MODEL)
                 .messages(messages)
                 .n(1)
                 .maxTokens(1024)
