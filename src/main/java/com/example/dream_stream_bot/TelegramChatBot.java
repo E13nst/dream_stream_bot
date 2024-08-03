@@ -131,8 +131,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
             if (!chats.containsKey(user.getId())) {
                 chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
-                if (message.isUserMessage())
-                    text = addUserName(user, text);
+                text = addUserName(user, text);
             }
 
 //            text = reply(message);
