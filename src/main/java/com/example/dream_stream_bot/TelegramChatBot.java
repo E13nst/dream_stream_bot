@@ -97,8 +97,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 return startCommandReceived(message.getChatId(), user);
             default:
                 if (!chats.containsKey(user.getId())) {
-                    LOGGER.debug(String.format("proxySocketAddress: %s", botConfig.getProxySocketAddress()));
-                    chats.put(user.getId(), new ChatSession(openaiToken, prompt, botConfig.getProxySocketAddress()));
+                    LOGGER.debug(String.format("proxySocketAddress: %s", getProxySocketAddress()));
+                    chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
                     text = addUserName(user, text);
                 }
 
@@ -115,7 +115,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         String text = message.getText();
 
         if (!chats.containsKey(user.getId())) {
-            chats.put(user.getId(), new ChatSession(openaiToken, prompt, botConfig.getProxySocketAddress()));
+            chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
             text = addUserName(user, text);
         }
 
@@ -134,7 +134,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         String text = message.getText();
 
         if (!chats.containsKey(user.getId())) {
-            chats.put(user.getId(), new ChatSession(openaiToken, prompt, botConfig.getProxySocketAddress()));
+            chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
             text = addUserName(user, text);
         }
 
@@ -156,7 +156,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         } else if (message.getChat().isSuperGroupChat()) {
 
             if (!chats.containsKey(user.getId()))
-                chats.put(user.getId(), new ChatSession(openaiToken, prompt, botConfig.getProxySocketAddress()));
+                chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
 
             return chats.get(user.getId()).send(text);
 
@@ -173,7 +173,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         String text = message.getText();
 
         if (!chats.containsKey(user.getId()))
-            chats.put(user.getId(), new ChatSession(openaiToken, prompt, botConfig.getProxySocketAddress()));
+            chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
 
         return chats.get(user.getId()).send(text);
     }
@@ -186,6 +186,17 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return botConfig.getToken();
+    }
+
+    public InetSocketAddress getProxySocketAddress() {
+
+        if (botConfig.getProxyHost() == null || botConfig.getProxyHost().trim().isEmpty()) {
+            return null;
+        }
+
+        int port = botConfig.getProxyPort() != null ? botConfig.getProxyPort() : 1337;
+
+        return new InetSocketAddress(botConfig.getProxyHost(), port);
     }
 
     @Override

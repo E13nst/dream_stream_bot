@@ -18,16 +18,6 @@ public class BotConfig {
 
     @Value("${proxy.host:}") String proxyHost;
     @Value("${proxy.port:1337}") Integer proxyPort;
-
-    public InetSocketAddress getProxySocketAddress() {
-        if (proxyHost == null || proxyHost.trim().isEmpty()) {
-            return null;
-        }
-
-        int port = (proxyPort != null) ? proxyPort : 1337;
-
-        return new InetSocketAddress(proxyHost, port);
-    }
 }
 
 
