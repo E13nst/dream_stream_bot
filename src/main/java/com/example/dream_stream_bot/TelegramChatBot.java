@@ -1,7 +1,5 @@
 package com.example.dream_stream_bot;
 
-import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.config.OpenAiConfig;
 import com.example.dream_stream_bot.model.ChatSession;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.ActionType;
+import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -27,10 +27,12 @@ import java.util.concurrent.ConcurrentMap;
 public class TelegramChatBot extends TelegramLongPollingBot {
 
     private static final int DEFAULT_PROXY_PORT = 1337;
+    private static final int NOT_REPLY = 0;
+    public static final int CHARACTERS_PER_SECOND = 20;
 
-    private final BotConfig botConfig;
-    private static final OpenAiConfig openAiConfig = new OpenAiConfig();
-    private static final Logger logger = LoggerFactory.getLogger(TelegramChatBot.class);
+//    private final BotConfig botConfig;
+//    private static final OpenAiConfig openAiConfig = new OpenAiConfig();
+    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
     private static String prompt = System.getenv("OPENAI_PROMPT");
@@ -69,7 +71,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     public String reply(Message message) {
         Message replyToMessage = message.getReplyToMessage();
-        logger.debug("REPLY TO MESSAGE: " + replyToMessage.getText());
+        LOGGER.debug("REPLY TO MESSAGE: " + replyToMessage.getText());
 
         String repliedMessageUserName = replyToMessage.getFrom().getUserName();
 
@@ -94,124 +96,92 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     }
 
     // Обработчик персональных сообщений
-    void handlePersonalMessage(Message message) {
+    String handlePersonalMessage(Message message) {
 
         User user = message.getFrom();
         String text = message.getText();
 
         switch (text) {
             case "/start":
-                startCommandReceived(message.getChatId(), user);
-                break;
+                return startCommandReceived(message.getChatId(), user);
             default:
-                try {
-                    if (!chats.containsKey(user.getId())) {
-                        logger.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
-                        chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
-                        text = addUserName(user, text);
-                    }
-
-                    String answer = chats.get(user.getId()).send(text);
-
-                    sendMessage(message.getChatId(), user, answer);
-
-                } catch (Exception e) {
-                    throw new RuntimeException("Exception", e);
+                if (!chats.containsKey(user.getId())) {
+                    LOGGER.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
+                    chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+                    text = addUserName(user, text);
                 }
+
+                return chats.get(user.getId()).send(text);
         }
     }
 
     // Обработчик ответов на сообщения бота
-    void handleReplyToBotMessage(Message message) {
+    String handleReplyToBotMessage(Message message) {
 
         User user = message.getFrom();
         String text = message.getText();
 
-        try {
-
-            if (!chats.containsKey(user.getId())) {
-                chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
-                text = addUserName(user, text);
-            }
+        if (!chats.containsKey(user.getId())) {
+            chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+            text = addUserName(user, text);
+        }
 
 //            text = reply(message);
 
-            logger.info("text: " + text);
-            String answer = chats.get(user.getId()).send(text);
-
-            sendMessage(message.getChatId(), user, answer, message.getMessageId());
-        } catch (Exception e) {
-            throw new RuntimeException("Exception", e);
-        }
+        LOGGER.info("text: " + text);
+        return chats.get(user.getId()).send(text);
     }
 
     // Обработчик сообщений, адресованных боту (@botName)
-    void handleMentionedMessage(Message message) {
+    String handleMentionedMessage(Message message) {
         User user = message.getFrom();
         String text = message.getText();
 
-        try {
-            if (!chats.containsKey(user.getId())) {
-                chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
-                text = addUserName(user, text);
-            }
-
-            String answer = chats.get(user.getId()).send(text);
-
-            sendMessage(message.getChatId(), user, answer, message.getMessageId());
-        } catch (Exception e) {
-            throw new RuntimeException("Exception", e);
+        if (!chats.containsKey(user.getId())) {
+            chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+            text = addUserName(user, text);
         }
+
+        return chats.get(user.getId()).send(text);
+
     }
 
     // Обработчик сообщений группового чата
-    void handleGroupMessage(Message message) {
+    String handleGroupMessage(Message message) {
 
-        logger.debug("handleGroupMessage");
-
-        User user = message.getFrom();
-        String text = message.getText();
-
-
-        try {
-
-            if (containsBotName(message.getText())) {
-                handleMentionedMessage(message);
-            }
-
-            if (message.getChat().isSuperGroupChat()) {
-
-                if (!chats.containsKey(user.getId()))
-                    chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
-
-                String answer = chats.get(user.getId()).send(text);
-                sendMessage(message.getChatId(), user, answer, message.getMessageId());
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Exception", e);
-        }
-    }
-
-    // Обработчик сообщений канала
-    void handleSuperGroupMessage(Message message) {
-
-        logger.debug("handleGroupMessage");
+        LOGGER.debug("handleGroupMessage");
 
         User user = message.getFrom();
         String text = message.getText();
 
-        try {
+
+        if (containsBotName(message.getText())) {
+            return handleMentionedMessage(message);
+        } else if (message.getChat().isSuperGroupChat()) {
 
             if (!chats.containsKey(user.getId()))
                 chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
 
-            String answer = chats.get(user.getId()).send(text);
-            sendMessage(message.getChatId(), user, answer, message.getMessageId());
+            return chats.get(user.getId()).send(text);
+//                sendMessage(message.getChatId(), user, answer, message.getMessageId());
+        } else return "";
 
-        } catch (Exception e) {
-            throw new RuntimeException("Exception", e);
-        }
+    }
+
+    // Обработчик сообщений канала
+    String handleSuperGroupMessage(Message message) {
+
+        LOGGER.debug("handleGroupMessage");
+
+        User user = message.getFrom();
+        String text = message.getText();
+
+        if (!chats.containsKey(user.getId()))
+            chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+
+        return chats.get(user.getId()).send(text);
+//            sendMessage(message.getChatId(), user, answer, message.getMessageId());
+
     }
 
     @Override
@@ -231,23 +201,28 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
         if (update.hasMessage() && update.getMessage().hasText()) {
 
+            String responseText = null;
             ObjectMapper objectMapper = new ObjectMapper();
 
             Message message = update.getMessage();
-            logger.info(message.toString());
+            Integer replyToMessageId = message.getMessageId();
+            User user = message.getFrom();
+
+            LOGGER.info(message.toString());
 
             try {
                 String jsonString = objectMapper.writeValueAsString(message);
-                logger.info(jsonString);
+                LOGGER.info(jsonString);
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }
 
-            logger.info(String.format("%s: %s", message.getFrom().getUserName(), message.getText()));
+            LOGGER.info(String.format("%s: %s", message.getFrom().getUserName(), message.getText()));
 
             // Персональное сообщение
             if (message.getChat().isUserChat()) {
-                handlePersonalMessage(message);
+                replyToMessageId = NOT_REPLY;
+                responseText = handlePersonalMessage(message);
             }
 
             // Ответ на сообщение
@@ -257,70 +232,88 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
                 // Ответ на сообщение бота
                 if (getBotUsername().equals(repliedMessageUserName)) {
-                    handleReplyToBotMessage(message);
+                    responseText = handleReplyToBotMessage(message);
 
                     // Ответ на любое сообщение содерит имя бота
                 } else if (containsBotName(message.getText())) {
-                    handleMentionedMessage(message);
+                    responseText = handleMentionedMessage(message);
                 }
             }
 
             // Сообщение в групповом чате
-            else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
+            else if (message.getChat().isGroupChat()) {
                 if (message.getText() != null && message.getText().contains("@" + getBotUsername())) {
-                    handleMentionedMessage(message);
+                    responseText = handleMentionedMessage(message);
                 } else {
                     // Любое сообщение в групповом чате
-                    handleGroupMessage(message);
+                    responseText = handleGroupMessage(message);
                 }
             }
 
             // Сообщение в канале
             else if (message.getChat().isSuperGroupChat()) {
                 if (message.getText() != null && !message.isUserMessage()) {
-                    handleSuperGroupMessage(message);
+                    responseText = handleSuperGroupMessage(message);
                 }
+            }
+
+            if (responseText != null) {
+                Long finalChatId = message.getChatId();
+                String finalResponseText = responseText;
+                Integer finalReplyToMessageId = replyToMessageId;
+                new Thread(() -> sendMessageWithTyping(finalChatId, user, finalResponseText, finalReplyToMessageId)).start();
             }
         }
 
     }
 
-    private void startCommandReceived(Long chatId, User user) {
+    private String startCommandReceived(Long chatId, User user) {
 
-        String answer = "Hi, " + user.getFirstName() + ", nice to meet you!";
-        sendMessage(chatId, user, answer);
+        return "Hi, " + user.getFirstName() + ", nice to meet you!";
+//        sendMessage(chatId, user, answer);
     }
 
-    private void sendMessage(Long chatId, User user, String text) {
+    private void sendTypingAction(Long chatId, long durationInSeconds) {
 
-        String message = String.format("Response from %s: %s", user.getUserName(), text);
-        logger.info(message);
+        SendChatAction chatAction = new SendChatAction();
+        chatAction.setChatId(chatId.toString());
+        chatAction.setAction(ActionType.TYPING);
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(chatId));
-        sendMessage.setText(text);
         try {
-            execute(sendMessage);
+            long endTime = System.currentTimeMillis() + durationInSeconds * 1000;
+            while (System.currentTimeMillis() < endTime) {
+                execute(chatAction); // Выполнение отправки действия
+                Thread.sleep(5000);  // Задержка 5 секунд перед отправкой следующего действия
+            }
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            LOGGER.error("Telegram API exception occurred", e);
+        } catch (InterruptedException e) {
+            LOGGER.error("Thread was interrupted", e);
+            Thread.currentThread().interrupt();
         }
     }
 
     private void sendMessage(Long chatId, User user, String text, Integer replyToMessageId) {
 
-        String message = String.format("Response from %s: %s", user.getUserName(), text);
-        logger.info(message);
+        LOGGER.info(String.format("Response from %s: %s", user.getUserName(), text));
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId);
-        sendMessage.setText(text);
-        sendMessage.setReplyToMessageId(replyToMessageId);
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(text);
+        message.setReplyToMessageId(replyToMessageId);
 
         try {
-            execute(sendMessage);
+            execute(message);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to send message via Telegram API", e);
         }
+    }
+
+    private void sendMessageWithTyping(Long chatId, User user, String responseText, Integer replyToMessageId) {
+
+        int durationInSeconds = responseText.length() / CHARACTERS_PER_SECOND;
+        sendTypingAction(chatId, durationInSeconds);
+        sendMessage(chatId, user, responseText, replyToMessageId);
     }
 
 }

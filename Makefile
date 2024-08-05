@@ -36,4 +36,4 @@ test:
 
 # Экспорт переменных окружения
 exp:
-    export $(grep -v '^#' .env.app | xargs)
+    "export $(grep -v '^#' .env.app | xargs)"
