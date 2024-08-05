@@ -29,17 +29,13 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     private static final int DEFAULT_PROXY_PORT = 1337;
     private static final int NOT_REPLY = 0;
-    public static final int CHARACTERS_PER_SECOND = 20;
+    private static final int CHARACTERS_PER_SECOND = 20;
+    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
 
     private final BotConfig botConfig;
-    private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
     private static String prompt = System.getenv("OPENAI_PROMPT");
-    private static final String token = System.getenv("OPENAI_TOKEN");
-    private static final String proxyHost = System.getenv("PROXY_HOST");
-    private static final String proxyPortEnv = System.getenv("PROXY_PORT");
-    private static final int proxyPort = proxyPortEnv != null ? Integer.parseInt(proxyPortEnv) : DEFAULT_PROXY_PORT;
 
     private static final List<String> botNames = Arrays.asList("Dalek", "Далек", "Далека", "Далеку");
     private static final String DEFAULT_PROMPT = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры. " +
@@ -47,14 +43,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             "Обращайся к собеседнику по имени, можешь использовать разные вариации этого имени. " +
             "С тобой общаются через telegram в личных и групповых чатах.";
 
-    private static InetSocketAddress proxySocketAddress;
-
     static {
-
-
-        if (proxyHost != null && !proxyHost.isBlank()) {
-            proxySocketAddress = new InetSocketAddress(proxyHost, proxyPort);
-        }
 
         if (prompt == null || prompt.isBlank()) {
             prompt = DEFAULT_PROMPT;
@@ -98,6 +87,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     // Обработчик персональных сообщений
     String handlePersonalMessage(Message message) {
 
+        String openaiToken = botConfig.getOpenaiToken();
+
         User user = message.getFrom();
         String text = message.getText();
 
@@ -106,8 +97,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 return startCommandReceived(message.getChatId(), user);
             default:
                 if (!chats.containsKey(user.getId())) {
-                    LOGGER.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
-                    chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+                    LOGGER.debug(String.format("proxySocketAddress: %s", getProxySocketAddress()));
+                    chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
                     text = addUserName(user, text);
                 }
 
@@ -118,11 +109,13 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     // Обработчик ответов на сообщения бота
     String handleReplyToBotMessage(Message message) {
 
+        String openaiToken = botConfig.getOpenaiToken();
+
         User user = message.getFrom();
         String text = message.getText();
 
         if (!chats.containsKey(user.getId())) {
-            chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+            chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
             text = addUserName(user, text);
         }
 
@@ -134,11 +127,14 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     // Обработчик сообщений, адресованных боту (@botName)
     String handleMentionedMessage(Message message) {
+
+        String openaiToken = botConfig.getOpenaiToken();
+
         User user = message.getFrom();
         String text = message.getText();
 
         if (!chats.containsKey(user.getId())) {
-            chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+            chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
             text = addUserName(user, text);
         }
 
@@ -149,7 +145,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     // Обработчик сообщений группового чата
     String handleGroupMessage(Message message) {
 
-        LOGGER.debug("handleGroupMessage");
+        String openaiToken = botConfig.getOpenaiToken();
 
         User user = message.getFrom();
         String text = message.getText();
@@ -160,10 +156,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         } else if (message.getChat().isSuperGroupChat()) {
 
             if (!chats.containsKey(user.getId()))
-                chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+                chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
 
             return chats.get(user.getId()).send(text);
-//                sendMessage(message.getChatId(), user, answer, message.getMessageId());
+
         } else return "";
 
     }
@@ -171,30 +167,41 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     // Обработчик сообщений канала
     String handleSuperGroupMessage(Message message) {
 
-        LOGGER.debug("handleGroupMessage");
+        String openaiToken = botConfig.getOpenaiToken();
 
         User user = message.getFrom();
         String text = message.getText();
 
         if (!chats.containsKey(user.getId()))
-            chats.put(user.getId(), new ChatSession(token, prompt, proxySocketAddress));
+            chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
 
         return chats.get(user.getId()).send(text);
-//            sendMessage(message.getChatId(), user, answer, message.getMessageId());
-
     }
 
     @Override
     public String getBotUsername() {
-        return System.getenv("BOT_NAME");
-//        return botConfig.getBotName();
+        return botConfig.getBotName();
     }
 
     @Override
     public String getBotToken() {
-//        return System.getenv("BOT_TOKEN");
         return botConfig.getToken();
     }
+
+    public InetSocketAddress getProxySocketAddress() {
+        String host = botConfig.getProxyHost();
+        int port = botConfig.getProxyPort() != null ? Integer.parseInt(botConfig.getProxyPort()) : DEFAULT_PROXY_PORT;
+
+        if (host != null && !host.isBlank()) {
+            return new InetSocketAddress(host, port);
+        } else {
+            return null;
+        }
+    }
+
+//    public String getOpenaiToken() {
+//        return botConfig.getOpenaiToken();
+//    }
 
     @Override
     public void onUpdateReceived(Update update) {
