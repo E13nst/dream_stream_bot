@@ -1,5 +1,6 @@
 package com.example.dream_stream_bot;
 
+import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.model.ChatSession;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,8 +31,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final int NOT_REPLY = 0;
     public static final int CHARACTERS_PER_SECOND = 20;
 
-//    private final BotConfig botConfig;
-//    private static final OpenAiConfig openAiConfig = new OpenAiConfig();
+    private final BotConfig botConfig;
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
@@ -192,8 +192,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotToken() {
-        return System.getenv("BOT_TOKEN");
-//        return botConfig.getToken();
+//        return System.getenv("BOT_TOKEN");
+        return botConfig.getToken();
     }
 
     @Override
@@ -218,6 +218,20 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             }
 
             LOGGER.info(String.format("%s: %s", message.getFrom().getUserName(), message.getText()));
+
+            // Персональное сообщение
+//            if (message.getChat().isUserChat()) {
+//                replyToMessageId = NOT_REPLY;
+//                responseText = handlePersonalMessage(message);
+//            } else if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
+//                responseText = handleReplyToBotMessage(message);
+//            } else if (containsBotName(message.getText())) {
+//                responseText = handleMentionedMessage(message);
+//            } else if (message.getChat().isGroupChat()) {
+//                responseText = handleGroupMessage(message);
+//            } else if (message.getChat().isSuperGroupChat() && !message.isUserMessage()) {
+//                responseText = handleSuperGroupMessage(message);
+//            }
 
             // Персональное сообщение
             if (message.getChat().isUserChat()) {
