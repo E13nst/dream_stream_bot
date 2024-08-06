@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy the application's jar file to the container
 COPY target/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar /app/telegram-bot-dream-stream.jar
 
-# Copy the external application.properties file into the Docker container
-COPY application.properties /app/config/application.properties
+# Copy the external application.yaml file into the Docker container
+COPY application.yaml /app/config/application.yaml
 
 # Command to run the jar file
-CMD ["java", "-jar", "/app/telegram-bot-dream-stream.jar", "--spring.config.location=file:/app/config/application.properties"]
+CMD ["java", "-jar", "/app/telegram-bot-dream-stream.jar", "--spring.config.location=file:/app/config/application.yaml"]
