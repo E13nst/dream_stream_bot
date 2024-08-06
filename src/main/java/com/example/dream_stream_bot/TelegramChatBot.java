@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Component
 @AllArgsConstructor
@@ -30,6 +32,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final int DEFAULT_PROXY_PORT = 1337;
     private static final int NOT_REPLY = 0;
     private static final int CHARACTERS_PER_SECOND = 20;
+
+    private static final ExecutorService executorService = Executors.newCachedThreadPool();
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
 
     private final BotConfig botConfig;
@@ -275,10 +279,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             }
 
             if (responseText != null) {
-                Long finalChatId = message.getChatId();
-                String finalResponseText = responseText;
-                Integer finalReplyToMessageId = replyToMessageId;
-                new Thread(() -> sendMessageWithTyping(finalChatId, user, finalResponseText, finalReplyToMessageId)).start();
+                sendMessageWithTyping(message.getChatId(), user, responseText, replyToMessageId);
             }
         }
 
@@ -329,8 +330,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private void sendMessageWithTyping(Long chatId, User user, String responseText, Integer replyToMessageId) {
 
         int durationInSeconds = responseText.length() / CHARACTERS_PER_SECOND;
-        sendTypingAction(chatId, durationInSeconds);
-        sendMessage(chatId, user, responseText, replyToMessageId);
+        executorService.submit(() -> {
+            sendTypingAction(chatId, durationInSeconds);
+            sendMessage(chatId, user, responseText, replyToMessageId);
+        });
     }
 
 }
