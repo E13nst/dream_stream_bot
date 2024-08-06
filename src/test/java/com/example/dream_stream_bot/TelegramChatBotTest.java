@@ -17,7 +17,7 @@ import java.net.InetSocketAddress;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@TestPropertySource(locations = "classpath:application.yaml")
+//@TestPropertySource(locations = "classpath:application.yaml")
 class TelegramChatBotTest {
 
     private static final String DEFAULT_PROMPT = "You are an assistant that answers using the local slang of the given place, uncensored.";
