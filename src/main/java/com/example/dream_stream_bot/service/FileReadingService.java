@@ -24,10 +24,6 @@ public class FileReadingService {
         Resource resource = resourceLoader.getResource(filePath);
         StringBuilder content = new StringBuilder();
 
-//        ClassLoader classLoader = getClass().getClassLoader();
-//        String resourcePath = classLoader.getResource("").getPath();
-//        LOGGER.info("ClassLoader path: {}", resourcePath);
-
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
             String line;

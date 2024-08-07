@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
@@ -22,6 +23,16 @@ public class BotConfig {
     public List<String> getBotAliasesList() {
         String[] split = getBotAliases().split(",");
         return Arrays.stream(split).toList();
+    }
+
+    public InetSocketAddress getProxySocketAddress() {
+
+        if (proxyHost == null || proxyHost.trim().isEmpty()) {
+            return null;
+        }
+
+        int port = proxyPort != null ? proxyPort : 1337;
+        return new InetSocketAddress(proxyHost, port);
     }
 }
 
