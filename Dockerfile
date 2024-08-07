@@ -11,7 +11,7 @@ COPY target/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar /app/telegram-bot-dream
 COPY application.yaml /app/config/application.yaml
 
 # Copy the additional file to the container
-COPY path.txt /app/path.txt
+COPY prompt.txt /app/prompt.txt
 
 # Command to run the jar file
 CMD ["java", "-jar", "/app/telegram-bot-dream-stream.jar", "--spring.config.location=file:/app/config/application.yaml"]
