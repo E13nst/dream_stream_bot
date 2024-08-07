@@ -45,9 +45,7 @@ public class MessageHandlerService {
         openaiToken = botConfig.getOpenaiToken();
         botName = botConfig.getBotName();
         proxySocketAddress = botConfig.getProxySocketAddress();
-
         botNameAliases = botConfig.getBotAliasesList();
-//        botNameAliases.add(botConfig.getBotName());
     }
 
     public String handlePersonalMessage(Message message) {
@@ -121,8 +119,7 @@ public class MessageHandlerService {
         return String.format("Я %s. %s", user.getFirstName(), text);
     }
 
-    public boolean containsBotName(String text) {
-//        return botNameAliases.stream().allMatch(text::contains);
+    private boolean containsBotName(String text) {
         return Stream.concat(botNameAliases.stream(), Stream.of(botName))
                 .anyMatch(text::contains);
     }
