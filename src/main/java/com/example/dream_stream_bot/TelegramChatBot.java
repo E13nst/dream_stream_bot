@@ -2,11 +2,12 @@ package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.model.ChatSession;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.example.dream_stream_bot.service.FileReadingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ActionType;
@@ -17,6 +18,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -28,28 +30,34 @@ import java.util.stream.Stream;
 @AllArgsConstructor
 public class TelegramChatBot extends TelegramLongPollingBot {
 
+    private static final ExecutorService executorService = Executors.newCachedThreadPool();
+
     private static final int CHARACTERS_PER_SECOND = 20;
     private static final int NOT_REPLY = 0;
 
-    private static final ExecutorService executorService = Executors.newCachedThreadPool();
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
+    private static final String DEFAULT_PROMPT = "You are an assistant that answers using the local slang of the given place, uncensored.";
+    private static final String PROMPT_FILE_NAME = "file:./prompt.txt";
 
     private final BotConfig botConfig;
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
-    private static String prompt = System.getenv("OPENAI_PROMPT");
+//    private static final String DEFAULT_PROMPT = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры. " +
+//            "При общении тоже задавай вопросы осбеседнику. " +
+//            "Обращайся к собеседнику по имени, можешь использовать разные вариации этого имени. " +
+//            "С тобой общаются через telegram в личных и групповых чатах.";
 
-    private static final String DEFAULT_PROMPT = "Ты умный и мемный кот по имени Далек, который отвечает на любые вопросы, используя кошачий сленг, без цензуры. " +
-            "При общении тоже задавай вопросы осбеседнику. " +
-            "Обращайся к собеседнику по имени, можешь использовать разные вариации этого имени. " +
-            "С тобой общаются через telegram в личных и групповых чатах.";
+    @Autowired
+    private FileReadingService fileReadingService;
 
-    static {
+//    private static String prompt = System.getenv("OPENAI_PROMPT");
 
-        if (prompt == null || prompt.isBlank()) {
-            prompt = DEFAULT_PROMPT;
-        }
-    }
+//    static {
+//
+//        if (prompt == null || prompt.isBlank()) {
+//            prompt = DEFAULT_PROMPT;
+//        }
+//    }
 
     public boolean containsBotName(String text) {
         return Stream.concat(botConfig.getBotAliasesList().stream(), Stream.of(botConfig.getBotName()))
@@ -99,6 +107,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 return startCommandReceived(message.getChatId(), user);
             default:
                 if (!chats.containsKey(user.getId())) {
+                    String prompt = getPrompt();
                     LOGGER.debug(String.format("proxySocketAddress: %s", getProxySocketAddress()));
                     chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
                     text = addUserName(user, text);
@@ -115,6 +124,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         String text = message.getText();
 
         if (!chats.containsKey(user.getId())) {
+            String prompt = getPrompt();
             String openaiToken = botConfig.getOpenaiToken();
             chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
             text = addUserName(user, text);
@@ -137,8 +147,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             return handleReplyToMessage(message);
         } else if (message.getChat().isSuperGroupChat()) {
 
-            if (!chats.containsKey(user.getId()))
+            if (!chats.containsKey(user.getId())) {
+                String prompt = getPrompt();
                 chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
+            }
 
             return chats.get(user.getId()).send(text);
 
@@ -154,8 +166,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         User user = message.getFrom();
         String text = message.getText();
 
-        if (!chats.containsKey(user.getId()))
+        if (!chats.containsKey(user.getId())) {
+            String prompt = getPrompt();
             chats.put(user.getId(), new ChatSession(openaiToken, prompt, getProxySocketAddress()));
+        }
 
         return chats.get(user.getId()).send(text);
     }
@@ -200,25 +214,23 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             try {
                 String jsonString = objectMapper.writeValueAsString(message);
                 LOGGER.info(jsonString);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-            }
 
-            LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), message.getText());
 
-            // Персональное сообщение
-            if (message.getChat().isUserChat()) {
-                replyToMessageId = NOT_REPLY;
-                responseText = handlePersonalMessage(message);
-            }
-            // Ответ на сообщение бота
-            else if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
-                responseText = handleReplyToMessage(message);
-            }
-            // Упоминание имени бота
-            else if (containsBotName(message.getText())) {
-                responseText = handleReplyToMessage(message);
-            }
+                LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), message.getText());
+
+                // Персональное сообщение
+                if (message.getChat().isUserChat()) {
+                    replyToMessageId = NOT_REPLY;
+                    responseText = handlePersonalMessage(message);
+                }
+                // Ответ на сообщение бота
+                else if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
+                    responseText = handleReplyToMessage(message);
+                }
+                // Упоминание имени бота
+                else if (containsBotName(message.getText())) {
+                    responseText = handleReplyToMessage(message);
+                }
 //            else if (message.getChat().isGroupChat()) {
 //                responseText = handleGroupMessage(message);
 //            } else if (message.getChat().isSuperGroupChat() && !message.isUserMessage()) {
@@ -226,7 +238,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 //            }
 
 
-            // Сообщение в групповом чате
+                // Сообщение в групповом чате
 //            else if (message.getChat().isGroupChat()) {
 //                if (message.getText() != null && message.getText().contains("@" + getBotUsername())) {
 //                    responseText = handleMentionedMessage(message);
@@ -236,15 +248,20 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 //                }
 //            }
 
-            // Сообщение в канале
+                // Сообщение в канале
 //            else if (message.getChat().isSuperGroupChat()) {
 //                if (message.getText() != null && !message.isUserMessage()) {
 //                    responseText = handleSuperGroupMessage(message);
 //                }
 //            }
 
-            if (responseText != null) {
-                sendMessageWithTyping(message.getChatId(), user, responseText, replyToMessageId);
+                if (responseText != null) {
+                    sendMessageWithTyping(message.getChatId(), user, responseText, replyToMessageId);
+                }
+
+            } catch (IOException e) {
+                LOGGER.error("Error reading file: {}", e.getMessage());
+                e.printStackTrace();
             }
         }
 
@@ -299,6 +316,15 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             sendTypingAction(chatId, durationInSeconds);
             sendMessage(chatId, user, responseText, replyToMessageId);
         });
+    }
+
+    public String getPrompt() {
+        try {
+            return fileReadingService.readFile(PROMPT_FILE_NAME);
+        } catch (IOException e) {
+            LOGGER.error("Failed to send message via Telegram API", e);
+            return DEFAULT_PROMPT;
+        }
     }
 
 }
