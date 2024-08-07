@@ -3,10 +3,7 @@ package com.example.dream_stream_bot;
 import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.service.MessageHandlerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +18,6 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -38,28 +33,21 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final int CHARACTERS_PER_SECOND = 20;
     private static final int NOT_REPLY = 0;
 
-    private List<String> botNameAliases;
-
     @Autowired
     private BotConfig botConfig;
 
     @Autowired
     private MessageHandlerService messageHandlerService;
 
-    @PostConstruct
-    public void init() {
-        botNameAliases = botConfig.getBotAliasesList();
-    }
-
     @Override
     public String getBotUsername() {
         return botConfig.getBotName();
     }
 
-//    @Override
-//    public String getBotToken() {
-//        return botConfig.getToken();
-//    }
+    @Override
+    public String getBotToken() {
+        return botConfig.getToken();
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -110,7 +98,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     }
 
     public boolean containsBotName(String text) {
-        return Stream.concat(botNameAliases.stream(), Stream.of(getBotUsername()))
+        return Stream.concat(botConfig.getBotAliasesList().stream(), Stream.of(botConfig.getBotName()))
                 .anyMatch(text::contains);
     }
 
