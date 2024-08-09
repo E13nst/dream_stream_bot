@@ -111,6 +111,12 @@
 			<version>2.17.2</version> <!-- используйте последнюю версию -->
 		</dependency>
 
+		<dependency>
+			<groupId>net.gcardone.junidecode</groupId>
+			<artifactId>junidecode</artifactId>
+			<version>0.5.1</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

@@ -16,12 +16,17 @@ public class BotConfig {
     @Value("${bot.name}") String botName;
     @Value("${bot.token}") String token;
     @Value("${bot.aliases:}") String botAliases;
+    @Value("${bot.triggers:}") String botTriggers;
 
     @Value("${proxy.host:}") String proxyHost;
     @Value("${proxy.port:1337}") Integer proxyPort;
 
     public List<String> getBotAliasesList() {
         String[] split = getBotAliases().split(",");
+        return Arrays.stream(split).toList();
+    }
+    public List<String> getBotTriggersList() {
+        String[] split = getBotTriggers().split(",");
         return Arrays.stream(split).toList();
     }
 

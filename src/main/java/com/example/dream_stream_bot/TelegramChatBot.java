@@ -20,6 +20,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -29,6 +30,8 @@ import java.util.stream.Stream;
 public class TelegramChatBot extends TelegramLongPollingBot {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private static final int CHARACTERS_PER_SECOND = 20;
 
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -55,7 +58,6 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
 
             SendMessage response = null;
-            ObjectMapper objectMapper = new ObjectMapper();
 
             Message message = update.getMessage();
             User user = message.getFrom();
@@ -79,13 +81,16 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 else if (message.getChat().isUserChat()) {
                     response = messageHandlerService.handlePersonalMessage(message);
                 }
-                // Ответ на сообщение бота
-                else if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
-                    response = messageHandlerService.handleReplyToBotMessage(message);
-                }
-                // Упоминание имени бота
-                else if (containsBotName(message.getText())) {
-                    response = messageHandlerService.handleBotMentionMessage(message);
+                // Сообщение в группе
+                else if (message.getChat().isGroupChat()) {
+                    // Ответ на сообщение бота
+                    if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
+                        response = messageHandlerService.handleReplyToBotMessage(message);
+                    }
+                    // Упоминание имени бота
+                    else if (containsBotName(message.getText()) || containsTriggers(message.getText())) {
+                        response = messageHandlerService.handleReplyToBotMessage(message);
+                    }
                 }
                 // Сообщение в канале
                 else if (message.getChat().isSuperGroupChat() && !message.getFrom().getIsBot()) {
@@ -107,6 +112,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     public boolean containsBotName(String text) {
         return Stream.concat(botConfig.getBotAliasesList().stream(), Stream.of(botConfig.getBotName()))
                 .anyMatch(text::contains);
+    }
+
+    public boolean containsTriggers(String text) {
+        return botConfig.getBotTriggersList().stream().anyMatch(text.toLowerCase(Locale.ROOT)::contains);
     }
 
     private void sendTypingAction(Long chatId, long durationInSeconds) {

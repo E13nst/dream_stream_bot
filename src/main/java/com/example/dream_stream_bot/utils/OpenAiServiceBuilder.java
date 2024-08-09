@@ -47,14 +47,12 @@ public class OpenAiServiceBuilder {
 
     public OpenAiService build() {
 
-//        if (proxyHost.isEmpty()) {
         if (socketAddress == null) {
             return new OpenAiService(token);
 
         }
         else {
             ObjectMapper mapper = defaultObjectMapper();
-//            Proxy proxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress(proxyHost, proxyPort));
             Proxy proxy = new Proxy(Proxy.Type.SOCKS, socketAddress);
             OkHttpClient client = defaultClient(token, timeout)
                     .newBuilder()

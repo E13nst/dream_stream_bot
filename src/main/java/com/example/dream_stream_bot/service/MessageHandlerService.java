@@ -3,6 +3,7 @@ package com.example.dream_stream_bot.service;
 import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.model.ChatSession;
 import jakarta.annotation.PostConstruct;
+import net.gcardone.junidecode.Junidecode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +55,7 @@ public class MessageHandlerService {
         User user = message.getFrom();
         ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
         String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
-        String response = chatSession.send(query);
+        String response = chatSession.send(query, transliterateUserName(user));
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(message.getChatId());
@@ -65,10 +66,8 @@ public class MessageHandlerService {
     // Обработчик ответов на сообщения бота
     public SendMessage handleReplyToBotMessage(Message message) {
 
-        User user = message.getFrom();
-        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
-        String response = chatSession.send(query);
+        ChatSession chatSession = chats.computeIfAbsent(message.getChat().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
+        String response = chatSession.send(message.getText(), transliterateUserName(message.getFrom()));
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(message.getChatId());
@@ -80,10 +79,8 @@ public class MessageHandlerService {
     // Обработчик ответов на сообщения бота
     public SendMessage handleBotMentionMessage(Message message) {
 
-        User user = message.getFrom();
-        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
-        String response = chatSession.send(query);
+        ChatSession chatSession = chats.computeIfAbsent(message.getFrom().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
+        String response = chatSession.send(message.getText(), message.getFrom().getFirstName());
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(message.getChatId());
@@ -124,6 +121,10 @@ public class MessageHandlerService {
     public String helpCommandReceived(Long chatId, User user) {
 
         return "Hi, " + user.getFirstName() + ", nice to meet you!";
+    }
+
+    public static String transliterateUserName(User user) {
+        return Junidecode.unidecode(user.getFirstName());
     }
 
     private static String addUserName(User user, String text) {

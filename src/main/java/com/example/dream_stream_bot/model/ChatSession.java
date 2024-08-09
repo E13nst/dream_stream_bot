@@ -15,7 +15,7 @@ import java.util.List;
 
 public class ChatSession {
 
-//    private static final String MODEL = "gpt-3.5-turbo";
+    //    private static final String MODEL = "gpt-3.5-turbo";
     private static final String MODEL = "gpt-4o-mini";
     private final OpenAiService service;
     private final ChatCompletionRequest chatCompletionRequest;
@@ -59,6 +59,29 @@ public class ChatSession {
 
         StringBuilder response = new StringBuilder();
         messages.add(new ChatMessage(ChatMessageRole.USER.value(), query));
+
+        Flowable<ChatCompletionChunk> flowable = service.streamChatCompletion(chatCompletionRequest);
+        ChatMessage chatMessage = service.mapStreamToAccumulator(flowable)
+                .doOnNext(accumulator -> {
+                    if (accumulator.getMessageChunk().getContent() != null) {
+                        response.append(accumulator.getMessageChunk().getContent());
+                    }
+                })
+//                .doOnComplete(response::toString)
+                .lastElement()
+                .blockingGet()
+                .getAccumulatedMessage();
+
+        messages.add(chatMessage);
+
+        return response.toString();
+
+    }
+
+    public String send(String query, String name) {
+
+        StringBuilder response = new StringBuilder();
+        messages.add(new ChatMessage(ChatMessageRole.USER.value(), query, name));
 
         Flowable<ChatCompletionChunk> flowable = service.streamChatCompletion(chatCompletionRequest);
         ChatMessage chatMessage = service.mapStreamToAccumulator(flowable)
