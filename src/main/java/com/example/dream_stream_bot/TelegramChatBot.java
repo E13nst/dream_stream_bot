@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
+import com.example.dream_stream_bot.model.Commands;
 import com.example.dream_stream_bot.service.MessageHandlerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -27,11 +29,9 @@ import java.util.stream.Stream;
 public class TelegramChatBot extends TelegramLongPollingBot {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
+    private static final int CHARACTERS_PER_SECOND = 20;
 
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
-
-    private static final int CHARACTERS_PER_SECOND = 20;
-    private static final int NOT_REPLY = 0;
 
     @Autowired
     private BotConfig botConfig;
@@ -54,11 +54,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
         if (update.hasMessage() && update.getMessage().hasText()) {
 
-            String responseText = null;
+            SendMessage response = null;
             ObjectMapper objectMapper = new ObjectMapper();
 
             Message message = update.getMessage();
-            Integer replyToMessageId = message.getMessageId();
             User user = message.getFrom();
 
             LOGGER.info(message.toString());
@@ -67,26 +66,34 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), message.getText());
                 LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), objectMapper.writeValueAsString(message));
 
+                // Обработка команд
+                if (isCommand(message)) {
+//                    responseText = switch (message.getText()) {
+//                        case "/start" -> messageHandlerService.startCommandReceived(message.getChatId(), user);
+//                        case "/help" -> messageHandlerService.helpCommandReceived(message.getChatId(), user);
+//                        default -> messageHandlerService.handlePersonalMessage(message);
+//                    };
+                }
+
                 // Персональное сообщение
-                if (message.getChat().isUserChat()) {
-                    replyToMessageId = NOT_REPLY;
-                    responseText = messageHandlerService.handlePersonalMessage(message);
+                else if (message.getChat().isUserChat()) {
+                    response = messageHandlerService.handlePersonalMessage(message);
                 }
                 // Ответ на сообщение бота
                 else if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
-                    responseText = messageHandlerService.handleReplyToMessage(message);
+                    response = messageHandlerService.handleReplyToBotMessage(message);
                 }
                 // Упоминание имени бота
                 else if (containsBotName(message.getText())) {
-                    responseText = messageHandlerService.handleReplyToMessage(message);
+                    response = messageHandlerService.handleBotMentionMessage(message);
                 }
                 // Сообщение в канале
                 else if (message.getChat().isSuperGroupChat() && !message.getFrom().getIsBot()) {
-                    responseText = messageHandlerService.handleSuperGroupMessage(message);
+                    response = messageHandlerService.handleSuperGroupMessage(message);
                 }
 
-                if (responseText != null) {
-                    sendMessageWithTyping(message.getChatId(), user, responseText, replyToMessageId);
+                if (response != null) {
+                    sendMessageWithTyping(message.getChatId(), user, response);
                 }
 
             } catch (IOException e) {
@@ -100,32 +107,6 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     public boolean containsBotName(String text) {
         return Stream.concat(botConfig.getBotAliasesList().stream(), Stream.of(botConfig.getBotName()))
                 .anyMatch(text::contains);
-    }
-
-    public String reply(Message message) {
-        Message replyToMessage = message.getReplyToMessage();
-        LOGGER.debug("REPLY TO MESSAGE: " + replyToMessage.getText());
-
-        String repliedMessageUserName = replyToMessage.getFrom().getUserName();
-
-        if (repliedMessageUserName != null && repliedMessageUserName.equals(getBotUsername())) {
-
-            return String.format("%s писал: \"%s\"\n %s",
-                    replyToMessage.getFrom().getFirstName(),
-                    replyToMessage.getText(),
-                    message.getText()
-            );
-
-//            return String.format("%s: \n> %s : \"%s\"\n\n%s",
-//                    message.getFrom().getFirstName(),
-//                    replyToMessage.getFrom().getFirstName(),
-//                    replyToMessage.getText(),
-//                    message.getText()
-//            );
-
-        } else {
-            return message.getText();
-        }
     }
 
     private void sendTypingAction(Long chatId, long durationInSeconds) {
@@ -148,14 +129,9 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(Long chatId, User user, String text, Integer replyToMessageId) {
+    private void sendMessage(User user, SendMessage message) {
 
-        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), text);
-
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText(text);
-        message.setReplyToMessageId(replyToMessageId);
+        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), message.getText());
 
         try {
             execute(message);
@@ -164,13 +140,19 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessageWithTyping(Long chatId, User user, String responseText, Integer replyToMessageId) {
+    private void sendMessageWithTyping(Long chatId, User user, SendMessage message) {
 
-        int durationInSeconds = responseText.length() / CHARACTERS_PER_SECOND;
+        int durationInSeconds = message.getText().length() / CHARACTERS_PER_SECOND;
         executorService.submit(() -> {
             sendTypingAction(chatId, durationInSeconds);
-            sendMessage(chatId, user, responseText, replyToMessageId);
+            sendMessage(user, message);
         });
+    }
+
+    boolean isCommand(Message message) {
+        return  message.getChat().isUserChat() &&
+                Arrays.stream(Commands.values()).map(Commands::toString)
+                    .anyMatch(message.getText()::contains);
     }
 
 }

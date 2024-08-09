@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.User;
 
@@ -48,56 +49,61 @@ public class MessageHandlerService {
         botNameAliases = botConfig.getBotAliasesList();
     }
 
-    public String handlePersonalMessage(Message message) {
+    public SendMessage handlePersonalMessage(Message message) {
 
         User user = message.getFrom();
-        String text = message.getText();
+        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
+        String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
+        String response = chatSession.send(query);
 
-        switch (text) {
-            case "/start":
-                return startCommandReceived(message.getChatId(), user);
-            default:
-                if (!chats.containsKey(user.getId())) {
-                    LOGGER.debug(String.format("proxySocketAddress: %s", proxySocketAddress));
-                    chats.put(user.getId(), new ChatSession(openaiToken, prompt, proxySocketAddress));
-                    text = addUserName(user, text);
-                }
-
-                return chats.get(user.getId()).send(text);
-        }
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId());
+        sendMessage.setText(response);
+        return sendMessage;
     }
 
     // Обработчик ответов на сообщения бота
-    public String handleReplyToMessage(Message message) {
+    public SendMessage handleReplyToBotMessage(Message message) {
 
         User user = message.getFrom();
-        String text = message.getText();
+        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
+        String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
+        String response = chatSession.send(query);
 
-        if (!chats.containsKey(user.getId())) {
-            String prompt = getPrompt();
-            String openaiToken = botConfig.getOpenaiToken();
-            chats.put(user.getId(), new ChatSession(openaiToken, prompt, proxySocketAddress));
-            text = addUserName(user, text);
-        }
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId());
+        sendMessage.setText(response);
+        sendMessage.setReplyToMessageId(message.getMessageId());
+        return sendMessage;
+    }
 
-        LOGGER.info("text: " + text);
-        return chats.get(user.getId()).send(text);
+    // Обработчик ответов на сообщения бота
+    public SendMessage handleBotMentionMessage(Message message) {
+
+        User user = message.getFrom();
+        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
+        String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
+        String response = chatSession.send(query);
+
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId());
+        sendMessage.setText(response);
+        sendMessage.setReplyToMessageId(message.getMessageId());
+        return sendMessage;
     }
 
     // Обработчик сообщений канала
-    public String handleSuperGroupMessage(Message message) {
-
-        String openaiToken = botConfig.getOpenaiToken();
+    public SendMessage handleSuperGroupMessage(Message message) {
 
         User user = message.getFrom();
-        String text = message.getText();
+        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
+        String response = chatSession.send(message.getText());
 
-        if (!chats.containsKey(user.getId())) {
-            String prompt = getPrompt();
-            chats.put(user.getId(), new ChatSession(openaiToken, prompt, proxySocketAddress));
-        }
-
-        return chats.get(user.getId()).send(text);
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(message.getChatId());
+        sendMessage.setText(response);
+        sendMessage.setReplyToMessageId(message.getMessageId());
+        return sendMessage;
     }
 
     private String getPrompt() {
@@ -109,14 +115,24 @@ public class MessageHandlerService {
         }
     }
 
-    private String startCommandReceived(Long chatId, User user) {
+    public String startCommandReceived(Long chatId, User user) {
 
         return "Hi, " + user.getFirstName() + ", nice to meet you!";
 //        sendMessage(chatId, user, answer);
     }
 
+    public String helpCommandReceived(Long chatId, User user) {
+
+        return "Hi, " + user.getFirstName() + ", nice to meet you!";
+    }
+
     private static String addUserName(User user, String text) {
-        return String.format("Я %s. %s", user.getFirstName(), text);
+        return String.format("Я %s.\n%s", user.getFirstName(), text);
+    }
+
+    private static String insertQuote(User user, String text, User rUser, String rText) {
+        return String.format("Я %s.\n\n%s писал: \"%s\"\n\n%s",
+                user.getFirstName(), rUser.getFirstName(), rText, text);
     }
 
     private boolean containsBotName(String text) {

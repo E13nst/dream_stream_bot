@@ -33,6 +33,3 @@ clean:
 # Запуск автотестов с использованием Maven
 test:
 	mvn clean test
-
-# Экспорт переменных окружения
-#     export $(grep -v '^#' .env.app | xargs)

@@ -30,17 +30,18 @@ class TelegramChatBotTest {
     }
 
     @Test
-    @DisplayName("Test prompt length")
+    @DisplayName("Prompt length")
     @Disabled
     void testPromptLength() {
 
-        String openaiToken = System.getenv("OPENAI_TOKEN");
+//        String openaiToken = System.getenv("OPENAI_TOKEN");
+        String openaiToken = botConfig.getOpenaiToken();
         assertNotNull(openaiToken, "Prompt should not be null");
         assertTrue(openaiToken.length() < PROMPT_MAX_LENGTH, "The string should be shorter than 4096 characters");
     }
 
     @Test
-    @DisplayName("Test Hello, OpenAI")
+    @DisplayName("Hello, OpenAI")
     void testHelloOpenAI() {
 
         String response = sendMessage("Hello");
