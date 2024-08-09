@@ -2,6 +2,7 @@ package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.model.Commands;
+import com.example.dream_stream_bot.service.CommandHandlerService;
 import com.example.dream_stream_bot.service.MessageHandlerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -42,6 +43,9 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     @Autowired
     private MessageHandlerService messageHandlerService;
 
+    @Autowired
+    private CommandHandlerService commandHandlerService;
+
     @Override
     public String getBotUsername() {
         return botConfig.getBotName();
@@ -70,13 +74,14 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
                 // Обработка команд
                 if (isCommand(message)) {
-//                    responseText = switch (message.getText()) {
-//                        case "/start" -> messageHandlerService.startCommandReceived(message.getChatId(), user);
-//                        case "/help" -> messageHandlerService.helpCommandReceived(message.getChatId(), user);
-//                        default -> messageHandlerService.handlePersonalMessage(message);
-//                    };
+                    response = switch (message.getText()) {
+                        case "/start" -> commandHandlerService.start(message);
+                        case "/help" -> commandHandlerService.help(message);
+                        case "/next" -> commandHandlerService.next(message);
+                        case "/previous" -> commandHandlerService.previous(message);
+                        default -> messageHandlerService.handlePersonalMessage(message);
+                    };
                 }
-
                 // Персональное сообщение
                 else if (message.getChat().isUserChat()) {
                     response = messageHandlerService.handlePersonalMessage(message);

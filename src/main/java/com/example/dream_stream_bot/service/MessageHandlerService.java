@@ -107,20 +107,8 @@ public class MessageHandlerService {
         try {
             return fileReadingService.readFile(PROMPT_FILE_NAME);
         } catch (IOException e) {
-            LOGGER.error("Failed to send message via Telegram API", e);
-            return DEFAULT_PROMPT;
+            LOGGER.error("Failed to read the prompt file: {}. Using default prompt.", PROMPT_FILE_NAME, e);            return DEFAULT_PROMPT;
         }
-    }
-
-    public String startCommandReceived(Long chatId, User user) {
-
-        return "Hi, " + user.getFirstName() + ", nice to meet you!";
-//        sendMessage(chatId, user, answer);
-    }
-
-    public String helpCommandReceived(Long chatId, User user) {
-
-        return "Hi, " + user.getFirstName() + ", nice to meet you!";
     }
 
     public static String transliterateUserName(User user) {
