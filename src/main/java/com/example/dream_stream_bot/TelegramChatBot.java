@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
+import com.example.dream_stream_bot.model.Buttons;
 import com.example.dream_stream_bot.model.Commands;
 import com.example.dream_stream_bot.service.CommandHandlerService;
 import com.example.dream_stream_bot.service.MessageHandlerService;
@@ -22,6 +23,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -32,10 +34,9 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     private static final int CHARACTERS_PER_SECOND = 20;
-
-    private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Autowired
     private BotConfig botConfig;
@@ -72,22 +73,17 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), message.getText());
                 LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), objectMapper.writeValueAsString(message));
 
-                // Обработка команд
-                if (isCommand(message)) {
+                // Персональное сообщение
+                if (message.getChat().isUserChat()) {
                     response = switch (message.getText()) {
                         case "/start" -> commandHandlerService.start(message);
-                        case "/help" -> commandHandlerService.help(message);
-                        case "/next" -> commandHandlerService.next(message);
-                        case "/previous" -> commandHandlerService.previous(message);
+                        case "/help" -> commandHandlerService.help(message.getChatId());
+                        // Персональное сообщение
                         default -> messageHandlerService.handlePersonalMessage(message);
                     };
                 }
-                // Персональное сообщение
-                else if (message.getChat().isUserChat()) {
-                    response = messageHandlerService.handlePersonalMessage(message);
-                }
                 // Сообщение в группе
-                else if (message.getChat().isGroupChat()) {
+                else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
                     // Ответ на сообщение бота
                     if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
                         response = messageHandlerService.handleReplyToBotMessage(message);
@@ -97,21 +93,46 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                         response = messageHandlerService.handleReplyToBotMessage(message);
                     }
                 }
-                // Сообщение в канале
-                else if (message.getChat().isSuperGroupChat() && !message.getFrom().getIsBot()) {
-                    response = messageHandlerService.handleSuperGroupMessage(message);
-                }
 
                 if (response != null) {
-                    sendMessageWithTyping(message.getChatId(), user, response);
+                    LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);
+                    sendMessageWithTyping(message.getChatId(), response);
                 }
 
             } catch (IOException e) {
-                LOGGER.error("Error reading file: {}", e.getMessage());
+                LOGGER.error("Error: {}", e.getMessage());
                 e.printStackTrace();
             }
         }
+        else if (update.hasCallbackQuery()) {
 
+            var callbackQuery = update.getCallbackQuery();
+            long chatId = callbackQuery.getMessage().getChatId();
+            var user = callbackQuery.getFrom();
+
+            LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
+
+            Buttons button = Optional.ofNullable(callbackQuery.getData())
+                    .map(data -> {
+                        try {
+                            return Buttons.valueOf(data);
+                        } catch (IllegalArgumentException e) {
+                            return null;
+                        }
+                    })
+                    .orElse(null);
+
+            SendMessage response = switch (button) {
+                case PREVIOUS -> commandHandlerService.previous(callbackQuery);
+                case NEXT -> commandHandlerService.next(callbackQuery);
+                default -> commandHandlerService.help(chatId);
+            };
+
+            if (response != null) {
+                LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response.getText());
+                sendMessage(response);
+            }
+        }
     }
 
     public boolean containsBotName(String text) {
@@ -143,9 +164,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessage(User user, SendMessage message) {
-
-        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), message.getText());
+    private void sendMessage(SendMessage message) {
 
         try {
             execute(message);
@@ -154,19 +173,13 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessageWithTyping(Long chatId, User user, SendMessage message) {
+    private void sendMessageWithTyping(Long chatId, SendMessage message) {
 
         int durationInSeconds = message.getText().length() / CHARACTERS_PER_SECOND;
         executorService.submit(() -> {
             sendTypingAction(chatId, durationInSeconds);
-            sendMessage(user, message);
+            sendMessage(message);
         });
-    }
-
-    boolean isCommand(Message message) {
-        return  message.getChat().isUserChat() &&
-                Arrays.stream(Commands.values()).map(Commands::toString)
-                    .anyMatch(message.getText()::contains);
     }
 
 }

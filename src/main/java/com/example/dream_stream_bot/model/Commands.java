@@ -2,9 +2,9 @@ package com.example.dream_stream_bot.model;
 
 public enum Commands {
 
-    START("/start"),
-    PREVIOUS("/previous"),
-    NEXT ("/next");
+    START("start"),
+    PREVIOUS("previous"),
+    NEXT ("next");
 
     private final String title;
 
