@@ -6,13 +6,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.ArrayList;
 import java.util.List;
 
-public class CommandKeyboardNew {
+public class InlineCommandKeyboard {
 
-    InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-    List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
+    List<List<InlineKeyboardButton>> rows = new ArrayList<>();
     List<InlineKeyboardButton> row = new ArrayList<>();
 
-    public CommandKeyboardNew addKey(String key, String value) {
+    public InlineCommandKeyboard addKey(String key, String value) {
         InlineKeyboardButton button = new InlineKeyboardButton();
         button.setText(key);
         button.setCallbackData(value);
@@ -22,8 +22,8 @@ public class CommandKeyboardNew {
     }
 
     public InlineKeyboardMarkup build() {
-        keyboard.add(row);
-        keyboardMarkup.setKeyboard(keyboard);
-        return keyboardMarkup;
+        rows.add(row);
+        keyboard.setKeyboard(rows);
+        return keyboard;
     }
 }

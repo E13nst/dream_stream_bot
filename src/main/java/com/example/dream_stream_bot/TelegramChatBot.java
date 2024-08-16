@@ -1,8 +1,7 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.Buttons;
-import com.example.dream_stream_bot.model.Commands;
+import com.example.dream_stream_bot.model.InlineButtons;
 import com.example.dream_stream_bot.service.CommandHandlerService;
 import com.example.dream_stream_bot.service.MessageHandlerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,7 +20,6 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -79,7 +77,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                         case "/start" -> commandHandlerService.start(message);
                         case "/help" -> commandHandlerService.help(message.getChatId());
                         // Персональное сообщение
-                        default -> messageHandlerService.handlePersonalMessage(message);
+                        default -> commandHandlerService.handlePersonalMessage(message);
+//                        default -> messageHandlerService.handlePersonalMessage(message);
                     };
                 }
                 // Сообщение в группе
@@ -94,7 +93,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                     }
                 }
 
-                if (response != null) {
+                if (response != null && !response.getText().isBlank()) {
                     LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);
                     sendMessageWithTyping(message.getChatId(), response);
                 }
@@ -112,19 +111,20 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
             LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
 
-            Buttons button = Optional.ofNullable(callbackQuery.getData())
+            InlineButtons button = Optional.ofNullable(callbackQuery.getData())
                     .map(data -> {
                         try {
-                            return Buttons.valueOf(data);
+                            return InlineButtons.valueOf(data);
                         } catch (IllegalArgumentException e) {
                             return null;
                         }
                     })
-                    .orElse(null);
+                    .orElse(InlineButtons.NONE);
 
             SendMessage response = switch (button) {
                 case PREVIOUS -> commandHandlerService.previous(callbackQuery);
                 case NEXT -> commandHandlerService.next(callbackQuery);
+                case CANCEL -> commandHandlerService.delete(callbackQuery);
                 default -> commandHandlerService.help(chatId);
             };
 

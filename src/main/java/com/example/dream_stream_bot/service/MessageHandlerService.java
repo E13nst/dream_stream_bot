@@ -112,7 +112,7 @@ public class MessageHandlerService {
     }
 
     public static String transliterateUserName(User user) {
-        return Junidecode.unidecode(user.getFirstName());
+        return Junidecode.unidecode(user.getFirstName()).replaceAll("[^a-zA-Z0-9_-]", "");
     }
 
     private static String addUserName(User user, String text) {

@@ -1,5 +1,6 @@
 package com.example.dream_stream_bot.model;
 
+import com.example.dream_stream_bot.service.MessageHandlerService;
 import com.example.dream_stream_bot.utils.OpenAiServiceBuilder;
 import com.theokanning.openai.completion.chat.ChatCompletionChunk;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
@@ -7,6 +8,8 @@ import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 import io.reactivex.Flowable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -14,6 +17,8 @@ import java.util.HashMap;
 import java.util.List;
 
 public class ChatSession {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
 
     //    private static final String MODEL = "gpt-3.5-turbo";
     private static final String MODEL = "gpt-4o-mini";
@@ -57,6 +62,8 @@ public class ChatSession {
 
     public String send(String query) {
 
+        LOGGER.info("OpenAi Request: {}", query);
+
         StringBuilder response = new StringBuilder();
         messages.add(new ChatMessage(ChatMessageRole.USER.value(), query));
 
@@ -73,12 +80,13 @@ public class ChatSession {
                 .getAccumulatedMessage();
 
         messages.add(chatMessage);
-
+        LOGGER.info("OpenAi Response: {}", response);
         return response.toString();
-
     }
 
     public String send(String query, String name) {
+
+        LOGGER.info("OpenAi Request [{}]: {}", name, query);
 
         StringBuilder response = new StringBuilder();
         messages.add(new ChatMessage(ChatMessageRole.USER.value(), query, name));
@@ -96,7 +104,7 @@ public class ChatSession {
                 .getAccumulatedMessage();
 
         messages.add(chatMessage);
-
+        LOGGER.info("OpenAi Response: {}", response);
         return response.toString();
     }
 

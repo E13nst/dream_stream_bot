@@ -1,6 +1,8 @@
 package com.example.dream_stream_bot.model;
 
-public enum Buttons {
+public enum InlineButtons {
     PREVIOUS,
-    NEXT
+    NEXT,
+    CANCEL,
+    NONE
 }

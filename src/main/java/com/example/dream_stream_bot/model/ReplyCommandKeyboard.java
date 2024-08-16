@@ -7,22 +7,22 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.util.ArrayList;
 import java.util.List;
 
-public class CommandKeyboard {
+public class ReplyCommandKeyboard {
 
-    ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-    List<KeyboardRow> keyboard = new ArrayList<>();
+    ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
+    List<KeyboardRow> rows = new ArrayList<>();
     KeyboardRow row = new KeyboardRow();
 
-    public CommandKeyboard addKey(String key) {
+    public ReplyCommandKeyboard addKey(String key) {
         row.add(new KeyboardButton(key));
         return this;
     }
 
     public ReplyKeyboardMarkup build() {
-        keyboard.add(row);
-        keyboardMarkup.setKeyboard(keyboard);
-        keyboardMarkup.setResizeKeyboard(true);
-        keyboardMarkup.setOneTimeKeyboard(true);
-        return keyboardMarkup;
+        rows.add(row);
+        keyboard.setKeyboard(rows);
+        keyboard.setResizeKeyboard(true);
+//        keyboardMarkup.setOneTimeKeyboard(true);
+        return keyboard;
     }
 }
