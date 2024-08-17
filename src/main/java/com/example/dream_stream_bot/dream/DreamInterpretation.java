@@ -24,4 +24,9 @@ class DreamInterpretation implements AnalyzerState {
     public String execute(DreamAnalyzer dream, String text) {
         return dream.analyze();
     }
+
+    @Override
+    public String init(DreamAnalyzer dream) {
+        return null;
+    }
 }

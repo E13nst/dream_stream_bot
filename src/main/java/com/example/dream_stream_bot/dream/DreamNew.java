@@ -14,11 +14,16 @@ class DreamNew implements AnalyzerState {
 
     @Override
     public void prev(DreamAnalyzer dream) {
-        dream.setState(new DreamObjects());
+        dream.setState(new DreamAssociation());
     }
 
     @Override
     public String execute(DreamAnalyzer dream, String text) {
         return "NEW RESULT";
+    }
+
+    @Override
+    public String init(DreamAnalyzer dream) {
+        return null;
     }
 }

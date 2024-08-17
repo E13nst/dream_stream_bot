@@ -18,7 +18,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -84,13 +83,18 @@ public class CommandHandlerService {
             switch (Objects.requireNonNull(value)) {
                 case PREVIOUS -> {
                     analyzer.previous();
+                    String description = analyzer.init();
                     String resp = analyzer.execute("");
+                    response.append(description);
                     response.append(resp);
                 }
                 case NEXT -> {
                     analyzer.next();
+                    String description = analyzer.init();
                     String resp = analyzer.execute("");
-                    response.append(resp);                }
+                    response.append(description);
+                    response.append(resp);
+                }
                 case CANCEL -> dreams.remove(id);
                 default -> {
                     String resp = analyzer.execute(message.getText());

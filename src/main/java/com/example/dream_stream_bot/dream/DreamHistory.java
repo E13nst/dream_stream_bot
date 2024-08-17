@@ -12,9 +12,6 @@ class DreamHistory implements AnalyzerState {
     }
 
     @Override
-//    public void next(DreamAnalyzer dream) {
-//        dream.setState(new DreamObjects());
-//    }
     public void next(DreamAnalyzer dream) {
         dream.setState(new DreamAssociation());
     }
@@ -29,5 +26,10 @@ class DreamHistory implements AnalyzerState {
                 dream.addHistory(text);
 
         return dream.getHistory().isBlank() ? HISTORY_DESCRIPTION : "";
+    }
+
+    @Override
+    public String init(DreamAnalyzer dream) {
+        return null;
     }
 }

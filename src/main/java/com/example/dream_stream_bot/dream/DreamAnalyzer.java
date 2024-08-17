@@ -2,7 +2,6 @@ package com.example.dream_stream_bot.dream;
 
 import com.example.dream_stream_bot.model.ChatSession;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.util.*;
 
@@ -52,9 +51,9 @@ public class DreamAnalyzer {
             return state.execute(this, text);
     }
 
-//    public String getDescription() {
-//        return state.getDescription(this);
-//    }
+    public String init() {
+        return state.init(this);
+    }
 
 //    public String getResult() {
 //        return state.getResult(this);
@@ -64,6 +63,10 @@ public class DreamAnalyzer {
         for (String element : list) {
             objects.put(element, "");
         }
+    }
+
+    public void setAssociation(String key, String value) {
+        objects.put(key, value);
     }
 
     public List<String> getObjectList() {

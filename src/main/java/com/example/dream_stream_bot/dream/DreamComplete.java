@@ -24,4 +24,9 @@ class DreamComplete implements AnalyzerState {
 
         return "END";
     }
+
+    @Override
+    public String init(DreamAnalyzer dream) {
+        return null;
+    }
 }
