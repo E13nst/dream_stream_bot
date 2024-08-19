@@ -2,10 +2,15 @@ package com.example.dream_stream_bot.dream;
 
 import com.example.dream_stream_bot.model.ChatSession;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class DreamAnalyzer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DreamAnalyzer.class);
 
     private final ChatSession chat;
     private final String userName;
@@ -13,9 +18,9 @@ public class DreamAnalyzer {
 
     private AnalyzerState state;
     @Getter
-    private final Map<String, String> objects = new HashMap<>();
+    private final Map<String, String> associations = new HashMap<>();
     @Getter
-    private final Map<String, String> actors = new HashMap<>();
+    private final Map<String, String> persons = new HashMap<>();
 
     public DreamAnalyzer(ChatSession chat, String userName) {
         this.chat = chat;
@@ -43,8 +48,8 @@ public class DreamAnalyzer {
         return history.toString();
     }
 
-    public DreamStatus getCurrentState() {
-        return state.getCurrentState();
+    public DreamStatus getState() {
+        return state.getState();
     }
 
     public String execute(String text) {
@@ -55,67 +60,42 @@ public class DreamAnalyzer {
         return state.init(this);
     }
 
-//    public String getResult() {
-//        return state.getResult(this);
-//    }
-
-    public void setObjectList(List<String> list) {
-        for (String element : list) {
-            objects.put(element, "");
-        }
+    public void putAssociation(String key, String value) {
+        associations.put(key, value);
     }
 
-    public void setAssociation(String key, String value) {
-        objects.put(key, value);
-    }
+    public List<String> extractItemsAndSplit(String prompt) {
+        String query = String.format("%s %s", prompt, history);
+        String response = chat.send(query, userName);
 
-    public List<String> getObjectList() {
-        return new ArrayList<>(objects.keySet());
-    }
-
-    public void setActorsList(List<String> list) {
-        for (String element : list) {
-            actors.put(element, "");
-        }
-    }
-
-    public List<String> getActorsList() {
-        return new ArrayList<>(actors.keySet());
-    }
-
-    public String extractItems(String prompt) {
-        String query = String.format("%s \n\n%s", prompt, history);
-        return chat.send(query, userName);
-    }
-
-    public static List<String> extractAndSplit(String input) {
-        int startIndex = input.indexOf('[') + 1;
-        int endIndex = input.lastIndexOf(']');
+        int startIndex = response.indexOf('[') + 1;
+        int endIndex = response.lastIndexOf(']');
 
         if (startIndex > 0 && endIndex > startIndex) {
-            String extracted = input.substring(startIndex, endIndex);
+            String extracted = response.substring(startIndex, endIndex);
             List<String> list = Arrays.asList(extracted.split(","));
-            // Удаление пробелов вокруг элементов списка
             list = list.stream().map(e -> e.replace("\"", "")).map(String::trim).toList();
             return list;
         } else {
-//            LOGGER.error("Brackets not found or incorrect order.");
-            return List.of(); // Возвращаем пустой список в случае ошибки
+            LOGGER.error("Brackets not found or incorrect order.");
+            return List.of();
         }
     }
 
     public String analyze() {
-        String prompt = "Интерпретируй этот сон по Юнгу, операясь на мои личные ассоциации:\n";
+        String prompt = "Интерпретируй это сновидения по Юнгу, операясь на мои личные ассоциации:\n" +
+                "%s\n" +
+                "И персонажей моего сновидения, которые могут представлять мою персону, тень, аниму или анимуса:\n" +
+                "%s\n" +
+                "Учитывай взаимодейстаие этих персонажей и объектов между собой в контексте сновидения";
 
-        StringBuilder query = new StringBuilder();
-        query.append(prompt);
+        String query = String.format(prompt,
+                associations.entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
+                        .collect(Collectors.joining("\n")),
+                persons.entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
+                        .collect(Collectors.joining("\n"))
+        );
 
-        for (Map.Entry<String, String> entry : objects.entrySet()) {
-            query.append(entry.getKey()).append(" - ").append(entry.getValue()).append("\n");
-        }
-        for (Map.Entry<String, String> entry : actors.entrySet()) {
-            query.append(entry.getKey()).append(" - ").append(entry.getValue()).append("\n");
-        }
-        return chat.send(query.toString(), userName);
+        return chat.send(query, userName);
     }
 }

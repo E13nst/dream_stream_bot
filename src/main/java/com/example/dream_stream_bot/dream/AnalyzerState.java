@@ -1,7 +1,7 @@
 package com.example.dream_stream_bot.dream;
 
 interface AnalyzerState {
-    DreamStatus getCurrentState();
+    DreamStatus getState();
     void next(DreamAnalyzer dream);
     void prev(DreamAnalyzer dream);
     String execute(DreamAnalyzer dream, String text);

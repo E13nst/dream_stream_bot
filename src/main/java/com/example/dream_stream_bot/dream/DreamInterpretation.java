@@ -6,7 +6,7 @@ class DreamInterpretation implements AnalyzerState {
             "Интерпритация";
 
     @Override
-    public DreamStatus getCurrentState() {
+    public DreamStatus getState() {
         return DreamStatus.INTERPRETATION;
     }
 

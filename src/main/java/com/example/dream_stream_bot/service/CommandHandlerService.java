@@ -101,7 +101,7 @@ public class CommandHandlerService {
                     response.append(resp);                      }
             }
 
-            LOGGER.info("STATE: {}", analyzer.getCurrentState().toString());
+            LOGGER.info("STATE: {}", analyzer.getState().toString());
 
         } else {
             String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
@@ -146,7 +146,7 @@ public class CommandHandlerService {
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
         var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user)));
         dream.next();
-        String response = "Current State: " + dream.getCurrentState();
+        String response = "Current State: " + dream.getState();
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(query.getMessage().getChatId());

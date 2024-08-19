@@ -7,7 +7,7 @@ class DreamHistory implements AnalyzerState {
                     "Ты можешь сделать это в нескольких сообщениях. ";
 
     @Override
-    public DreamStatus getCurrentState() {
+    public DreamStatus getState() {
         return DreamStatus.HISTORY;
     }
 

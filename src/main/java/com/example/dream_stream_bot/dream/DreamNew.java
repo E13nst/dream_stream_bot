@@ -3,7 +3,7 @@ package com.example.dream_stream_bot.dream;
 class DreamNew implements AnalyzerState {
 
     @Override
-    public DreamStatus getCurrentState() {
+    public DreamStatus getState() {
         return DreamStatus.NEW;
     }
 
