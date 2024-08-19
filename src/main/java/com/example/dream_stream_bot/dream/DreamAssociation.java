@@ -2,6 +2,7 @@ package com.example.dream_stream_bot.dream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.util.*;
 
@@ -55,29 +56,41 @@ class DreamAssociation implements AnalyzerState {
     }
 
     @Override
-    public String init(DreamAnalyzer analyzer) {
+    public List<SendMessage> init(DreamAnalyzer analyzer) {
+
+        List<SendMessage> messages = new ArrayList<>();
 
         elements.addAll(analyzer.extractItemsAndSplit(OBJECTS_PROMPT));
 
+        String text;
         if (elements.isEmpty()) {
             LOGGER.warn("No elements found in dream analysis");
-            return MSG_FAIL;
+            text = MSG_FAIL;
         } else {
-            return String.format(MSG_DESCRIPTION, String.join("\n", elements));
+            text = String.format(MSG_DESCRIPTION, String.join("\n", elements));
         }
+
+        SendMessage sendMessage = analyzer.newTelegramMessage(text);
+        messages.add(sendMessage);
+        return messages;
     }
 
     @Override
-    public String execute(DreamAnalyzer analyzer, String message) {
+    public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
 
-        if (message != null && !message.isBlank()) {
-            analyzer.putAssociation(currentElement, message);
-            LOGGER.info("Association set for element {}: {}", currentElement, message);
+        List<SendMessage> messages = new ArrayList<>();
+
+        if (text != null && !text.isBlank()) {
+            analyzer.putAssociation(currentElement, text);
+            LOGGER.info("Association set for element {}: {}", currentElement, text);
         } else {
             LOGGER.warn("Received blank message, skipping association");
         }
 
         currentElement = elements.pollFirst();
-        return currentElement != null ? currentElement : MSG_END;
+
+        SendMessage sendMessage = analyzer.newTelegramMessage(Objects.requireNonNullElse(currentElement, MSG_END));
+        messages.add(sendMessage);
+        return messages;
     }
 }

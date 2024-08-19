@@ -4,6 +4,7 @@ import com.example.dream_stream_bot.model.ChatSession;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -12,9 +13,12 @@ public class DreamAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DreamAnalyzer.class);
 
-    private final ChatSession chat;
+    private final ChatSession openaiChat;
     private final String userName;
     private final StringBuilder history = new StringBuilder();
+
+    @Getter
+    private final long telegramChatId;
 
     private AnalyzerState state;
     @Getter
@@ -22,8 +26,9 @@ public class DreamAnalyzer {
     @Getter
     private final Map<String, String> persons = new HashMap<>();
 
-    public DreamAnalyzer(ChatSession chat, String userName) {
-        this.chat = chat;
+    public DreamAnalyzer(ChatSession openaiChat, String userName, long telegramChatId) {
+        this.openaiChat = openaiChat;
+        this.telegramChatId = telegramChatId;
         this.userName = userName;
         this.state = new DreamNew();
     }
@@ -52,11 +57,11 @@ public class DreamAnalyzer {
         return state.getState();
     }
 
-    public String execute(String text) {
+    public List<SendMessage> execute(String text) {
             return state.execute(this, text);
     }
 
-    public String init() {
+    public List<SendMessage> init() {
         return state.init(this);
     }
 
@@ -66,7 +71,7 @@ public class DreamAnalyzer {
 
     public List<String> extractItemsAndSplit(String prompt) {
         String query = String.format("%s %s", prompt, history);
-        String response = chat.send(query, userName);
+        String response = openaiChat.send(query, userName);
 
         int startIndex = response.indexOf('[') + 1;
         int endIndex = response.lastIndexOf(']');
@@ -96,6 +101,13 @@ public class DreamAnalyzer {
                         .collect(Collectors.joining("\n"))
         );
 
-        return chat.send(query, userName);
+        return openaiChat.send(query, userName);
+    }
+
+    public SendMessage newTelegramMessage(String text) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(getTelegramChatId());
+        sendMessage.setText(text);
+        return sendMessage;
     }
 }

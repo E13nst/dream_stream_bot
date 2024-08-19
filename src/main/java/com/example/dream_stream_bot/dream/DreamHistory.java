@@ -1,5 +1,10 @@
 package com.example.dream_stream_bot.dream;
 
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+
+import java.util.ArrayList;
+import java.util.List;
+
 class DreamHistory implements AnalyzerState {
 
     private static final String HISTORY_DESCRIPTION =
@@ -22,14 +27,15 @@ class DreamHistory implements AnalyzerState {
     }
 
     @Override
-    public String execute(DreamAnalyzer dream, String text) {
-                dream.addHistory(text);
-
-        return dream.getHistory().isBlank() ? HISTORY_DESCRIPTION : "";
+    public List<SendMessage> init(DreamAnalyzer analyzer) {
+        List<SendMessage> messages = new ArrayList<>();
+        messages.add(analyzer.newTelegramMessage(HISTORY_DESCRIPTION));
+        return messages;
     }
 
     @Override
-    public String init(DreamAnalyzer dream) {
+    public List<SendMessage> execute(DreamAnalyzer dream, String text) {
+        dream.addHistory(text);
         return null;
     }
 }

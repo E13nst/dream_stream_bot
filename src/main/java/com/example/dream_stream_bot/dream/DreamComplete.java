@@ -1,5 +1,10 @@
 package com.example.dream_stream_bot.dream;
 
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+
+import java.util.ArrayList;
+import java.util.List;
+
 class DreamComplete implements AnalyzerState {
 
     @Override
@@ -8,25 +13,22 @@ class DreamComplete implements AnalyzerState {
     }
 
     @Override
-    public void next(DreamAnalyzer dream) {
-        dream.setState(new DreamComplete());
+    public void next(DreamAnalyzer analyzer) {
+        analyzer.setState(new DreamComplete());
     }
 
     @Override
-    public void prev(DreamAnalyzer dream) {
-        dream.setState(new DreamInterpretation());
+    public void prev(DreamAnalyzer analyzer) {
+        analyzer.setState(new DreamInterpretation());
     }
 
     @Override
-    public String execute(DreamAnalyzer dream, String text) {
-        if (!text.isBlank())
-            dream.addHistory(text);
-
-        return "END";
+    public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
+        return null;
     }
 
     @Override
-    public String init(DreamAnalyzer dream) {
+    public List<SendMessage> init(DreamAnalyzer analyzer) {
         return null;
     }
 }

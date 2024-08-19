@@ -2,9 +2,9 @@ package com.example.dream_stream_bot.dream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.*;
 
 class DreamPersonality implements AnalyzerState {
 
@@ -53,30 +53,40 @@ class DreamPersonality implements AnalyzerState {
     }
 
     @Override
-    public String init(DreamAnalyzer analyzer) {
+    public List<SendMessage> init(DreamAnalyzer analyzer) {
+
+        List<SendMessage> messages = new ArrayList<>();
 
         persons.addAll(analyzer.extractItemsAndSplit(ACTORS_PROMPT));
 
+        String text;
         if (persons.isEmpty()) {
             LOGGER.warn("No elements found in dream analysis");
-            return MSG_FAIL;
+            text = MSG_FAIL;
         } else {
-            return String.format(MSG_DESCRIPTION, String.join("\n", persons));
+            text = String.format(MSG_DESCRIPTION, String.join("\n", persons));
         }
+
+        SendMessage sendMessage = analyzer.newTelegramMessage(text);
+        messages.add(sendMessage);
+        return messages;
     }
 
     @Override
-    public String execute(DreamAnalyzer analyzer, String message) {
+    public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
 
-        if (message != null && !message.isBlank()) {
-            analyzer.putAssociation(currentPerson, message);
-            LOGGER.info("Association set for element {}: {}", currentPerson, message);
+        List<SendMessage> messages = new ArrayList<>();
+
+        if (text != null && !text.isBlank()) {
+            analyzer.putAssociation(currentPerson, text);
+            LOGGER.info("Association set for element {}: {}", currentPerson, text);
         } else {
             LOGGER.warn("Received blank message, skipping association");
         }
 
         currentPerson = persons.pollFirst();
-        return currentPerson != null ? currentPerson : MSG_END;
+        SendMessage sendMessage = analyzer.newTelegramMessage(Objects.requireNonNullElse(currentPerson, MSG_END));
+        messages.add(sendMessage);
+        return messages;
     }
-
 }

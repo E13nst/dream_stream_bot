@@ -18,7 +18,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -61,61 +64,65 @@ public class CommandHandlerService {
         proxySocketAddress = botConfig.getProxySocketAddress();
     }
 
-    public SendMessage handlePersonalMessage(Message message) {
+    public List<SendMessage> handlePersonalMessage(Message message) {
 
-        StringBuilder response = new StringBuilder();
-
+        List<SendMessage> responseMessageList = new ArrayList<>();
         User user = message.getFrom();
-
         ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
 
         // Обработка логики
         if (dreams.containsKey(user.getId())) {
 
-            long id = user.getId();
-            var analyzer = dreams.get(id);
+            long userId = user.getId();
+            var analyzer = dreams.get(userId);
 
             ReplyButtons value = ReplyButtons.fromTitle(message.getText());
 
             switch (Objects.requireNonNull(value)) {
                 case PREVIOUS -> {
                     analyzer.previous();
-                    String description = analyzer.init();
-                    String resp = analyzer.execute("");
-                    response.append(description);
-                    response.append(resp);
+                    Optional.ofNullable(analyzer.init())
+                            .ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.execute(""))
+                            .ifPresent(responseMessageList::addAll);
                 }
                 case NEXT -> {
                     analyzer.next();
-                    String description = analyzer.init();
-                    String resp = analyzer.execute("");
-                    response.append(description);
-                    response.append(resp);
+                    Optional.ofNullable(analyzer.init())
+                            .ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.execute(""))
+                            .ifPresent(responseMessageList::addAll);
                 }
-                case CANCEL -> dreams.remove(id);
-                default -> {
-                    String resp = analyzer.execute(message.getText());
-                    response.append(resp);                      }
+                case CANCEL -> dreams.remove(userId);
+                default -> Optional.ofNullable(analyzer.execute(message.getText()))
+                        .ifPresent(responseMessageList::addAll);
             }
 
             LOGGER.info("STATE: {}", analyzer.getState().toString());
 
         } else {
             String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
-            response.append(chatSession.send(query, transliterateUserName(user)));
+            String response = chatSession.send(query, transliterateUserName(user));
+
+            SendMessage sendMessage = new SendMessage();
+            sendMessage.setChatId(message.getChatId());
+            sendMessage.setText(response);
+            sendMessage.setReplyMarkup(replyKeyboard);
+
+            responseMessageList.add(sendMessage);
         }
-        sendMessage.setText(response.toString());
-        return sendMessage;
+        return responseMessageList;
     }
 
-    public SendMessage start(Message message) {
+    public List<SendMessage> start(Message message) {
+
+        List<SendMessage> responseMessageList = new ArrayList<>();
 
         User user = message.getFrom();
+        long telegramChatId = message.getChatId();
+
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user)));
+        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
 
         String response = String.format(
                 "Привет, %s! Когда будешь готов, нажми кнопку \"%s\", чтобы перейти к анализу.",
@@ -127,24 +134,31 @@ public class CommandHandlerService {
         sendMessage.setChatId(message.getChatId());
         sendMessage.setText(response);
         sendMessage.setReplyMarkup(replyKeyboard);
-        return sendMessage;
+
+        responseMessageList.add(sendMessage);
+        return responseMessageList;
     }
 
-    public SendMessage help(long chatId) {
+    public List<SendMessage> help(long chatId) {
+
+        List<SendMessage> responseMessageList = new ArrayList<>();
 
         String response = "Hi, nice to meet you!";
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
         sendMessage.setText(response);
-        return sendMessage;
+        responseMessageList.add(sendMessage);
+        return responseMessageList;
     }
 
     public SendMessage next(CallbackQuery query) {
 
         User user = query.getFrom();
+        long telegramChatId = query.getMessage().getChatId();
+
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user)));
+        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
         dream.next();
         String response = "Current State: " + dream.getState();
 
@@ -158,8 +172,10 @@ public class CommandHandlerService {
     public SendMessage previous(CallbackQuery query) {
 
         User user = query.getFrom();
+        long telegramChatId = query.getMessage().getChatId();
+
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user)));
+        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
         dream.previous();
         String response = "Hi, " + query.getFrom().getFirstName() + ", this is previous handler!";
 

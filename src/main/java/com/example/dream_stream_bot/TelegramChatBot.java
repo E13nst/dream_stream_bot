@@ -1,7 +1,6 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.InlineButtons;
 import com.example.dream_stream_bot.service.CommandHandlerService;
 import com.example.dream_stream_bot.service.MessageHandlerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,8 +19,8 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -60,8 +59,6 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
         if (update.hasMessage() && update.getMessage().hasText()) {
 
-            SendMessage response = null;
-
             Message message = update.getMessage();
             User user = message.getFrom();
 
@@ -73,16 +70,25 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
                 // Персональное сообщение
                 if (message.getChat().isUserChat()) {
-                    response = switch (message.getText()) {
+                    var response = switch (message.getText()) {
                         case "/start" -> commandHandlerService.start(message);
                         case "/help" -> commandHandlerService.help(message.getChatId());
                         // Персональное сообщение
                         default -> commandHandlerService.handlePersonalMessage(message);
-//                        default -> messageHandlerService.handlePersonalMessage(message);
                     };
+
+                    if (response != null) {
+                        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);
+                        sendMessageWithTyping(message.getChatId(), response);
+                    }
+
                 }
+
                 // Сообщение в группе
                 else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
+
+                    SendMessage response = null;
+
                     // Ответ на сообщение бота
                     if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
                         response = messageHandlerService.handleReplyToBotMessage(message);
@@ -91,11 +97,11 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                     else if (containsBotName(message.getText()) || containsTriggers(message.getText())) {
                         response = messageHandlerService.handleReplyToBotMessage(message);
                     }
-                }
 
-                if (response != null && !response.getText().isBlank()) {
-                    LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);
-                    sendMessageWithTyping(message.getChatId(), response);
+                    if (response != null && !response.getText().isBlank()) {
+                        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);
+                        sendMessageWithTyping(message.getChatId(), response);
+                    }
                 }
 
             } catch (IOException e) {
@@ -103,36 +109,36 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 e.printStackTrace();
             }
         }
-        else if (update.hasCallbackQuery()) {
-
-            var callbackQuery = update.getCallbackQuery();
-            long chatId = callbackQuery.getMessage().getChatId();
-            var user = callbackQuery.getFrom();
-
-            LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
-
-            InlineButtons button = Optional.ofNullable(callbackQuery.getData())
-                    .map(data -> {
-                        try {
-                            return InlineButtons.valueOf(data);
-                        } catch (IllegalArgumentException e) {
-                            return null;
-                        }
-                    })
-                    .orElse(InlineButtons.NONE);
-
-            SendMessage response = switch (button) {
-                case PREVIOUS -> commandHandlerService.previous(callbackQuery);
-                case NEXT -> commandHandlerService.next(callbackQuery);
-                case CANCEL -> commandHandlerService.delete(callbackQuery);
-                default -> commandHandlerService.help(chatId);
-            };
-
-            if (response != null) {
-                LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response.getText());
-                sendMessage(response);
-            }
-        }
+//        else if (update.hasCallbackQuery()) {
+//
+//            var callbackQuery = update.getCallbackQuery();
+//            long chatId = callbackQuery.getMessage().getChatId();
+//            var user = callbackQuery.getFrom();
+//
+//            LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
+//
+//            InlineButtons button = Optional.ofNullable(callbackQuery.getData())
+//                    .map(data -> {
+//                        try {
+//                            return InlineButtons.valueOf(data);
+//                        } catch (IllegalArgumentException e) {
+//                            return null;
+//                        }
+//                    })
+//                    .orElse(InlineButtons.NONE);
+//
+//            SendMessage response = switch (button) {
+//                case PREVIOUS -> commandHandlerService.previous(callbackQuery);
+//                case NEXT -> commandHandlerService.next(callbackQuery);
+//                case CANCEL -> commandHandlerService.delete(callbackQuery);
+//                default -> commandHandlerService.help(chatId);
+//            };
+//
+//            if (response != null) {
+//                LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response.getText());
+//                sendMessage(response);
+//            }
+//        }
     }
 
     public boolean containsBotName(String text) {
@@ -180,6 +186,15 @@ public class TelegramChatBot extends TelegramLongPollingBot {
             sendTypingAction(chatId, durationInSeconds);
             sendMessage(message);
         });
+    }
+
+    private void sendMessageWithTyping(Long chatId, List<SendMessage> messages) {
+
+        executorService.submit(() -> messages.forEach(m-> {
+            int durationInSeconds = m.getText().length() / CHARACTERS_PER_SECOND;
+            sendTypingAction(chatId, durationInSeconds);
+            sendMessage(m);
+        }));
     }
 
 }
