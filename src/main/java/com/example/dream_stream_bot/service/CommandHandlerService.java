@@ -152,51 +152,54 @@ public class CommandHandlerService {
         return responseMessageList;
     }
 
-    public SendMessage next(CallbackQuery query) {
+    public List<SendMessage> next(CallbackQuery query) {
 
         User user = query.getFrom();
         long telegramChatId = query.getMessage().getChatId();
 
-        ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
-        dream.next();
-        String response = "Current State: " + dream.getState();
+        var analyzer = dreams.get(user.getId());
+        analyzer.next();
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(query.getMessage().getChatId());
-        sendMessage.setText(response);
-        sendMessage.setReplyMarkup(inlineKeyboard);
-        return sendMessage;
+        List<SendMessage> responseMessageList = new ArrayList<>();
+        Optional.ofNullable(analyzer.init())
+                .ifPresent(responseMessageList::addAll);
+        Optional.ofNullable(analyzer.execute(""))
+                .ifPresent(responseMessageList::addAll);
+
+        return responseMessageList;
     }
 
-    public SendMessage previous(CallbackQuery query) {
+    public List<SendMessage> previous(CallbackQuery query) {
 
         User user = query.getFrom();
         long telegramChatId = query.getMessage().getChatId();
 
-        ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
-        dream.previous();
-        String response = "Hi, " + query.getFrom().getFirstName() + ", this is previous handler!";
+        var analyzer = dreams.get(user.getId());
+        analyzer.previous();
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(query.getMessage().getChatId());
-        sendMessage.setText(response);
-        sendMessage.setReplyMarkup(inlineKeyboard);
-        return sendMessage;
+        List<SendMessage> responseMessageList = new ArrayList<>();
+        Optional.ofNullable(analyzer.init())
+                .ifPresent(responseMessageList::addAll);
+        Optional.ofNullable(analyzer.execute(""))
+                .ifPresent(responseMessageList::addAll);
+
+        return responseMessageList;
     }
 
-    public SendMessage delete(CallbackQuery query) {
+    public List<SendMessage> delete(CallbackQuery query) {
 
 //        ChatSession chatSession = chats.computeIfAbsent(query.getFrom().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
 
         dreams.remove(query.getFrom().getId());
 
+        List<SendMessage> responseMessageList = new ArrayList<>();
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(query.getMessage().getChatId());
         sendMessage.setText("Элемент удален");
+        responseMessageList.add(sendMessage);
+
 //        sendMessage.setReplyMarkup(keyboardMarkup);
-        return sendMessage;
+        return responseMessageList;
     }
 
     private String getPrompt() {

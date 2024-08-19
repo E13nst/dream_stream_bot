@@ -14,6 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.User;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -57,10 +58,7 @@ public class MessageHandlerService {
         String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
         String response = chatSession.send(query, transliterateUserName(user));
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(response);
-        return sendMessage;
+        return newTelegramMessage(message.getChatId(), response);
     }
 
     // Обработчик ответов на сообщения бота
@@ -69,11 +67,13 @@ public class MessageHandlerService {
         ChatSession chatSession = chats.computeIfAbsent(message.getChat().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
         String response = chatSession.send(message.getText(), transliterateUserName(message.getFrom()));
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(response);
-        sendMessage.setReplyToMessageId(message.getMessageId());
-        return sendMessage;
+//        SendMessage sendMessage = new SendMessage();
+//        sendMessage.setChatId(message.getChatId());
+//        sendMessage.setText(response);
+//        sendMessage.setReplyToMessageId(message.getMessageId());
+//        return sendMessage;
+
+        return newTelegramMessage(message.getChatId(), response, message.getMessageId());
     }
 
     // Обработчик ответов на сообщения бота
@@ -82,11 +82,7 @@ public class MessageHandlerService {
         ChatSession chatSession = chats.computeIfAbsent(message.getFrom().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
         String response = chatSession.send(message.getText(), message.getFrom().getFirstName());
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(response);
-        sendMessage.setReplyToMessageId(message.getMessageId());
-        return sendMessage;
+        return newTelegramMessage(message.getChatId(), response, message.getMessageId());
     }
 
     // Обработчик сообщений канала
@@ -96,11 +92,7 @@ public class MessageHandlerService {
         ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
         String response = chatSession.send(message.getText());
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(response);
-        sendMessage.setReplyToMessageId(message.getMessageId());
-        return sendMessage;
+        return newTelegramMessage(message.getChatId(), response, message.getMessageId());
     }
 
     private String getPrompt() {
@@ -124,8 +116,19 @@ public class MessageHandlerService {
                 user.getFirstName(), rUser.getFirstName(), rText, text);
     }
 
-    private boolean containsBotName(String text) {
-        return Stream.concat(botNameAliases.stream(), Stream.of(botName))
-                .anyMatch(text::contains);
+    public SendMessage newTelegramMessage(long chatId, String text) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(text);
+        return sendMessage;
     }
+
+    public SendMessage newTelegramMessage(long chatId, String text, int replyToMessageId) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(text);
+        sendMessage.setReplyToMessageId(replyToMessageId);
+        return sendMessage;
+    }
+
 }
