@@ -81,7 +81,7 @@ class DreamAssociation implements AnalyzerState {
         List<SendMessage> messages = new ArrayList<>();
 
         if (text != null && !text.isBlank()) {
-            analyzer.putAssociation(currentElement, text);
+            analyzer.getDream().putAssociation(currentElement, text);
             LOGGER.info("Association set for element {}: {}", currentElement, text);
         } else {
             LOGGER.warn("Received blank message, skipping association");

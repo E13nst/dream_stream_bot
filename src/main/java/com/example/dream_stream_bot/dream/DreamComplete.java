@@ -24,11 +24,11 @@ class DreamComplete implements AnalyzerState {
 
     @Override
     public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<SendMessage> init(DreamAnalyzer analyzer) {
-        return null;
+        return new ArrayList<>();
     }
 }

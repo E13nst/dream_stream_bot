@@ -17,25 +17,27 @@ class DreamHistory implements AnalyzerState {
     }
 
     @Override
-    public void next(DreamAnalyzer dream) {
-        dream.setState(new DreamAssociation());
+    public void next(DreamAnalyzer analyzer) {
+        analyzer.setState(new DreamAssociation());
     }
 
     @Override
-    public void prev(DreamAnalyzer dream) {
-        dream.setState(new DreamNew());
+    public void prev(DreamAnalyzer analyzer) {
+        analyzer.setState(new DreamNew());
     }
 
     @Override
     public List<SendMessage> init(DreamAnalyzer analyzer) {
+//        String historyDescription = analyzer.getBotConfig().getAnalyzerHistoryDescription();
         List<SendMessage> messages = new ArrayList<>();
         messages.add(analyzer.newTelegramMessage(HISTORY_DESCRIPTION));
+//        messages.add(analyzer.newTelegramMessage(historyDescription));
         return messages;
     }
 
     @Override
-    public List<SendMessage> execute(DreamAnalyzer dream, String text) {
-        dream.addHistory(text);
-        return null;
+    public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
+        analyzer.getDream().addHistory(text);
+        return new ArrayList<>();
     }
 }

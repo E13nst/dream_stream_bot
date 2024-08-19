@@ -15,16 +15,13 @@ public class DreamAnalyzer {
 
     private final ChatSession openaiChat;
     private final String userName;
-    private final StringBuilder history = new StringBuilder();
 
+    @Getter
+    private final Dream dream = new Dream();
     @Getter
     private final long telegramChatId;
 
     private AnalyzerState state;
-    @Getter
-    private final Map<String, String> associations = new HashMap<>();
-    @Getter
-    private final Map<String, String> persons = new HashMap<>();
 
     public DreamAnalyzer(ChatSession openaiChat, String userName, long telegramChatId) {
         this.openaiChat = openaiChat;
@@ -45,14 +42,6 @@ public class DreamAnalyzer {
         state.prev(this);
     }
 
-    public void addHistory(String text) {
-        history.append(text).append("\n");
-    }
-
-    public String getHistory() {
-        return history.toString();
-    }
-
     public DreamStatus getState() {
         return state.getState();
     }
@@ -65,12 +54,9 @@ public class DreamAnalyzer {
         return state.init(this);
     }
 
-    public void putAssociation(String key, String value) {
-        associations.put(key, value);
-    }
 
     public List<String> extractItemsAndSplit(String prompt) {
-        String query = String.format("%s %s", prompt, history);
+        String query = String.format("%s %s", prompt, dream.getHistoryStr());
         String response = openaiChat.send(query, userName);
 
         int startIndex = response.indexOf('[') + 1;
@@ -95,9 +81,9 @@ public class DreamAnalyzer {
                 "Учитывай взаимодейстаие этих персонажей и объектов между собой в контексте сновидения";
 
         String query = String.format(prompt,
-                associations.entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
+                dream.getAssociations().entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
                         .collect(Collectors.joining("\n")),
-                persons.entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
+                dream.getPersons().entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
                         .collect(Collectors.joining("\n"))
         );
 

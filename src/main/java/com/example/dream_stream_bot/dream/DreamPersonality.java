@@ -78,7 +78,7 @@ class DreamPersonality implements AnalyzerState {
         List<SendMessage> messages = new ArrayList<>();
 
         if (text != null && !text.isBlank()) {
-            analyzer.putAssociation(currentPerson, text);
+            analyzer.getDream().putAssociation(currentPerson, text);
             LOGGER.info("Association set for element {}: {}", currentPerson, text);
         } else {
             LOGGER.warn("Received blank message, skipping association");
