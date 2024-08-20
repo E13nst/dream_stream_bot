@@ -84,7 +84,7 @@ public class MessageHandlerService {
     }
 
     // Обработчик сообщений канала
-    public SendMessage handleSuperGroupMessage(Message message) {
+    public SendMessage handleChannelMessage(Message message) {
 
         User user = message.getFrom();
         ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
