@@ -27,13 +27,18 @@ class DreamInterpretation implements AnalyzerState {
 
     @Override
     public List<SendMessage> init(DreamAnalyzer analyzer) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
         List<SendMessage> messages = new ArrayList<>();
-        messages.add(analyzer.newTelegramMessage(analyzer.analyze()));
+        String response = AiTextProcessor.interpretDream(
+                analyzer.getOpenaiChat(),
+                analyzer.getUserName(),
+                analyzer.getDream()
+        );
+        messages.add(analyzer.newTelegramMessage(response));
         return messages;
     }
 }

@@ -28,15 +28,6 @@ class DreamAssociation implements AnalyzerState {
 
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории объекты.";
 
-    private static final String OBJECTS_PROMPT = """
-            Выбери из текста сновидения все неодушевленные образы и предметы вместе с их свойствами и характеристиками, 
-            которые можно использовать для анализа этого сновидения по Юнгу. Не давай своих интерпретаций. 
-            Результат должен быть без лишних комментариев в виде списка в формате json, который будет содержать 
-            эти предметы по такому образцу:\s
-            ["красный спортивный автомобиль","чистая холодная вода"]
-            Список не должен включать персонажей и действующих лиц.Текст для анализа:
-            """;
-
     private final Deque<String> elements = new ArrayDeque<>();
     private String currentElement;
 
@@ -60,7 +51,10 @@ class DreamAssociation implements AnalyzerState {
 
         List<SendMessage> messages = new ArrayList<>();
 
-        elements.addAll(analyzer.extractItemsAndSplit(OBJECTS_PROMPT));
+        elements.addAll(AiTextProcessor.extractObjects(
+                analyzer.getOpenaiChat(),
+                analyzer.getUserName(),
+                analyzer.getDream().getHistoryStr()));
 
         String text;
         if (elements.isEmpty()) {

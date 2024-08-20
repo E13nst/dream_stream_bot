@@ -22,16 +22,6 @@ class DreamPersonality implements AnalyzerState {
             """;
 
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории персонажей.";
-
-    private static final String ACTORS_PROMPT = """
-            Выбери из текста сновидения всех персонажей и действующих лиц вместе с их характеристиками.
-            Список не должен включать меня самого. Не давай своих интерпретаций.
-            Результат должен быть в виде списка без лишних комментариев
-            в формате json, который будет содержать этих персонажей,
-            например: ["красивая девушка","молчаливый незнакомец"]
-            Текст для анализа:
-            """;
-
     private static final String MSG_END = "Нажмите кнопку далее для продолжения";
 
     private final Deque<String> persons = new ArrayDeque<>();
@@ -57,7 +47,10 @@ class DreamPersonality implements AnalyzerState {
 
         List<SendMessage> messages = new ArrayList<>();
 
-        persons.addAll(analyzer.extractItemsAndSplit(ACTORS_PROMPT));
+        persons.addAll(AiTextProcessor.extractActors(
+                analyzer.getOpenaiChat(),
+                analyzer.getUserName(),
+                analyzer.getDream().getHistoryStr()));
 
         String text;
         if (persons.isEmpty()) {

@@ -6,16 +6,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
 
 public class DreamAnalyzer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DreamAnalyzer.class);
 
+    @Getter
     private final ChatSession openaiChat;
+    @Getter
     private final String userName;
-
     @Getter
     private final Dream dream = new Dream();
     @Getter
@@ -52,42 +52,6 @@ public class DreamAnalyzer {
 
     public List<SendMessage> init() {
         return state.init(this);
-    }
-
-
-    public List<String> extractItemsAndSplit(String prompt) {
-        String query = String.format("%s %s", prompt, dream.getHistoryStr());
-        String response = openaiChat.send(query, userName);
-
-        int startIndex = response.indexOf('[') + 1;
-        int endIndex = response.lastIndexOf(']');
-
-        if (startIndex > 0 && endIndex > startIndex) {
-            String extracted = response.substring(startIndex, endIndex);
-            List<String> list = Arrays.asList(extracted.split(","));
-            list = list.stream().map(e -> e.replace("\"", "")).map(String::trim).toList();
-            return list;
-        } else {
-            LOGGER.error("Brackets not found or incorrect order.");
-            return List.of();
-        }
-    }
-
-    public String analyze() {
-        String prompt = "Интерпретируй это сновидения по Юнгу, операясь на мои личные ассоциации:\n" +
-                "%s\n" +
-                "И персонажей моего сновидения, которые могут представлять мою персону, тень, аниму или анимуса:\n" +
-                "%s\n" +
-                "Учитывай взаимодейстаие этих персонажей и объектов между собой в контексте сновидения";
-
-        String query = String.format(prompt,
-                dream.getAssociations().entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
-                        .collect(Collectors.joining("\n")),
-                dream.getPersons().entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
-                        .collect(Collectors.joining("\n"))
-        );
-
-        return openaiChat.send(query, userName);
     }
 
     public SendMessage newTelegramMessage(String text) {

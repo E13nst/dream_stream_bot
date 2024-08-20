@@ -28,10 +28,8 @@ class DreamHistory implements AnalyzerState {
 
     @Override
     public List<SendMessage> init(DreamAnalyzer analyzer) {
-//        String historyDescription = analyzer.getBotConfig().getAnalyzerHistoryDescription();
         List<SendMessage> messages = new ArrayList<>();
         messages.add(analyzer.newTelegramMessage(HISTORY_DESCRIPTION));
-//        messages.add(analyzer.newTelegramMessage(historyDescription));
         return messages;
     }
 
