@@ -12,7 +12,7 @@ public class AiTextProcessor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AiTextProcessor.class);
 
-    private static final String OBJECTS_PROMPT = """
+    private static final String ELEMENTS_PROMPT = """
             Выбери из текста сновидения все неодушевленные образы и предметы вместе с их свойствами и характеристиками, 
             которые можно использовать для анализа этого сновидения по Юнгу. Не давай своих интерпретаций. 
             Результат должен быть без лишних комментариев в виде списка в формате json, который будет содержать 
@@ -55,8 +55,8 @@ public class AiTextProcessor {
         }
     }
 
-    public static List<String> extractObjects(ChatSession openaiChat, String userName, String text) {
-        return extractItemsAndSplit(openaiChat, userName, text, OBJECTS_PROMPT);
+    public static List<String> extractElements(ChatSession openaiChat, String userName, String text) {
+        return extractItemsAndSplit(openaiChat, userName, text, ELEMENTS_PROMPT);
     }
 
     public static List<String> extractActors(ChatSession openaiChat, String userName, String text) {

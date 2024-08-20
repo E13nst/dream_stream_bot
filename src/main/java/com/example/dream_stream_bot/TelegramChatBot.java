@@ -81,7 +81,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
                     if (sendMessageList != null) {
                         LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
-                        sendMessageWithTyping(message.getChatId(), sendMessageList);
+                        sendMessageWithTyping(sendMessageList);
                     }
 
                 }
@@ -107,7 +107,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
                     if (response != null) {
                         LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);
-                        sendMessageWithTyping(message.getChatId(), response);
+                        sendMessageWithTyping(response);
                     }
                 }
 
@@ -143,13 +143,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
             if (sendMessageList != null) {
                 LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
-                sendMessageWithTyping(chatId, sendMessageList);
+                sendMessageWithTyping(sendMessageList);
             }
-
-//            if (response != null) {
-//                LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response.getText());
-//                sendMessage(response);
-//            }
         }
     }
 
@@ -162,10 +157,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         return botConfig.getBotTriggersList().stream().anyMatch(text.toLowerCase(Locale.ROOT)::contains);
     }
 
-    private void sendTypingAction(Long chatId, long durationInSeconds) {
+    private void sendTypingAction(String chatId, long durationInSeconds) {
 
         SendChatAction chatAction = new SendChatAction();
-        chatAction.setChatId(chatId.toString());
+        chatAction.setChatId(chatId);
         chatAction.setAction(ActionType.TYPING);
 
         try {
@@ -191,20 +186,20 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendMessageWithTyping(Long chatId, SendMessage message) {
+    private void sendMessageWithTyping(SendMessage message) {
 
         int durationInSeconds = message.getText().length() / CHARACTERS_PER_SECOND;
         executorService.submit(() -> {
-            sendTypingAction(chatId, durationInSeconds);
+            sendTypingAction(message.getChatId(), durationInSeconds);
             sendMessage(message);
         });
     }
 
-    private void sendMessageWithTyping(Long chatId, List<SendMessage> messages) {
+    private void sendMessageWithTyping(List<SendMessage> messages) {
 
         executorService.submit(() -> messages.forEach(m-> {
             int durationInSeconds = m.getText().length() / CHARACTERS_PER_SECOND;
-            sendTypingAction(chatId, durationInSeconds);
+            sendTypingAction(m.getChatId(), durationInSeconds);
             sendMessage(m);
         }));
     }

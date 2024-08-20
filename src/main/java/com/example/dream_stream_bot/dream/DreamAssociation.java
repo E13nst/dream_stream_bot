@@ -11,20 +11,13 @@ class DreamAssociation implements AnalyzerState {
     private static final Logger LOGGER = LoggerFactory.getLogger(DreamAssociation.class);
     private static final String MSG_END = "Нажмите кнопку далее для продолжения";
 
-    private static final String MSG_DESCRIPTION = """
-            Я выбрал из твоего рассказа следующие образы и предметы для ассоциации:
-
-            %s
-
-            Теперь напишите, что каждый из этих образов означает для вас в контексте сна.
-            Если каждый образ вызывает у вас несколько ассоциаций или воспоминаний — например, конкретного человека,
-            слова, фразы или ситуации — запишите все эти мысли.
-
-            Не переживайте о правильности ассоциаций на этом этапе; важно собрать разные варианты, даже если они кажутся несвязанными.
-            Ваша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.
-
-            Подберите ассоциации для слова:\040
-            """;
+    private static final String MSG_DESC_1 = "Я выбрал из твоего рассказа следующие образы и предметы для подбора ассоциации:";
+    private static final String MSG_DESC_2 = "Теперь напишите, что каждый из этих образов означает для вас в контексте сна. " +
+            "Если каждый образ вызывает у вас несколько ассоциаций или воспоминаний — например, конкретного человека, " +
+            "слова, фразы или ситуации — запишите все эти мысли.";
+    private static final String MSG_DESC_3 = "Не переживайте о правильности ассоциаций на этом этапе; важно собрать разные варианты, " +
+            "даже если они кажутся несвязанными. Ваша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.";
+    private static final String MSG_DESC_4 = "Подберите ассоциации для слова: ";
 
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории объекты.";
 
@@ -51,21 +44,21 @@ class DreamAssociation implements AnalyzerState {
 
         List<SendMessage> messages = new ArrayList<>();
 
-        elements.addAll(AiTextProcessor.extractObjects(
+        elements.addAll(AiTextProcessor.extractElements(
                 analyzer.getOpenaiChat(),
                 analyzer.getUserName(),
                 analyzer.getDream().getHistoryStr()));
 
-        String text;
         if (elements.isEmpty()) {
             LOGGER.warn("No elements found in dream analysis");
-            text = MSG_FAIL;
+            messages.add(analyzer.newTelegramMessage(MSG_FAIL));
         } else {
-            text = String.format(MSG_DESCRIPTION, String.join("\n", elements));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
+            messages.add(analyzer.newTelegramMessage(getMsgElements()));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_4));
         }
-
-        SendMessage sendMessage = analyzer.newTelegramMessage(text);
-        messages.add(sendMessage);
         return messages;
     }
 
@@ -86,5 +79,9 @@ class DreamAssociation implements AnalyzerState {
         SendMessage sendMessage = analyzer.newTelegramMessage(Objects.requireNonNullElse(currentElement, MSG_END));
         messages.add(sendMessage);
         return messages;
+    }
+
+    private String getMsgElements() {
+        return String.join("\n", elements);
     }
 }

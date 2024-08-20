@@ -10,16 +10,10 @@ class DreamPersonality implements AnalyzerState {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DreamPersonality.class);
 
-    private static final String MSG_DESCRIPTION = """
-            Я выделил из твоей истории таких персонажей:
-
-            %s
-
-            Какая черта твоей личности ассоциируется с этим персонажем?
-            Где в реальной жизни она проявляется? Что эта черта значит для тебя?
-
-            Подберите ассоциации для слова:\040
-            """;
+    private static final String MSG_DESC_1 = "Я выделил из твоей истории таких персонажей:";
+    private static final String MSG_DESC_2 = "Какая черта твоей личности ассоциируется с этим персонажем? " +
+            "Где в реальной жизни она проявляется? Что эта черта значит для тебя?";
+    private static final String MSG_DESC_3 = "Подберите ассоциации для слова:";
 
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории персонажей.";
     private static final String MSG_END = "Нажмите кнопку далее для продолжения";
@@ -52,16 +46,15 @@ class DreamPersonality implements AnalyzerState {
                 analyzer.getUserName(),
                 analyzer.getDream().getHistoryStr()));
 
-        String text;
         if (persons.isEmpty()) {
             LOGGER.warn("No elements found in dream analysis");
-            text = MSG_FAIL;
+            messages.add(analyzer.newTelegramMessage(MSG_FAIL));
         } else {
-            text = String.format(MSG_DESCRIPTION, String.join("\n", persons));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
+            messages.add(analyzer.newTelegramMessage(getMsgPersons()));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
         }
-
-        SendMessage sendMessage = analyzer.newTelegramMessage(text);
-        messages.add(sendMessage);
         return messages;
     }
 
@@ -81,5 +74,9 @@ class DreamPersonality implements AnalyzerState {
         SendMessage sendMessage = analyzer.newTelegramMessage(Objects.requireNonNullElse(currentPerson, MSG_END));
         messages.add(sendMessage);
         return messages;
+    }
+
+    private String getMsgPersons() {
+        return String.join("\n", persons);
     }
 }
