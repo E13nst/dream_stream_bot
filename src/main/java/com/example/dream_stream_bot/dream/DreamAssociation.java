@@ -19,9 +19,7 @@ class DreamAssociation implements AnalyzerState {
     private static final String MSG_DESC_3 = "Не переживайте о правильности ассоциаций на этом этапе; важно собрать разные варианты, " +
             "даже если они кажутся несвязанными. Ваша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.";
     private static final String MSG_DESC_4 = "Подберите ассоциации для слова: ";
-
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории объекты.";
-
     private static final String MSG_END = "У нас получились такие ассоциации:";
 
     private String currentElement;

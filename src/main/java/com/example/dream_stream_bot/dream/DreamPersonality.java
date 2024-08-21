@@ -15,9 +15,7 @@ class DreamPersonality implements AnalyzerState {
     private static final String MSG_DESC_2 = "Какая черта твоей личности ассоциируется с этим персонажем? " +
             "Где в реальной жизни она проявляется? Что эта черта значит для тебя?";
     private static final String MSG_DESC_3 = "Подберите ассоциации для слова:";
-
     private static final String MSG_END = "У нас получились такие персонажи:";
-
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории персонажей.";
 
     private String currentPerson;
