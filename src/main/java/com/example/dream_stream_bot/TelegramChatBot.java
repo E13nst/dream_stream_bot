@@ -35,7 +35,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
-    private static final int CHARACTERS_PER_SECOND = 20;
+    private static final int CHARACTERS_PER_SECOND = 100;
 
     @Autowired
     private BotConfig botConfig;

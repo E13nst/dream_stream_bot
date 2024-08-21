@@ -38,7 +38,7 @@ public class CommandHandlerService {
     private static final String PROMPT_FILE_NAME = "file:./prompt.txt";
 
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Long, DreamAnalyzer> dreams = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, DreamAnalyzer> dreamAnalyzer = new ConcurrentHashMap<>();
 
     private String prompt;
     private String openaiToken;
@@ -71,30 +71,26 @@ public class CommandHandlerService {
         ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
 
         // Обработка логики
-        if (dreams.containsKey(user.getId())) {
+        if (dreamAnalyzer.containsKey(user.getId())) {
 
             long userId = user.getId();
-            var analyzer = dreams.get(userId);
+            var analyzer = dreamAnalyzer.get(userId);
 
             ReplyButtons value = ReplyButtons.fromTitle(message.getText());
 
             switch (Objects.requireNonNull(value)) {
                 case PREVIOUS -> {
                     analyzer.previous();
-                    Optional.ofNullable(analyzer.init())
-                            .ifPresent(responseMessageList::addAll);
-                    Optional.ofNullable(analyzer.execute(""))
+                    Optional.ofNullable(analyzer.run(""))
                             .ifPresent(responseMessageList::addAll);
                 }
                 case NEXT -> {
                     analyzer.next();
-                    Optional.ofNullable(analyzer.init())
-                            .ifPresent(responseMessageList::addAll);
-                    Optional.ofNullable(analyzer.execute(""))
+                    Optional.ofNullable(analyzer.run(""))
                             .ifPresent(responseMessageList::addAll);
                 }
-                case CANCEL -> dreams.remove(userId);
-                default -> Optional.ofNullable(analyzer.execute(message.getText()))
+                case CANCEL -> dreamAnalyzer.remove(userId);
+                default -> Optional.ofNullable(analyzer.run(message.getText()))
                         .ifPresent(responseMessageList::addAll);
             }
 
@@ -107,7 +103,8 @@ public class CommandHandlerService {
             SendMessage sendMessage = new SendMessage();
             sendMessage.setChatId(message.getChatId());
             sendMessage.setText(response);
-            sendMessage.setReplyMarkup(replyKeyboard);
+            sendMessage.enableMarkdown(true);
+//            sendMessage.setReplyMarkup(replyKeyboard);
 
             responseMessageList.add(sendMessage);
         }
@@ -118,22 +115,31 @@ public class CommandHandlerService {
 
         List<SendMessage> responseMessageList = new ArrayList<>();
 
+        var inlineKeyboardMarkup = new InlineCommandKeyboard()
+                .addKey("Продолжить \u2705", InlineButtons.NEXT.toString())
+                .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
+                .build();
+
         User user = message.getFrom();
         long telegramChatId = message.getChatId();
 
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreams.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
+        var dream = dreamAnalyzer.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
 
-        String response = String.format(
-                "Привет, %s! Когда будешь готов, нажми кнопку \"%s\", чтобы перейти к анализу.",
-                message.getFrom().getFirstName(),
-                ReplyButtons.NEXT
-        );
+        String msgStart = "Привет!\n" +
+                "\n" +
+                "Я помогу вам глубже понять свои сны и раскрыть их скрытые смыслы. Сны — это ключ к пониманию ваших " +
+                "внутренних переживаний и эмоций, и я здесь, чтобы помочь вам использовать этот ключ. Просто расскажите " +
+                "о своем сне, и вместе мы разберемся, что он может означать для вас.\n" +
+                "\n" +
+                "Мы будем находить ассоциации, которые важны, чтобы понимать, как ваш сон связан с вашими переживаниями, " +
+                "чувствами и эмоциями. Нажмите на кнопку, чтобы начать, и я проведу вас по этому пути!";
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(response);
-        sendMessage.setReplyMarkup(replyKeyboard);
+        sendMessage.setText(msgStart);
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+        sendMessage.enableMarkdown(true);
 
         responseMessageList.add(sendMessage);
         return responseMessageList;
@@ -155,15 +161,11 @@ public class CommandHandlerService {
     public List<SendMessage> next(CallbackQuery query) {
 
         User user = query.getFrom();
-        long telegramChatId = query.getMessage().getChatId();
 
-        var analyzer = dreams.get(user.getId());
+        var analyzer = dreamAnalyzer.get(user.getId());
         analyzer.next();
-
         List<SendMessage> responseMessageList = new ArrayList<>();
-        Optional.ofNullable(analyzer.init())
-                .ifPresent(responseMessageList::addAll);
-        Optional.ofNullable(analyzer.execute(""))
+        Optional.ofNullable(analyzer.run(""))
                 .ifPresent(responseMessageList::addAll);
 
         return responseMessageList;
@@ -172,15 +174,12 @@ public class CommandHandlerService {
     public List<SendMessage> previous(CallbackQuery query) {
 
         User user = query.getFrom();
-        long telegramChatId = query.getMessage().getChatId();
 
-        var analyzer = dreams.get(user.getId());
+        var analyzer = dreamAnalyzer.get(user.getId());
         analyzer.previous();
 
         List<SendMessage> responseMessageList = new ArrayList<>();
-        Optional.ofNullable(analyzer.init())
-                .ifPresent(responseMessageList::addAll);
-        Optional.ofNullable(analyzer.execute(""))
+        Optional.ofNullable(analyzer.run(""))
                 .ifPresent(responseMessageList::addAll);
 
         return responseMessageList;
@@ -188,17 +187,14 @@ public class CommandHandlerService {
 
     public List<SendMessage> delete(CallbackQuery query) {
 
-//        ChatSession chatSession = chats.computeIfAbsent(query.getFrom().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-
-        dreams.remove(query.getFrom().getId());
+        dreamAnalyzer.remove(query.getFrom().getId());
 
         List<SendMessage> responseMessageList = new ArrayList<>();
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(query.getMessage().getChatId());
-        sendMessage.setText("Элемент удален");
+        sendMessage.setText("Анализ прекращен");
         responseMessageList.add(sendMessage);
 
-//        sendMessage.setReplyMarkup(keyboardMarkup);
         return responseMessageList;
     }
 

@@ -22,12 +22,8 @@ class DreamNew implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> execute(DreamAnalyzer dream, String text) {
+    public List<SendMessage> run(DreamAnalyzer dream, String text) {
         return null;
     }
 
-    @Override
-    public List<SendMessage> init(DreamAnalyzer dream) {
-        return null;
-    }
 }

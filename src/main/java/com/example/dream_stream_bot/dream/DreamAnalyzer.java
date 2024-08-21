@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 import java.util.List;
 
@@ -46,18 +47,22 @@ public class DreamAnalyzer {
         return state.getState();
     }
 
-    public List<SendMessage> execute(String text) {
-            return state.execute(this, text);
-    }
-
-    public List<SendMessage> init() {
-        return state.init(this);
+    public List<SendMessage> run(String text) {
+        return state.run(this, text);
     }
 
     public SendMessage newTelegramMessage(String text) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(getTelegramChatId());
+        sendMessage.enableMarkdown(true);
         sendMessage.setText(text);
         return sendMessage;
     }
+
+    public SendMessage newTelegramMessage(String text, InlineKeyboardMarkup keyboard) {
+        var message = newTelegramMessage(text);
+        message.setReplyMarkup(keyboard);
+        return message;
+    }
+
 }

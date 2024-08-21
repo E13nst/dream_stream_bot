@@ -26,12 +26,7 @@ class DreamInterpretation implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> init(DreamAnalyzer analyzer) {
-        return new ArrayList<>();
-    }
-
-    @Override
-    public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
+    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
         List<SendMessage> messages = new ArrayList<>();
         String response = AiTextProcessor.interpretDream(
                 analyzer.getOpenaiChat(),

@@ -8,6 +8,5 @@ interface AnalyzerState {
     DreamStatus getState();
     void next(DreamAnalyzer dream);
     void prev(DreamAnalyzer dream);
-    List<SendMessage> execute(DreamAnalyzer dream, String text);
-    List<SendMessage> init(DreamAnalyzer dream);
+    List<SendMessage> run(DreamAnalyzer dream, String text);
 }

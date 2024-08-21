@@ -118,6 +118,7 @@ public class MessageHandlerService {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
         sendMessage.setText(text);
+        sendMessage.enableMarkdown(true);
         return sendMessage;
     }
 
@@ -126,6 +127,7 @@ public class MessageHandlerService {
         sendMessage.setChatId(chatId);
         sendMessage.setText(text);
         sendMessage.setReplyToMessageId(replyToMessageId);
+        sendMessage.enableMarkdown(true);
         return sendMessage;
     }
 

@@ -1,5 +1,7 @@
 package com.example.dream_stream_bot.dream;
 
+import com.example.dream_stream_bot.model.InlineButtons;
+import com.example.dream_stream_bot.model.InlineCommandKeyboard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -9,10 +11,9 @@ import java.util.*;
 class DreamAssociation implements AnalyzerState {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DreamAssociation.class);
-    private static final String MSG_END = "Нажмите кнопку далее для продолжения";
 
-    private static final String MSG_DESC_1 = "Я выбрал из твоего рассказа следующие образы и предметы для подбора ассоциации:";
-    private static final String MSG_DESC_2 = "Теперь напишите, что каждый из этих образов означает для вас в контексте сна. " +
+    private static final String MSG_DESC_1 = "Я выберу из твоего рассказа образы и предметы для подбора ассоциации.";
+    private static final String MSG_DESC_2 = "Напишите, что каждый из этих образов означает для вас в контексте сна. " +
             "Если каждый образ вызывает у вас несколько ассоциаций или воспоминаний — например, конкретного человека, " +
             "слова, фразы или ситуации — запишите все эти мысли.";
     private static final String MSG_DESC_3 = "Не переживайте о правильности ассоциаций на этом этапе; важно собрать разные варианты, " +
@@ -21,7 +22,8 @@ class DreamAssociation implements AnalyzerState {
 
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории объекты.";
 
-    private final Deque<String> elements = new ArrayDeque<>();
+    private static final String MSG_END = "У нас получились такие ассоциации:";
+
     private String currentElement;
 
     @Override
@@ -40,48 +42,47 @@ class DreamAssociation implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> init(DreamAnalyzer analyzer) {
+    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
 
         List<SendMessage> messages = new ArrayList<>();
 
-        elements.addAll(AiTextProcessor.extractElements(
-                analyzer.getOpenaiChat(),
-                analyzer.getUserName(),
-                analyzer.getDream().getHistoryStr()));
+        var dream = analyzer.getDream();
 
-        if (elements.isEmpty()) {
-            LOGGER.warn("No elements found in dream analysis");
-            messages.add(analyzer.newTelegramMessage(MSG_FAIL));
-        } else {
-            messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
-            messages.add(analyzer.newTelegramMessage(getMsgElements()));
-            messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
-            messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
-            messages.add(analyzer.newTelegramMessage(MSG_DESC_4));
+        if (currentElement == null || currentElement.isBlank()) {
+            if (dream.getElements().isEmpty()) {
+                LOGGER.warn("No elements found in dream analysis");
+                messages.add(analyzer.newTelegramMessage(MSG_FAIL));
+            } else {
+                messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
+                messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
+                messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
+                messages.add(analyzer.newTelegramMessage(MSG_DESC_4));
+            }
         }
-        return messages;
-    }
-
-    @Override
-    public List<SendMessage> execute(DreamAnalyzer analyzer, String text) {
-
-        List<SendMessage> messages = new ArrayList<>();
 
         if (text != null && !text.isBlank()) {
-            analyzer.getDream().putAssociation(currentElement, text);
+            dream.putAssociation(currentElement, text);
             LOGGER.info("Association set for element {}: {}", currentElement, text);
         } else {
             LOGGER.warn("Received blank message, skipping association");
         }
 
-        currentElement = elements.pollFirst();
+        currentElement = dream.pollFirstElement();
 
-        SendMessage sendMessage = analyzer.newTelegramMessage(Objects.requireNonNullElse(currentElement, MSG_END));
-        messages.add(sendMessage);
+        if (currentElement != null) {
+            messages.add(analyzer.newTelegramMessage(currentElement));
+        }
+        else {
+            var keyboardMarkup = new InlineCommandKeyboard()
+                    .addKey("Продолжить \u2705", InlineButtons.NEXT.toString())
+                    .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
+                    .build();
+
+            messages.add(analyzer.newTelegramMessage(MSG_END));
+            messages.add(analyzer.newTelegramMessage(dream.associationsToString(), keyboardMarkup));
+        }
+
         return messages;
     }
 
-    private String getMsgElements() {
-        return String.join("\n", elements);
-    }
 }
