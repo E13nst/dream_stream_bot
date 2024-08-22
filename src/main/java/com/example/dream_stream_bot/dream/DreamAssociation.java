@@ -13,12 +13,12 @@ class DreamAssociation implements AnalyzerState {
     private static final Logger LOGGER = LoggerFactory.getLogger(DreamAssociation.class);
 
     private static final String MSG_DESC_1 = "Я выберу из твоего рассказа образы и предметы для подбора ассоциации.";
-    private static final String MSG_DESC_2 = "Напишите, что каждый из этих образов означает для вас в контексте сна. " +
-            "Если каждый образ вызывает у вас несколько ассоциаций или воспоминаний — например, конкретного человека, " +
-            "слова, фразы или ситуации — запишите все эти мысли.";
-    private static final String MSG_DESC_3 = "Не переживайте о правильности ассоциаций на этом этапе; важно собрать разные варианты, " +
-            "даже если они кажутся несвязанными. Ваша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.";
-    private static final String MSG_DESC_4 = "Подберите ассоциации для слова: ";
+    private static final String MSG_DESC_2 = "Напиши, что каждый конкретный образ значит для тебя в контексте сна. " +
+            "Если каждый образ вызывает несколько ассоциаций или воспоминаний — например, конкретного человека, " +
+            "слова, фразы или ситуации — запиши все эти мысли.";
+    private static final String MSG_DESC_3 = "Не переживай о правильности ассоциаций на этом этапе. Важно собрать разные варианты, " +
+            "даже если они кажутся несвязанными. Наша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.";
+    private static final String MSG_DESC_4 = "Подбери ассоциации для слова: ";
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории объекты.";
     private static final String MSG_END = "У нас получились такие ассоциации:";
 
@@ -30,8 +30,9 @@ class DreamAssociation implements AnalyzerState {
     }
 
     @Override
-    public void next(DreamAnalyzer analyzer) {
+    public List<SendMessage> next(DreamAnalyzer analyzer) {
         analyzer.setState(new DreamPersonality());
+        return null;
     }
 
     @Override

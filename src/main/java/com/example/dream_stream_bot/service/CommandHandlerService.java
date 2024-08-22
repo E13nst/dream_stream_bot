@@ -81,17 +81,14 @@ public class CommandHandlerService {
             switch (Objects.requireNonNull(value)) {
                 case PREVIOUS -> {
                     analyzer.previous();
-                    Optional.ofNullable(analyzer.run(""))
-                            .ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.run("")).ifPresent(responseMessageList::addAll);
                 }
                 case NEXT -> {
-                    analyzer.next();
-                    Optional.ofNullable(analyzer.run(""))
-                            .ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.next()).ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.run("")).ifPresent(responseMessageList::addAll);
                 }
                 case CANCEL -> dreamAnalyzer.remove(userId);
-                default -> Optional.ofNullable(analyzer.run(message.getText()))
-                        .ifPresent(responseMessageList::addAll);
+                default -> Optional.ofNullable(analyzer.run(message.getText())).ifPresent(responseMessageList::addAll);
             }
 
             LOGGER.info("STATE: {}", analyzer.getState().toString());
@@ -115,7 +112,7 @@ public class CommandHandlerService {
         List<SendMessage> responseMessageList = new ArrayList<>();
 
         var inlineKeyboardMarkup = new InlineCommandKeyboard()
-                .addKey("Продолжить \u2705", InlineButtons.NEXT.toString())
+                .addKey("Начать \u2705", InlineButtons.NEXT.toString())
                 .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
                 .build();
 
@@ -123,7 +120,7 @@ public class CommandHandlerService {
         long telegramChatId = message.getChatId();
 
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        var dream = dreamAnalyzer.computeIfAbsent(user.getId(), id -> new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
+        dreamAnalyzer.put(user.getId(), new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
 
         String msgStart = "Привет!\n" +
                 "\n" +
@@ -211,7 +208,9 @@ public class CommandHandlerService {
     }
 
     public static String transliterateUserName(User user) {
-        return Junidecode.unidecode(user.getFirstName()).replaceAll("[^a-zA-Z0-9_-]", "");
+        return Junidecode.unidecode(user.getFirstName()
+                .replace(" ", "_"))
+                .replaceAll("[^a-zA-Z0-9_-]", "");
     }
 
 }

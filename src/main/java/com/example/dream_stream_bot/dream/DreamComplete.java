@@ -13,8 +13,9 @@ class DreamComplete implements AnalyzerState {
     }
 
     @Override
-    public void next(DreamAnalyzer analyzer) {
+    public List<SendMessage> next(DreamAnalyzer analyzer) {
         analyzer.setState(new DreamComplete());
+        return null;
     }
 
     @Override

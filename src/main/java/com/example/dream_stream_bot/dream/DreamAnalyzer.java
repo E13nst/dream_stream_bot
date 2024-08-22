@@ -35,16 +35,16 @@ public class DreamAnalyzer {
         this.state = state;
     }
 
-    public void next() {
-        state.next(this);
+    public DreamStatus getState() {
+        return state.getState();
+    }
+
+    public List<SendMessage> next() {
+        return state.next(this);
     }
 
     public void previous() {
         state.prev(this);
-    }
-
-    public DreamStatus getState() {
-        return state.getState();
     }
 
     public List<SendMessage> run(String text) {

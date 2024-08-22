@@ -26,6 +26,10 @@ public class Dream {
         return history.toString();
     }
 
+    void cleanHistory() {
+        history.setLength(0);
+    }
+
     void putAssociation(String key, String value) {
         associations.put(key, value);
     }

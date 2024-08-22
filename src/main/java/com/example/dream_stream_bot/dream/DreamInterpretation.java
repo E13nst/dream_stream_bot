@@ -1,5 +1,7 @@
 package com.example.dream_stream_bot.dream;
 
+import com.example.dream_stream_bot.model.InlineButtons;
+import com.example.dream_stream_bot.model.InlineCommandKeyboard;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.util.ArrayList;
@@ -13,8 +15,8 @@ class DreamInterpretation implements AnalyzerState {
     }
 
     @Override
-    public void next(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamComplete());
+    public List<SendMessage> next(DreamAnalyzer analyzer) {
+        return null;
     }
 
     @Override
@@ -34,7 +36,10 @@ class DreamInterpretation implements AnalyzerState {
         analyzer.setState(new DreamComplete());
 
         List<SendMessage> messages = new ArrayList<>();
-        messages.add(analyzer.newTelegramMessage(response));
+        var keyboard = new InlineCommandKeyboard()
+                .addKey("Завершить \u274C", InlineButtons.CANCEL.toString())
+                .build();
+        messages.add(analyzer.newTelegramMessage(response, keyboard));
         return messages;
     }
 }

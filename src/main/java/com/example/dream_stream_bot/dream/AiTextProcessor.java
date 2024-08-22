@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class AiTextProcessor {
 
@@ -39,30 +38,40 @@ public class AiTextProcessor {
             "%s"
             """;
 
-    public static List<String> extractItemsAndSplit(ChatSession openaiChat, String userName, String text, String prompt) {
-        String query = String.format("%s %s", prompt, text);
-        String response = openaiChat.send(query, userName);
+    public static String findElements(ChatSession openaiChat, String userName, String text) {
+        String query = String.format("%s %s", ELEMENTS_PROMPT, text);
+        return openaiChat.send(query, userName);
+    }
 
-        int startIndex = response.indexOf('[') + 1;
-        int endIndex = response.lastIndexOf(']');
+    public static List<String> splitItems(String rawText) {
+
+        int startIndex = rawText.indexOf('[') + 1;
+        int endIndex = rawText.lastIndexOf(']');
 
         if (startIndex > 0 && endIndex > startIndex) {
-            String extracted = response.substring(startIndex, endIndex);
+            String extracted = rawText.substring(startIndex, endIndex);
             List<String> list = Arrays.asList(extracted.split(","));
             list = list.stream().map(e -> e.replace("\"", "")).map(String::trim).toList();
             return list;
         } else {
-            LOGGER.error("Brackets not found or incorrect order.");
+            LOGGER.error("Elements not found");
             return List.of();
         }
     }
 
+    public static List<String> extractAndSplitItems(ChatSession openaiChat, String userName, String text, String prompt) {
+        String query = String.format("%s %s", prompt, text);
+        String response = openaiChat.send(query, userName);
+
+        return splitItems(response);
+    }
+
     public static List<String> extractElements(ChatSession openaiChat, String userName, String text) {
-        return extractItemsAndSplit(openaiChat, userName, text, ELEMENTS_PROMPT);
+        return extractAndSplitItems(openaiChat, userName, text, ELEMENTS_PROMPT);
     }
 
     public static List<String> extractActors(ChatSession openaiChat, String userName, String text) {
-        return extractItemsAndSplit(openaiChat, userName, text, ACTORS_PROMPT);
+        return extractAndSplitItems(openaiChat, userName, text, ACTORS_PROMPT);
     }
 
     public static String interpretDream(ChatSession openaiChat, String userName, Dream dream) {

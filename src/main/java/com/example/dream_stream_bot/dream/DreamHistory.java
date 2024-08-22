@@ -1,21 +1,18 @@
 package com.example.dream_stream_bot.dream;
 
-import com.example.dream_stream_bot.model.InlineButtons;
-import com.example.dream_stream_bot.model.InlineCommandKeyboard;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 import java.util.ArrayList;
 import java.util.List;
 
 class DreamHistory implements AnalyzerState {
 
-    private static final String HISTORY_DESCRIPTION = "На первом шаге я помогу вам записать ваш сон в виде истории. " +
-            "Постарайтесь описать его как можно подробнее, включая все детали, которые помните. Не беспокойтесь, " +
-            "если сначала ваш рассказ будет состоять из отдельных фрагментов или элементов. На данном этапе важно " +
-            "собрать всю информацию, даже если она " +
-            "кажется разрозненной. Вы можете отправлять описание сна в нескольких сообщениях. После того как вы закончите, " +
-            "нажмите кнопку **Продолжить**, чтобы перейти к следующему этапу анализа.";
+    private static final String MSG_DESC_1 = "На первом шаге я помогу записать твой сон в виде истории.";
+    private static final String MSG_DESC_2 = "Постарайся описать его как можно подробнее, включая все детали, которые помнишь. " +
+            "Не беспокойся, если сначала рассказ будет состоять из отдельных фрагментов. На данном этапе важно собрать " +
+            "всю информацию, даже если она кажется разрозненной.";
+    private static final String MSG_DESC_3 = "Можешь отправлять описание сна в нескольких сообщениях. Когда будешь готов, " +
+            "нажми кнопку **Продолжить**, чтобы перейти к следующему этапу анализа.";
 
     @Override
     public DreamStatus getState() {
@@ -23,21 +20,39 @@ class DreamHistory implements AnalyzerState {
     }
 
     @Override
-    public void next(DreamAnalyzer analyzer) {
+    public List<SendMessage> next(DreamAnalyzer analyzer) {
 
-        var dream = analyzer.getDream();
+        List<SendMessage> sendMessages = new ArrayList<>();
+        Dream dream = analyzer.getDream();
 
-        dream.addAllElements(AiTextProcessor.extractElements(
+        if (dream.getHistoryStr().isEmpty())
+            return sendMessages;
+
+        String rawText = AiTextProcessor.findElements(
                 analyzer.getOpenaiChat(),
                 analyzer.getUserName(),
-                analyzer.getDream().getHistoryStr()));
+                analyzer.getDream().getHistoryStr());
+
+        var elements = AiTextProcessor.splitItems(rawText);
+
+        if (elements.isEmpty()) {
+            dream.cleanHistory();
+            sendMessages.add(analyzer.newTelegramMessage(rawText));
+            return sendMessages;
+        }
+
+        dream.addAllElements(elements);
 
         dream.addAllActors(AiTextProcessor.extractActors(
                 analyzer.getOpenaiChat(),
                 analyzer.getUserName(),
                 analyzer.getDream().getHistoryStr()));
 
-        analyzer.setState(new DreamAssociation());
+        if (!dream.getElements().isEmpty()) {
+            analyzer.setState(new DreamAssociation());
+        }
+
+        return sendMessages;
     }
 
     @Override
@@ -51,8 +66,9 @@ class DreamHistory implements AnalyzerState {
         List<SendMessage> messages = new ArrayList<>();
 
         if (analyzer.getDream().getHistoryStr().isEmpty()) {
-            SendMessage message = analyzer.newTelegramMessage(HISTORY_DESCRIPTION);
-            messages.add(message);
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
         } else {
             SendMessage message = analyzer.newTelegramMessage("|\u2705|");
             messages.add(message);
