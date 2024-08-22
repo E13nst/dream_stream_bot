@@ -7,9 +7,6 @@ import java.util.List;
 
 class DreamInterpretation implements AnalyzerState {
 
-    private static final String HISTORY_DESCRIPTION =
-            "Интерпритация";
-
     @Override
     public DreamStatus getState() {
         return DreamStatus.INTERPRETATION;
@@ -17,7 +14,7 @@ class DreamInterpretation implements AnalyzerState {
 
     @Override
     public void next(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamPersonality());
+        analyzer.setState(new DreamComplete());
     }
 
     @Override
@@ -27,12 +24,16 @@ class DreamInterpretation implements AnalyzerState {
 
     @Override
     public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
-        List<SendMessage> messages = new ArrayList<>();
+
         String response = AiTextProcessor.interpretDream(
                 analyzer.getOpenaiChat(),
                 analyzer.getUserName(),
                 analyzer.getDream()
         );
+
+        analyzer.setState(new DreamComplete());
+
+        List<SendMessage> messages = new ArrayList<>();
         messages.add(analyzer.newTelegramMessage(response));
         return messages;
     }

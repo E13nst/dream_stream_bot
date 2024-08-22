@@ -77,7 +77,7 @@ class DreamAssociation implements AnalyzerState {
                     .build();
 
             messages.add(analyzer.newTelegramMessage(MSG_END));
-            messages.add(analyzer.newTelegramMessage(dream.associationsToString(), keyboardMarkup));
+            messages.add(analyzer.newTelegramMessage(dream.associationsCollectToString(), keyboardMarkup));
         }
 
         return messages;

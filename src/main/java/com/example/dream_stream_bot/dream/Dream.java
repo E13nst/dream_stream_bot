@@ -58,13 +58,13 @@ public class Dream {
         return String.join("\n", actors);
     }
 
-    public String associationsToString() {
+    public String associationsCollectToString() {
         return associations.entrySet().stream()
                 .map(entry -> String.format("**%s** - %s", entry.getKey(), entry.getValue()))
                 .collect(Collectors.joining("\n"));
     }
 
-    public String personsToString() {
+    public String personsCollectToString() {
             return persons.entrySet().stream()
                     .map(entry -> String.format("**%s** - %s", entry.getKey(), entry.getValue()))
                     .collect(Collectors.joining("\n"));

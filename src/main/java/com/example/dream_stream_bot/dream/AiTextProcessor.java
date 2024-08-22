@@ -35,7 +35,9 @@ public class AiTextProcessor {
             %s
             И персонажей моего сновидения, которые могут представлять мою персону, тень, аниму или анимуса:
             %s
-            Учитывай взаимодейстаие этих персонажей и объектов между собой в контексте сновидения""";
+            Учитывай взаимодейстаие этих персонажей и объектов между собой в контексте сновидения: 
+            "%s"
+            """;
 
     public static List<String> extractItemsAndSplit(ChatSession openaiChat, String userName, String text, String prompt) {
         String query = String.format("%s %s", prompt, text);
@@ -66,10 +68,9 @@ public class AiTextProcessor {
     public static String interpretDream(ChatSession openaiChat, String userName, Dream dream) {
 
         String query = String.format(INTERPRET_PROMPT,
-                dream.getAssociations().entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
-                        .collect(Collectors.joining("\n")),
-                dream.getPersons().entrySet().stream().map(entry -> entry.getKey() + " - " + entry.getValue())
-                        .collect(Collectors.joining("\n"))
+                dream.associationsCollectToString(),
+                dream.personsCollectToString(),
+                dream.getHistoryStr()
         );
 
         return openaiChat.send(query, userName);

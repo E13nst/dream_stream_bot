@@ -104,7 +104,6 @@ public class CommandHandlerService {
             sendMessage.setChatId(message.getChatId());
             sendMessage.setText(response);
             sendMessage.enableMarkdown(true);
-//            sendMessage.setReplyMarkup(replyKeyboard);
 
             responseMessageList.add(sendMessage);
         }

@@ -53,6 +53,9 @@ class DreamHistory implements AnalyzerState {
         if (analyzer.getDream().getHistoryStr().isEmpty()) {
             SendMessage message = analyzer.newTelegramMessage(HISTORY_DESCRIPTION);
             messages.add(message);
+        } else {
+            SendMessage message = analyzer.newTelegramMessage("|\u2705|");
+            messages.add(message);
         }
 
         analyzer.getDream().addHistory(text);
