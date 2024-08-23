@@ -1,5 +1,7 @@
 package com.example.dream_stream_bot.dream;
 
+import com.example.dream_stream_bot.model.InlineButtons;
+import com.example.dream_stream_bot.model.InlineCommandKeyboard;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.util.ArrayList;
@@ -13,6 +15,7 @@ class DreamHistory implements AnalyzerState {
             "всю информацию, даже если она кажется разрозненной.";
     private static final String MSG_DESC_3 = "Можешь отправлять описание сна в нескольких сообщениях. Когда будешь готов, " +
             "нажми кнопку **Продолжить**, чтобы перейти к следующему этапу анализа.";
+    private static final String MSG_NEXT = "|\u2705| Для перехода к следующему шагу нажми \"Продолжить\"";
 
     @Override
     public DreamStatus getState() {
@@ -70,7 +73,11 @@ class DreamHistory implements AnalyzerState {
             messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
             messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
         } else {
-            SendMessage message = analyzer.newTelegramMessage("|\u2705|");
+            var keyboard = new InlineCommandKeyboard()
+                    .addKey("Продолжить \u2705", InlineButtons.NEXT.toString())
+                    .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
+                    .build();
+            SendMessage message = analyzer.newTelegramMessage(MSG_NEXT, keyboard);
             messages.add(message);
         }
 
