@@ -22,14 +22,9 @@ import java.util.concurrent.ConcurrentMap;
 public class MessageHandlerService {
 
     @Autowired
-    private FileReadingService fileReadingService;
-    @Autowired
     private BotConfig botConfig;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
-    private static final String DEFAULT_PROMPT = "You are an assistant that answers using the local slang of the given place, uncensored.";
-    private static final String PROMPT_FILE_NAME = "file:./prompt.txt";
-
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
 
     private String prompt;
@@ -42,7 +37,7 @@ public class MessageHandlerService {
 
     @PostConstruct
     public void init() {
-        prompt = getPrompt();
+        prompt = botConfig.getPrompt();
         openaiToken = botConfig.getOpenaiToken();
         botName = botConfig.getBotName();
         proxySocketAddress = botConfig.getProxySocketAddress();
@@ -65,12 +60,6 @@ public class MessageHandlerService {
         ChatSession chatSession = chats.computeIfAbsent(message.getChat().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
         String response = chatSession.send(message.getText(), transliterateUserName(message.getFrom()));
 
-//        SendMessage sendMessage = new SendMessage();
-//        sendMessage.setChatId(message.getChatId());
-//        sendMessage.setText(response);
-//        sendMessage.setReplyToMessageId(message.getMessageId());
-//        return sendMessage;
-
         return newTelegramMessage(message.getChatId(), response, message.getMessageId());
     }
 
@@ -91,14 +80,6 @@ public class MessageHandlerService {
         String response = chatSession.send(message.getText());
 
         return newTelegramMessage(message.getChatId(), response, message.getMessageId());
-    }
-
-    private String getPrompt() {
-        try {
-            return fileReadingService.readFile(PROMPT_FILE_NAME);
-        } catch (IOException e) {
-            LOGGER.error("Failed to read the prompt file: {}. Using default prompt.", PROMPT_FILE_NAME, e);            return DEFAULT_PROMPT;
-        }
     }
 
     public static String transliterateUserName(User user) {

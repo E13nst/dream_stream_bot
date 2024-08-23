@@ -15,6 +15,7 @@ public class BotConfig {
 
     @Value("${bot.name}") String botName;
     @Value("${bot.token}") String token;
+    @Value("${bot.prompt}") String prompt;
     @Value("${bot.aliases:}") String botAliases;
     @Value("${bot.triggers:}") String botTriggers;
 

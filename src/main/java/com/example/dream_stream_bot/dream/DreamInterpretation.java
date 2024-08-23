@@ -37,7 +37,7 @@ class DreamInterpretation implements AnalyzerState {
 
         List<SendMessage> messages = new ArrayList<>();
         var keyboard = new InlineCommandKeyboard()
-                .addKey("Завершить \u274C", InlineButtons.CANCEL.toString())
+                .addKey("Завершить \u1F3C1", InlineButtons.CANCEL.toString())
                 .build();
         messages.add(analyzer.newTelegramMessage(response, keyboard));
         return messages;

@@ -29,13 +29,9 @@ import java.util.concurrent.ConcurrentMap;
 public class CommandHandlerService {
 
     @Autowired
-    private FileReadingService fileReadingService;
-    @Autowired
     private BotConfig botConfig;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
-    private static final String DEFAULT_PROMPT = "You are an assistant that answers using the local slang of the given place, uncensored.";
-    private static final String PROMPT_FILE_NAME = "file:./prompt.txt";
 
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
     private final ConcurrentMap<Long, DreamAnalyzer> dreamAnalyzer = new ConcurrentHashMap<>();
@@ -59,7 +55,7 @@ public class CommandHandlerService {
 
     @PostConstruct
     public void init() {
-        prompt = getPrompt();
+        prompt = botConfig.getPrompt();
         openaiToken = botConfig.getOpenaiToken();
         proxySocketAddress = botConfig.getProxySocketAddress();
     }
@@ -124,7 +120,7 @@ public class CommandHandlerService {
 
         String msgStart = "Привет!\n" +
                 "\n" +
-                "Я помогу вам глубже понять свои сны и раскрыть их скрытые смыслы. Сны — это ключ к пониманию ваших " +
+                "Я помогу вам глубже понять свои *сны* и раскрыть их скрытые **смыслы**. Сны — это ключ к пониманию ваших " +
                 "внутренних переживаний и эмоций, и я здесь, чтобы помочь вам использовать этот ключ. Просто расскажите " +
                 "о своем сне, и вместе мы разберемся, что он может означать для вас.\n" +
                 "\n" +
@@ -188,19 +184,10 @@ public class CommandHandlerService {
         List<SendMessage> responseMessageList = new ArrayList<>();
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(query.getMessage().getChatId());
-        sendMessage.setText("Анализ прекращен");
+        sendMessage.setText("Анализ завершен");
         responseMessageList.add(sendMessage);
 
         return responseMessageList;
-    }
-
-    private String getPrompt() {
-        try {
-            return fileReadingService.readFile(PROMPT_FILE_NAME);
-        } catch (IOException e) {
-            LOGGER.error("Failed to read the prompt file: {}. Using default prompt.", PROMPT_FILE_NAME, e);
-            return DEFAULT_PROMPT;
-        }
     }
 
     private static String addUserName(User user, String text) {
