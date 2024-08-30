@@ -18,7 +18,12 @@ class DreamPersonality implements AnalyzerState {
     private static final String MSG_END = "У нас получились такие персонажи:";
     private static final String MSG_FAIL = "Я не смог выделить из твоей истории персонажей.";
 
-    private String currentPerson;
+    private final Iterator<DreamActor> iterator;
+    private DreamActor currentDreamActor;
+
+    DreamPersonality(DreamAnalyzer analyzer) {
+        this.iterator = analyzer.getDream().getActors().iterator();
+    }
 
     @Override
     public DreamStatus getState() {
@@ -37,14 +42,13 @@ class DreamPersonality implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
+    public List<SendMessage> run(DreamAnalyzer analyzer, String characteristic) {
 
         List<SendMessage> messages = new ArrayList<>();
-
         var dream = analyzer.getDream();
 
-        if (currentPerson == null || currentPerson.isBlank()) {
-            if (dream.getActors().isEmpty()) {
+        if (currentDreamActor == null || currentDreamActor.getPerson().isBlank()) {
+            if (!iterator.hasNext()) {
                 LOGGER.warn("No elements found in dream analysis");
                 messages.add(analyzer.newTelegramMessage(MSG_FAIL));
             } else {
@@ -53,17 +57,16 @@ class DreamPersonality implements AnalyzerState {
             }
         }
 
-        if (text != null && !text.isBlank()) {
-            dream.putPerson(currentPerson, text);
-            LOGGER.info("Person set for element {}: {}", currentPerson, text);
+        if (characteristic != null && !characteristic.isBlank()) {
+            currentDreamActor.setCharacteristic(characteristic);
+            LOGGER.info("Person set for element {}: {}", currentDreamActor, characteristic);
         } else {
             LOGGER.warn("Received blank message, skipping person");
         }
 
-        currentPerson = dream.pollFirstActor();
-
-        if (currentPerson != null) {
-            messages.add(analyzer.newTelegramMessage(currentPerson));
+        if (iterator.hasNext()) {
+            currentDreamActor = iterator.next();
+            messages.add(analyzer.newTelegramMessage(currentDreamActor.getPerson()));
         }
         else {
             var keyboardMarkup = new InlineCommandKeyboard()

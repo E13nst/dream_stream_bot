@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.net.InetSocketAddress;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
@@ -45,7 +46,7 @@ class TelegramChatBotTest {
     void testHelloOpenAI() {
 
         String response = sendMessage("Hello");
-        assertFalse(response.isEmpty(), "The response should not be empty");
+        assertThat(response).isEmpty();
     }
 
     @Step("Get proxy address")

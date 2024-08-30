@@ -21,7 +21,7 @@ class DreamInterpretation implements AnalyzerState {
 
     @Override
     public void prev(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamPersonality());
+        analyzer.setState(new DreamPersonality(analyzer));
     }
 
     @Override

@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 class DreamHistory implements AnalyzerState {
 
@@ -46,10 +47,12 @@ class DreamHistory implements AnalyzerState {
 
         dream.addAllElements(elements);
 
-        dream.addAllActors(AiTextProcessor.extractActors(
+        var actorsList = AiTextProcessor.extractActors(
                 analyzer.getOpenaiChat(),
                 analyzer.getUserName(),
-                analyzer.getDream().getHistoryStr()));
+                analyzer.getDream().getHistoryStr());
+
+        dream.addAllActors(actorsList.stream().map(DreamActor::new).collect(Collectors.toList()));
 
         if (!dream.getElements().isEmpty()) {
             analyzer.setState(new DreamAssociation());

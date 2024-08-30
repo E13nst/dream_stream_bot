@@ -31,7 +31,7 @@ class DreamAssociation implements AnalyzerState {
 
     @Override
     public List<SendMessage> next(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamPersonality());
+        analyzer.setState(new DreamPersonality(analyzer));
         return null;
     }
 
