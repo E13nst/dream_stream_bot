@@ -46,7 +46,7 @@ class TelegramChatBotTest {
     void testHelloOpenAI() {
 
         String response = sendMessage("Hello");
-        assertThat(response).isEmpty();
+        assertThat(response).isNotEmpty();
     }
 
     @Step("Get proxy address")
