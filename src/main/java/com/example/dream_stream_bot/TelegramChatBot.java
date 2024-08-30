@@ -101,9 +101,9 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                     }
 
                     // Сообщение в канале
-                    else if (message.getIsAutomaticForward()) {  // проверить null
-                        response = messageHandlerService.handleChannelMessage(message);
-                    }
+//                    else if (message.getIsAutomaticForward()) {  // проверить null
+//                        response = messageHandlerService.handleChannelMessage(message);
+//                    }
 
                     if (response != null) {
                         LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), response);

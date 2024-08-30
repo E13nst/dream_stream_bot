@@ -5,8 +5,11 @@ import com.example.dream_stream_bot.model.InlineCommandKeyboard;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 class DreamAssociation implements AnalyzerState {
 
@@ -19,10 +22,19 @@ class DreamAssociation implements AnalyzerState {
     private static final String MSG_DESC_3 = "Не переживай о правильности ассоциаций на этом этапе. Важно собрать разные варианты, " +
             "даже если они кажутся несвязанными. Наша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.";
     private static final String MSG_DESC_4 = "Подбери ассоциации к образу: ";
-    private static final String MSG_FAIL = "Я не смог выделить из твоей истории объекты.";
     private static final String MSG_END = "У нас получились такие ассоциации:";
 
-    private String currentElement;
+    private final Iterator<DreamElement> iterator;
+    private DreamElement currentElement;
+
+    private final InlineKeyboardMarkup keyboardMarkup = new InlineCommandKeyboard()
+            .addKey("Продолжить \u2705", InlineButtons.NEXT.toString())
+            .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
+            .build();
+
+    DreamAssociation(DreamAnalyzer analyzer) {
+        this.iterator = analyzer.getDream().getAssociations().iterator();
+    }
 
     @Override
     public DreamStatus getState() {
@@ -41,46 +53,28 @@ class DreamAssociation implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
+    public List<SendMessage> run(DreamAnalyzer analyzer, String msg) {
 
         List<SendMessage> messages = new ArrayList<>();
 
-        var dream = analyzer.getDream();
-
-        if (currentElement == null || currentElement.isBlank()) {
-            if (dream.getElements().isEmpty()) {
-                LOGGER.warn("No elements found in dream analysis");
-                messages.add(analyzer.newTelegramMessage(MSG_FAIL));
-            } else {
-                messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
-                messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
-                messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
-                messages.add(analyzer.newTelegramMessage(MSG_DESC_4));
-            }
+        if (currentElement == null) {
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_1));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_2));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_3));
+            messages.add(analyzer.newTelegramMessage(MSG_DESC_4));
+        } else if (msg != null && !msg.isBlank()) {
+            currentElement.setAssociation(msg);
+            LOGGER.info("Association set for element {}", currentElement);
         }
 
-        if (text != null && !text.isBlank()) {
-            dream.putAssociation(currentElement, text);
-            LOGGER.info("Association set for element {}: {}", currentElement, text);
-        } else {
-            LOGGER.warn("Received blank message, skipping association");
-        }
-
-        currentElement = dream.pollFirstElement();
-
-        if (currentElement != null) {
-            messages.add(analyzer.newTelegramMessage(currentElement));
+        if (iterator.hasNext()) {
+            currentElement = iterator.next();
+            messages.add(analyzer.newTelegramMessage(currentElement.getName()));
         }
         else {
-            var keyboardMarkup = new InlineCommandKeyboard()
-                    .addKey("Продолжить \u2705", InlineButtons.NEXT.toString())
-                    .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
-                    .build();
-
             messages.add(analyzer.newTelegramMessage(MSG_END));
-            messages.add(analyzer.newTelegramMessage(dream.associationsCollectToString(), keyboardMarkup));
+            messages.add(analyzer.newTelegramMessage(analyzer.getDream().associationsCollectToString(), keyboardMarkup));
         }
-
         return messages;
     }
 

@@ -9,9 +9,7 @@ public class Dream {
     private final StringBuilder history = new StringBuilder();
 
     @Getter
-    private final Deque<String> elements = new ArrayDeque<>();
-    @Getter
-    private final Map<String, String> associations = new HashMap<>();
+    private final List<DreamElement> associations = new ArrayList<>();
     @Getter
     private final List<DreamActor> actors = new ArrayList<>();
 
@@ -27,25 +25,17 @@ public class Dream {
         history.setLength(0);
     }
 
-    void putAssociation(String key, String value) {
-        associations.put(key, value);
+    boolean addAllElements(List<DreamElement> elements) {
+        return this.associations.addAll(elements);
     }
 
-//    boolean addAllElements(List<String> elements) {
-//        return this.elements.addAll(elements);
-//    }
-
-//    boolean addAllActors(List<DreamActor> elements) {
-//        return this.actors.addAll(elements);
-//    }
-
-    String pollFirstElement() {
-        return elements.pollFirst();
+    boolean addAllActors(List<DreamActor> elements) {
+        return this.actors.addAll(elements);
     }
 
     public String associationsCollectToString() {
-        return associations.entrySet().stream()
-                .map(entry -> String.format("**%s** - %s", entry.getKey(), entry.getValue()))
+        return associations.stream()
+                .map(entry -> String.format("**%s** - %s", entry.getName(), entry.getAssociation()))
                 .collect(Collectors.joining("\n"));
     }
 

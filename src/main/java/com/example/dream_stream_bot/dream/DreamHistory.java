@@ -37,15 +37,15 @@ class DreamHistory implements AnalyzerState {
                 analyzer.getUserName(),
                 analyzer.getDream().getHistoryStr());
 
-        var elements = AiTextProcessor.splitItems(rawText);
+        var elementStringList = AiTextProcessor.splitItems(rawText);
 
-        if (elements.isEmpty()) {
+        if (elementStringList.isEmpty()) {
             dream.cleanHistory();
             sendMessages.add(analyzer.newTelegramMessage(rawText));
             return sendMessages;
         }
 
-        dream.addAllElements(elements);
+        dream.addAllElements(elementStringList.stream().map(DreamElement::new).collect(Collectors.toList()));
 
         var actorsList = AiTextProcessor.extractActors(
                 analyzer.getOpenaiChat(),
@@ -54,8 +54,8 @@ class DreamHistory implements AnalyzerState {
 
         dream.addAllActors(actorsList.stream().map(DreamActor::new).collect(Collectors.toList()));
 
-        if (!dream.getElements().isEmpty()) {
-            analyzer.setState(new DreamAssociation());
+        if (!dream.getAssociations().isEmpty()) {
+            analyzer.setState(new DreamAssociation(analyzer));
         }
 
         return sendMessages;

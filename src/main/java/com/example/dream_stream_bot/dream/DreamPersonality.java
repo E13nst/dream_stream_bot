@@ -38,7 +38,7 @@ class DreamPersonality implements AnalyzerState {
 
     @Override
     public void prev(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamAssociation());
+        analyzer.setState(new DreamAssociation(analyzer));
     }
 
     @Override
