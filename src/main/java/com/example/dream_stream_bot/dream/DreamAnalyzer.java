@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot.dream;
 
 import com.example.dream_stream_bot.model.ChatSession;
+import lombok.Builder;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,17 +19,19 @@ public class DreamAnalyzer {
     @Getter
     private final String userName;
     @Getter
-    private final Dream dream = new Dream();
-    @Getter
     private final long telegramChatId;
+    @Getter
+    private final Dream dream;
 
     private AnalyzerState state;
 
-    public DreamAnalyzer(ChatSession openaiChat, String userName, long telegramChatId) {
+    @Builder
+    public DreamAnalyzer(ChatSession openaiChat, String userName, long telegramChatId, Dream dream) {
         this.openaiChat = openaiChat;
         this.telegramChatId = telegramChatId;
         this.userName = userName;
-        this.state = new DreamNew();
+        this.state = new DreamStart();
+        this.dream = dream == null ? new Dream() : dream;
     }
 
     public void setState(AnalyzerState state) {
@@ -47,8 +50,14 @@ public class DreamAnalyzer {
         state.prev(this);
     }
 
-    public List<SendMessage> run(String text) {
-        return state.run(this, text);
+    public List<SendMessage> processMessage(String answer) {
+        if (answer == null || answer.isBlank())
+            LOGGER.warn("Received blank message");
+        return state.processMessage(this, answer);
+    }
+
+    public List<SendMessage> processMessage() {
+        return state.processMessage(this, "");
     }
 
     public SendMessage newTelegramMessage(String text) {

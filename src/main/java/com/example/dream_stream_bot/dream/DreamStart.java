@@ -2,10 +2,9 @@ package com.example.dream_stream_bot.dream;
 
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
-import java.util.ArrayList;
 import java.util.List;
 
-class DreamNew implements AnalyzerState {
+class DreamStart implements AnalyzerState {
 
     @Override
     public DreamStatus getState() {
@@ -23,7 +22,7 @@ class DreamNew implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer dream, String text) {
+    public List<SendMessage> processMessage(DreamAnalyzer dream, String text) {
         return null;
     }
 

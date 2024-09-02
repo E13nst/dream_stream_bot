@@ -21,11 +21,11 @@ class DreamInterpretation implements AnalyzerState {
 
     @Override
     public void prev(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamPersonality(analyzer));
+        analyzer.setState(new DreamPersonality());
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
+    public List<SendMessage> processMessage(DreamAnalyzer analyzer, String text) {
 
         String response = AiTextProcessor.interpretDream(
                 analyzer.getOpenaiChat(),
@@ -37,7 +37,7 @@ class DreamInterpretation implements AnalyzerState {
 
         List<SendMessage> messages = new ArrayList<>();
         var keyboard = new InlineCommandKeyboard()
-                .addKey("Завершить \u1F3C1", InlineButtons.CANCEL.toString())
+                .addKey("Завершить", InlineButtons.CANCEL.toString())
                 .build();
         messages.add(analyzer.newTelegramMessage(response, keyboard));
         return messages;

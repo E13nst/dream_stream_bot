@@ -12,6 +12,8 @@ public class Dream {
     private final List<DreamElement> associations = new ArrayList<>();
     @Getter
     private final List<DreamActor> actors = new ArrayList<>();
+    @Getter
+    Iterator<DreamActor> actorIterator = actors.iterator();
 
     void addHistory(String text) {
         history.append(text).append("\n");
@@ -25,23 +27,47 @@ public class Dream {
         history.setLength(0);
     }
 
-    boolean addAllElements(List<DreamElement> elements) {
-        return this.associations.addAll(elements);
+    void addAllElements(List<DreamElement> elements) {
+        this.associations.addAll(elements);
     }
 
-    boolean addAllActors(List<DreamActor> elements) {
-        return this.actors.addAll(elements);
+    void addAllActors(List<DreamActor> elements) {
+        this.actors.addAll(elements);
+        actorIterator = actors.iterator();
     }
 
-    public String associationsCollectToString() {
+    boolean hasActor() {
+        return actorIterator.hasNext();
+    }
+
+    DreamActor nextActor() {
+        return actorIterator.next();
+    }
+
+    void initActorsIterator() {
+        actorIterator = actors.iterator();
+    }
+
+    public String associationsCollectForResult() {
         return associations.stream()
                 .map(entry -> String.format("**%s** - %s", entry.getName(), entry.getAssociation()))
                 .collect(Collectors.joining("\n"));
     }
 
-    public String personsCollectToString() {
+    public String personsCollectForResult() {
         return actors.stream()
-                .map(a -> String.format("**%s** - %s", a.getPerson(), a.getCharacteristic()))
+                .map(a -> String.format("**%s** - %s", a.getName(), a.getCharacteristic()))
+                .collect(Collectors.joining("\n"));
+    }
+    public String contextCollectForResult() {
+        return actors.stream()
+                .map(a -> String.format("**%s** - %s", a.getCharacteristic(), a.getContext()))
+                .collect(Collectors.joining("\n"));
+    }
+
+    public String senseCollectForResult() {
+        return actors.stream()
+                .map(a -> String.format("**%s** - %s", a.getCharacteristic(), a.getSense()))
                 .collect(Collectors.joining("\n"));
     }
 }

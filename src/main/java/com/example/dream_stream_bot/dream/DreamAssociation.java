@@ -21,7 +21,7 @@ class DreamAssociation implements AnalyzerState {
             "слова, фразы или ситуации — запиши все эти мысли.";
     private static final String MSG_DESC_3 = "Не переживай о правильности ассоциаций на этом этапе. Важно собрать разные варианты, " +
             "даже если они кажутся несвязанными. Наша цель — найти прямые ассоциации, которые возникают в связи с каждым образом.";
-    private static final String MSG_DESC_4 = "Подбери ассоциации к образу: ";
+    private static final String MSG_DESC_4 = "Какую ассоциацию вызывает у тебя этот образ: ";
     private static final String MSG_END = "У нас получились такие ассоциации:";
 
     private final Iterator<DreamElement> iterator;
@@ -32,8 +32,8 @@ class DreamAssociation implements AnalyzerState {
             .addKey("Отмена \u274C", InlineButtons.CANCEL.toString())
             .build();
 
-    DreamAssociation(DreamAnalyzer analyzer) {
-        this.iterator = analyzer.getDream().getAssociations().iterator();
+    DreamAssociation(Dream dream) {
+        this.iterator = dream.getAssociations().iterator();
     }
 
     @Override
@@ -43,7 +43,7 @@ class DreamAssociation implements AnalyzerState {
 
     @Override
     public List<SendMessage> next(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamPersonality(analyzer));
+        analyzer.setState(new DreamPersonality());
         return null;
     }
 
@@ -53,7 +53,7 @@ class DreamAssociation implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer analyzer, String msg) {
+    public List<SendMessage> processMessage(DreamAnalyzer analyzer, String msg) {
 
         List<SendMessage> messages = new ArrayList<>();
 
@@ -73,7 +73,7 @@ class DreamAssociation implements AnalyzerState {
         }
         else {
             messages.add(analyzer.newTelegramMessage(MSG_END));
-            messages.add(analyzer.newTelegramMessage(analyzer.getDream().associationsCollectToString(), keyboardMarkup));
+            messages.add(analyzer.newTelegramMessage(analyzer.getDream().associationsCollectForResult(), keyboardMarkup));
         }
         return messages;
     }

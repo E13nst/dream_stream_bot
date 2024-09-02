@@ -68,17 +68,6 @@
 			<version>6.9.7.1</version>
 		</dependency>
 
-<!--		<dependency>-->
-<!--			<groupId>org.telegram</groupId>-->
-<!--			<artifactId>telegrambots-springboot-longpolling-starter</artifactId>-->
-<!--			<version>7.7.1</version>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>org.telegram</groupId>-->
-<!--			<artifactId>telegrambots-client</artifactId>-->
-<!--			<version>7.7.1</version>-->
-<!--		</dependency>-->
-
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -132,6 +121,12 @@
 			<groupId>net.gcardone.junidecode</groupId>
 			<artifactId>junidecode</artifactId>
 			<version>0.5.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>net.datafaker</groupId>
+			<artifactId>datafaker</artifactId>
+			<version>2.3.1</version>
 		</dependency>
 
 	</dependencies>

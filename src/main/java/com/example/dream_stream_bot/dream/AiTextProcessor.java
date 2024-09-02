@@ -12,7 +12,7 @@ public class AiTextProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(AiTextProcessor.class);
 
     private static final String ELEMENTS_PROMPT = """
-            Выбери из текста сновидения все неодушевленные образы и предметы вместе с их свойствами и характеристиками, 
+            Выбери из текста сновидения все неодушевленные образы, предметы, символы и ситуации вместе с их свойствами и характеристиками, 
             которые можно использовать для анализа этого сновидения по Юнгу. Не давай своих интерпретаций. 
             Результат должен быть без лишних комментариев в виде списка в формате json, который будет содержать 
             эти предметы по такому образцу:\s
@@ -30,11 +30,18 @@ public class AiTextProcessor {
             """;
 
     private static final String INTERPRET_PROMPT = """
-            Интерпретируй это сновидения по Юнгу, операясь на мои личные ассоциации:
+            Интерпретируй мое сновидение по Юнгу, учитывая взаимодейстаие персонажей и объектов между собой.
+            Операясь на мои личные ассоциации c ключевыми элементами в этом сновидении:
             %s
-            И персонажей моего сновидения, которые могут представлять мою персону, тень, аниму или анимуса:
+            Проведи архитипический анализ персонажей этого сновидения, которые могут представлять собой архетипы,
+            такие как Тень, Анима/Анимус, Персона и другие, учитывая динамику сновидения.
+            Учитывай, какую конкретно мою черту характера какой комплекс он отражает:
             %s
-            Учитывай взаимодейстаие этих персонажей и объектов между собой в контексте сновидения: 
+            Так же, где в реальной жизни присутствует такая же динамика с чем это ассоциируется:
+            %s
+            Что эта черта моей личности означает для меня:
+            %s
+            Сновидение для анализа:
             "%s"
             """;
 
@@ -77,8 +84,10 @@ public class AiTextProcessor {
     public static String interpretDream(ChatSession openaiChat, String userName, Dream dream) {
 
         String query = String.format(INTERPRET_PROMPT,
-                dream.associationsCollectToString(),
-                dream.personsCollectToString(),
+                dream.associationsCollectForResult(),
+                dream.personsCollectForResult(),
+                dream.contextCollectForResult(),
+                dream.senseCollectForResult(),
                 dream.getHistoryStr()
         );
 

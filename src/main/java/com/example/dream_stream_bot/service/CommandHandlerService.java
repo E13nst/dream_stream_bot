@@ -16,7 +16,6 @@ import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -77,14 +76,14 @@ public class CommandHandlerService {
             switch (Objects.requireNonNull(value)) {
                 case PREVIOUS -> {
                     analyzer.previous();
-                    Optional.ofNullable(analyzer.run("")).ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.processMessage("")).ifPresent(responseMessageList::addAll);
                 }
                 case NEXT -> {
                     Optional.ofNullable(analyzer.next()).ifPresent(responseMessageList::addAll);
-                    Optional.ofNullable(analyzer.run("")).ifPresent(responseMessageList::addAll);
+                    Optional.ofNullable(analyzer.processMessage("")).ifPresent(responseMessageList::addAll);
                 }
                 case CANCEL -> dreamAnalyzer.remove(userId);
-                default -> Optional.ofNullable(analyzer.run(message.getText())).ifPresent(responseMessageList::addAll);
+                default -> Optional.ofNullable(analyzer.processMessage(message.getText())).ifPresent(responseMessageList::addAll);
             }
 
             LOGGER.info("STATE: {}", analyzer.getState().toString());
@@ -116,7 +115,12 @@ public class CommandHandlerService {
         long telegramChatId = message.getChatId();
 
         ChatSession chat = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        dreamAnalyzer.put(user.getId(), new DreamAnalyzer(chat, transliterateUserName(user), telegramChatId));
+        dreamAnalyzer.put(user.getId(), DreamAnalyzer.builder()
+                .openaiChat(chat)
+                .userName(transliterateUserName(user))
+                .telegramChatId(telegramChatId)
+                .build()
+        );
 
         String msgStart = "Привет!\n" +
                 "\n" +
@@ -157,7 +161,7 @@ public class CommandHandlerService {
         var analyzer = dreamAnalyzer.get(user.getId());
         analyzer.next();
         List<SendMessage> responseMessageList = new ArrayList<>();
-        Optional.ofNullable(analyzer.run(""))
+        Optional.ofNullable(analyzer.processMessage(""))
                 .ifPresent(responseMessageList::addAll);
 
         return responseMessageList;
@@ -171,7 +175,7 @@ public class CommandHandlerService {
         analyzer.previous();
 
         List<SendMessage> responseMessageList = new ArrayList<>();
-        Optional.ofNullable(analyzer.run(""))
+        Optional.ofNullable(analyzer.processMessage(""))
                 .ifPresent(responseMessageList::addAll);
 
         return responseMessageList;

@@ -24,7 +24,7 @@ class DreamComplete implements AnalyzerState {
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
+    public List<SendMessage> processMessage(DreamAnalyzer analyzer, String text) {
         return new ArrayList<>();
     }
 }

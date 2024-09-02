@@ -12,11 +12,11 @@ class DreamHistory implements AnalyzerState {
 
     private static final String MSG_DESC_1 = "На первом шаге я помогу записать твой сон в виде истории.";
     private static final String MSG_DESC_2 = "Постарайся описать его как можно подробнее, включая все детали, которые помнишь. " +
-            "Не беспокойся, если сначала рассказ будет состоять из отдельных фрагментов. На данном этапе важно собрать " +
-            "всю информацию, даже если она кажется разрозненной.";
+            "На данном этапе важно собрать всю информацию, даже если она кажется разрозненной: " +
+            "важно записать как можно больше деталей сна, включая образы, эмоции, диалоги и события.";
     private static final String MSG_DESC_3 = "Можешь отправлять описание сна в нескольких сообщениях. Когда будешь готов, " +
             "нажми кнопку **Продолжить**, чтобы перейти к следующему этапу анализа.";
-    private static final String MSG_NEXT = "|\u2705| Для перехода к следующему шагу нажми \"Продолжить\"";
+    private static final String MSG_NEXT = "\u2705 Для перехода к следующему шагу нажми \"Продолжить\"";
 
     @Override
     public DreamStatus getState() {
@@ -55,7 +55,7 @@ class DreamHistory implements AnalyzerState {
         dream.addAllActors(actorsList.stream().map(DreamActor::new).collect(Collectors.toList()));
 
         if (!dream.getAssociations().isEmpty()) {
-            analyzer.setState(new DreamAssociation(analyzer));
+            analyzer.setState(new DreamAssociation(analyzer.getDream()));
         }
 
         return sendMessages;
@@ -63,11 +63,11 @@ class DreamHistory implements AnalyzerState {
 
     @Override
     public void prev(DreamAnalyzer analyzer) {
-        analyzer.setState(new DreamNew());
+        analyzer.setState(new DreamStart());
     }
 
     @Override
-    public List<SendMessage> run(DreamAnalyzer analyzer, String text) {
+    public List<SendMessage> processMessage(DreamAnalyzer analyzer, String text) {
 
         List<SendMessage> messages = new ArrayList<>();
 
