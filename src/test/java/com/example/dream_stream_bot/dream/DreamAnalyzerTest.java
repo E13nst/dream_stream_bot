@@ -39,7 +39,7 @@ class DreamAnalyzerTest {
         dream.addAllActors(Arrays.asList(actors));
 
         DreamAnalyzer analyzer = DreamAnalyzer.builder().dream(dream).build();
-        analyzer.setState(new DreamSense());
+        analyzer.setState(new DreamAnalyzer.StateSense());
 
         String sense0 = faker.lebowski().quote();
         String sense1 = faker.lebowski().quote();
