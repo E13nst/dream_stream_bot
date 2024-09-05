@@ -2,7 +2,9 @@ package com.example.dream_stream_bot.service;
 
 import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.dream.DreamAnalyzer;
-import com.example.dream_stream_bot.model.*;
+import com.example.dream_stream_bot.model.ChatSession;
+import com.example.dream_stream_bot.model.InlineButtons;
+import com.example.dream_stream_bot.model.InlineCommandKeyboard;
 import jakarta.annotation.PostConstruct;
 import net.gcardone.junidecode.Junidecode;
 import org.slf4j.Logger;
@@ -14,12 +16,10 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -27,10 +27,12 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 public class CommandHandlerService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
+
     @Autowired
     private BotConfig botConfig;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
+    @Autowired
+    private AIService aiService;
 
     private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
     private final ConcurrentMap<Long, DreamAnalyzer> dreamAnalyzer = new ConcurrentHashMap<>();
@@ -44,12 +46,6 @@ public class CommandHandlerService {
             .addKey("Next", InlineButtons.NEXT.toString())
             .addKey("Previous", InlineButtons.PREVIOUS.toString())
             .addKey("Cancel", InlineButtons.CANCEL.toString())
-            .build();
-
-    private static final ReplyKeyboardMarkup replyKeyboard = new ReplyCommandKeyboard()
-            .addKey(ReplyButtons.NEXT.toString())
-            .addKey(ReplyButtons.PREVIOUS.toString())
-            .addKey(ReplyButtons.CANCEL.toString())
             .build();
 
     @PostConstruct
@@ -68,23 +64,9 @@ public class CommandHandlerService {
         // Обработка логики
         if (dreamAnalyzer.containsKey(user.getId())) {
 
-            long userId = user.getId();
-            var analyzer = dreamAnalyzer.get(userId);
+            var analyzer = dreamAnalyzer.get(user.getId());
 
-            ReplyButtons value = ReplyButtons.fromTitle(message.getText());
-
-            switch (Objects.requireNonNull(value)) {
-                case PREVIOUS -> {
-                    analyzer.previous();
-                    Optional.ofNullable(analyzer.processMessage("")).ifPresent(responseMessageList::addAll);
-                }
-                case NEXT -> {
-                    Optional.ofNullable(analyzer.next()).ifPresent(responseMessageList::addAll);
-                    Optional.ofNullable(analyzer.processMessage("")).ifPresent(responseMessageList::addAll);
-                }
-                case CANCEL -> dreamAnalyzer.remove(userId);
-                default -> Optional.ofNullable(analyzer.processMessage(message.getText())).ifPresent(responseMessageList::addAll);
-            }
+            Optional.ofNullable(analyzer.processMessage(message.getText())).ifPresent(responseMessageList::addAll);
 
             LOGGER.info("STATE: {}", analyzer.getState().toString());
 
@@ -198,9 +180,12 @@ public class CommandHandlerService {
         return String.format("Я %s.\n%s", user.getFirstName(), text);
     }
 
+    public static String chatUserName(User user) {
+        return user.getLastName() == null ? user.getFirstName() : user.getFirstName() + " " + user.getLastName();
+    }
+
     public static String transliterateUserName(User user) {
-        return Junidecode.unidecode(user.getFirstName()
-                .replace(" ", "_"))
+        return Junidecode.unidecode(user.getFirstName().replace(" ", "_"))
                 .replaceAll("[^a-zA-Z0-9_-]", "");
     }
 

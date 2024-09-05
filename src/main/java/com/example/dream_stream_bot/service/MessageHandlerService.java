@@ -1,7 +1,6 @@
 package com.example.dream_stream_bot.service;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.ChatSession;
 import jakarta.annotation.PostConstruct;
 import net.gcardone.junidecode.Junidecode;
 import org.slf4j.Logger;
@@ -12,87 +11,43 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.User;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 @Service
 public class MessageHandlerService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
+
     @Autowired
     private BotConfig botConfig;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
-    private final ConcurrentMap<Long, ChatSession> chats = new ConcurrentHashMap<>();
-
-    private String prompt;
-    private String openaiToken;
-    private String botName;
-
-    private InetSocketAddress proxySocketAddress;
-
-    private List<String> botNameAliases;
+    @Autowired
+    private AIService aiService;
 
     @PostConstruct
     public void init() {
-        prompt = botConfig.getPrompt();
-        openaiToken = botConfig.getOpenaiToken();
-        botName = botConfig.getBotName();
-        proxySocketAddress = botConfig.getProxySocketAddress();
-        botNameAliases = botConfig.getBotAliasesList();
     }
 
     public SendMessage handlePersonalMessage(Message message) {
-
-        User user = message.getFrom();
-        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        String query = chats.containsKey(user.getId()) ? message.getText() : addUserName(user, message.getText());
-        String response = chatSession.send(query, transliterateUserName(user));
-
+        String response = aiService.completion(message.getFrom().getId(), message.getText(), chatUserName(message.getFrom()));
         return newTelegramMessage(message.getChatId(), response);
     }
 
-    // Обработчик ответов на сообщения бота
+    // Обработчик ответов на сообщения бота в чате
     public SendMessage handleReplyToBotMessage(Message message) {
-
-        ChatSession chatSession = chats.computeIfAbsent(message.getChat().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        String response = chatSession.send(message.getText(), transliterateUserName(message.getFrom()));
-
-        return newTelegramMessage(message.getChatId(), response, message.getMessageId());
-    }
-
-    // Обработчик ответов на сообщения бота
-    public SendMessage handleBotMentionMessage(Message message) {
-
-        ChatSession chatSession = chats.computeIfAbsent(message.getFrom().getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        String response = chatSession.send(message.getText(), message.getFrom().getFirstName());
-
+        String response = aiService.completion(message.getChat().getId(), message.getText(), chatUserName(message.getFrom()));
         return newTelegramMessage(message.getChatId(), response, message.getMessageId());
     }
 
     // Обработчик сообщений канала
-    public SendMessage handleChannelMessage(Message message) {
-
-        User user = message.getFrom();
-        ChatSession chatSession = chats.computeIfAbsent(user.getId(), id -> new ChatSession(openaiToken, prompt, proxySocketAddress));
-        String response = chatSession.send(message.getText());
-
-        return newTelegramMessage(message.getChatId(), response, message.getMessageId());
-    }
+//    public SendMessage handleChannelMessage(Message message) {
+//        String response = aiService.completion(message.getText(), message.getChat().getId(), chatChannelName(message.getFrom()));
+//        return newTelegramMessage(message.getChatId(), response, message.getMessageId());
+//    }
 
     public static String transliterateUserName(User user) {
         return Junidecode.unidecode(user.getFirstName()).replaceAll("[^a-zA-Z0-9_-]", "");
     }
 
-    private static String addUserName(User user, String text) {
-        return String.format("Я %s.\n%s", user.getFirstName(), text);
-    }
-
-    private static String insertQuote(User user, String text, User rUser, String rText) {
-        return String.format("Я %s.\n\n%s писал: \"%s\"\n\n%s",
-                user.getFirstName(), rUser.getFirstName(), rText, text);
+    public static String chatUserName(User user) {
+        return user.getLastName() == null ? user.getFirstName() : user.getFirstName() + " " + user.getLastName();
     }
 
     public SendMessage newTelegramMessage(long chatId, String text) {
@@ -111,5 +66,4 @@ public class MessageHandlerService {
         sendMessage.enableMarkdown(true);
         return sendMessage;
     }
-
 }

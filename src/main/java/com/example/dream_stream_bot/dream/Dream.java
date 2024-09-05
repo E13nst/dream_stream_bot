@@ -19,7 +19,7 @@ public class Dream {
         history.append(text).append("\n");
     }
 
-    String getHistoryStr() {
+    public String getHistoryStr() {
         return history.toString();
     }
 

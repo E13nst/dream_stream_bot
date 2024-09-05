@@ -216,7 +216,10 @@ public class DreamAnalyzer {
 
         @Override
         public List<SendMessage> next(DreamAnalyzer analyzer) {
-            analyzer.setState(new StatePersonality());
+            if (!analyzer.getDream().getActors().isEmpty())
+                analyzer.setState(new StatePersonality());
+            else
+                analyzer.setState(new StateInterpretation());
             return null;
         }
 

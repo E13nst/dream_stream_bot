@@ -1,7 +1,11 @@
 package com.example.dream_stream_bot.config;
 
+import com.example.dream_stream_bot.service.InMemoryChatMemory;
 import lombok.Data;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.net.InetSocketAddress;
@@ -40,6 +44,21 @@ public class BotConfig {
         int port = proxyPort != null ? proxyPort : 1337;
         return new InetSocketAddress(proxyHost, port);
     }
+
+    @Bean
+    public InMemoryChatMemory inMemoryChatMemory() {
+        return new InMemoryChatMemory();
+    }
+
+    @Bean
+    public ChatClient chatClient(ChatClient.Builder chatClientBuilder, InMemoryChatMemory inMemoryChatMemory, BotConfig botConfig) {
+
+        return chatClientBuilder
+                .defaultAdvisors(new PromptChatMemoryAdvisor(inMemoryChatMemory))
+                .defaultSystem(botConfig.getPrompt())
+                .build();
+    }
+
 }
 
 
