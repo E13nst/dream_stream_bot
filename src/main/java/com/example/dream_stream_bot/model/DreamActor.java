@@ -1,4 +1,4 @@
-package com.example.dream_stream_bot.dream;
+package com.example.dream_stream_bot.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,7 +10,7 @@ import lombok.Setter;
 public class DreamActor {
     @Getter
     @Setter
-    String name;
+    String person;
     @Getter
     @Setter
     String characteristic;
@@ -21,8 +21,8 @@ public class DreamActor {
     @Setter
     String sense;
 
-    public DreamActor(String name) {
-        this.name = name;
+    public DreamActor(String person) {
+        this.person = person;
     }
 
 }

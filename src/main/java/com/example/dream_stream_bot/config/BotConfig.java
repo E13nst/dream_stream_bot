@@ -22,6 +22,7 @@ public class BotConfig {
     @Value("${bot.prompt}") String prompt;
     @Value("${bot.aliases:}") String botAliases;
     @Value("${bot.triggers:}") String botTriggers;
+    @Value("${bot.description.start}") String startDescription;
 
     @Value("${proxy.host:}") String proxyHost;
     @Value("${proxy.port:1337}") Integer proxyPort;
