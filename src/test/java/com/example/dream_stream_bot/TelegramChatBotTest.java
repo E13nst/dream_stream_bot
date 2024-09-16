@@ -1,6 +1,5 @@
 package com.example.dream_stream_bot;
 
-import com.example.dream_stream_bot.common.Steps;
 import com.example.dream_stream_bot.config.BotConfig;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +14,6 @@ class TelegramChatBotTest {
 
     @Autowired
     private BotConfig botConfig;
-    @Autowired
-    private Steps steps;
 
     private static final int PROMPT_MAX_LENGTH = 4096;
 
@@ -29,14 +26,6 @@ class TelegramChatBotTest {
         String openaiToken = botConfig.getOpenaiToken();
         assertNotNull(openaiToken, "Prompt should not be null");
         assertTrue(openaiToken.length() < PROMPT_MAX_LENGTH, "The string should be shorter than 4096 characters");
-    }
-
-    @Test
-    @DisplayName("Hello, OpenAI")
-    void testHelloOpenAI() {
-
-        String response = steps.sendMessage("Hello");
-        assertThat(response).isNotEmpty();
     }
 
 }

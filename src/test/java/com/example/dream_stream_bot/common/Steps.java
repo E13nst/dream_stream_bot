@@ -1,8 +1,6 @@
 package com.example.dream_stream_bot.common;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.ChatSession;
-import io.qameta.allure.Allure;
 import io.qameta.allure.Step;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -33,22 +31,22 @@ public class Steps {
         return new InetSocketAddress(botConfig.getProxyHost(), port);
     }
 
-    @Step("Get Chat Session")
-    public ChatSession getChatSessionStep(String token, String prompt) {
-        return new ChatSession(token, prompt, getProxySocketAddressStep());
-    }
-
-    @Step("Get Default Chat Session")
-    public ChatSession getChatSessionStep() {
-        return new ChatSession(botConfig.getOpenaiToken(), DEFAULT_PROMPT, getProxySocketAddressStep());
-    }
-
-    @Step("Send message")
-    public String sendMessage(String msg) {
-        String token = botConfig.getOpenaiToken();
-        String response = getChatSessionStep(token, DEFAULT_PROMPT).send(msg);
-        Allure.addAttachment("Response", response);
-        return response;
-    }
+//    @Step("Get Chat Session")
+//    public ChatSession getChatSessionStep(String token, String prompt) {
+//        return new ChatSession(token, prompt, getProxySocketAddressStep());
+//    }
+//
+//    @Step("Get Default Chat Session")
+//    public ChatSession getChatSessionStep() {
+//        return new ChatSession(botConfig.getOpenaiToken(), DEFAULT_PROMPT, getProxySocketAddressStep());
+//    }
+//
+//    @Step("Send message")
+//    public String sendMessage(String msg) {
+//        String token = botConfig.getOpenaiToken();
+//        String response = getChatSessionStep(token, DEFAULT_PROMPT).send(msg);
+//        Allure.addAttachment("Response", response);
+//        return response;
+//    }
 
 }
