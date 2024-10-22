@@ -29,6 +29,8 @@ public interface DreamService {
 
     String getDreamStateDescription(DreamState currentState);
 
+    DreamState getNextDreamState(DreamState currentDreamState);
+
     String create(Long userId);
 
     String findDreamElements(Long userId);

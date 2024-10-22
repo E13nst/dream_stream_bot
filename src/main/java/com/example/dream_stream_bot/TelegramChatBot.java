@@ -67,7 +67,7 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 if (message.getChat().isUserChat()) {
                     var sendMessageList = switch (message.getText()) {
                         case "/start" -> messageHandlerService.start(message);
-                        case "/help" -> messageHandlerService.help(message.getChatId());
+                        case "/help" -> messageHandlerService.help(message);
                         // Персональное сообщение
                         default -> messageHandlerService.handlePersonalMessage(message);
                     };

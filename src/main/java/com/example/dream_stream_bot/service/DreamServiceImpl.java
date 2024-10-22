@@ -103,13 +103,14 @@ public class DreamServiceImpl implements DreamService {
         return dreamStateConfig.getDescription(dreamState.name());
     }
 
-//    @Override
-//    public DreamState getNextDreamState(DreamState currentDreamState) {
-//        DreamState[] states = DreamState.values();
-//        int currentIndex = currentDreamState.ordinal();
-//        int nextIndex = (currentIndex + 1) % states.length;  // Переход к следующему состоянию или к первому
-//        return states[nextIndex];
-//    }
+    @Override
+    public DreamState getNextDreamState(DreamState currentDreamState) {
+        DreamState[] states = DreamState.values();
+        int currentIndex = currentDreamState.ordinal();
+        if (currentIndex < states.length)
+            currentIndex++;
+        return states[currentIndex];
+    }
 
     @Override
     public String create(Long userId) {

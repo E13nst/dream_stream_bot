@@ -4,10 +4,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 
 public class KeyboardFactory {
 
-    public static InlineKeyboardMarkup simpleWithCommand(String text, DreamCommand command) {
+    public static InlineKeyboardMarkup simpleWithCommand(DreamState state, String text) {
         return new InlineKeyboardMarkupBuilder()
-                .addKey(String.format("%s \u2705", text), command.name())
-                .addKey("Отмена \u274C", DreamCommand.CANCEL.name())
+                .addKey(String.format("%s \u2705", text), state.name())
+                .addKey("Отмена \u274C", DreamState.CANCEL.name())
                 .build();
     }
 }

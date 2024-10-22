@@ -1,7 +1,6 @@
 package com.example.dream_stream_bot.service;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.DreamCommand;
 import com.example.dream_stream_bot.model.DreamState;
 import com.example.dream_stream_bot.model.InlineKeyboardMarkupBuilder;
 import com.example.dream_stream_bot.model.KeyboardFactory;
@@ -65,7 +64,9 @@ public class MessageHandlerService {
             case HISTORY -> {
                 dreamService.addDreamText(user.getId(), message.getText());
 
-                InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand("Поиск ассоциаций", DreamCommand.FIND_ASSOCIATIONS);
+                DreamState nexState = DreamState.ASSOCIATION;
+
+                InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Поиск ассоциаций");
                 sendMessages.add(SendMessage.builder()
                         .chatId(message.getChatId())
                         .text("+++++++++++++++++++++++++++++++++++++")
@@ -82,9 +83,12 @@ public class MessageHandlerService {
                 if (element != null) {
                     sendMessages.add(msgFactory.createMarkdownMessage(String.format("- *%s*:", element)));
                 } else {
-                    String response = dreamService.getUserDream(user.getId()).associationsCollectForResult();
-                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand("Разбор персонажей", DreamCommand.FIND_ACTORS);
-                    sendMessages.add(msgFactory.createMarkdownMessage(response, keyboard));
+                    DreamState nexState = DreamState.PERSONALITY;
+                    String nexStateDescription = dreamService.getDreamStateDescription(nexState);
+
+//                    String response = dreamService.getUserDream(user.getId()).associationsCollectForResult();
+                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Разбор персонажей");
+                    sendMessages.add(msgFactory.createMarkdownMessage(nexStateDescription, keyboard));
                 }
             }
 
@@ -101,9 +105,12 @@ public class MessageHandlerService {
                     sendMessages.add(msgFactory.createMarkdownMessage(String.format("- *%s*:", nextActor.getPerson())));
 
                 } else {
-                    String response = dreamService.getUserDream(user.getId()).personsCollectForResult();
-                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand("Разбор черт личности персонажей", DreamCommand.SET_CONTEXT);
-                    sendMessages.add(msgFactory.createMarkdownMessage(response, keyboard));
+                    DreamState nexState = DreamState.CONTEXT;
+                    String nexStateDescription = dreamService.getDreamStateDescription(nexState);
+
+//                    String response = dreamService.getUserDream(user.getId()).personsCollectForResult();
+                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Разбор черт личности персонажей");
+                    sendMessages.add(msgFactory.createMarkdownMessage(nexStateDescription, keyboard));
                 }
 
             }
@@ -117,9 +124,12 @@ public class MessageHandlerService {
                     sendMessages.add(msgFactory.createMarkdownMessage(String.format("- *%s*:", nextActor.getCharacteristic())));
 
                 } else {
-                    String response = dreamService.getUserDream(user.getId()).contextCollectForResult();
-                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand("Продолжить", DreamCommand.SET_SENSE);
-                    sendMessages.add(msgFactory.createMarkdownMessage(response, keyboard));
+                    DreamState nexState = DreamState.SENSE;
+                    String nexStateDescription = dreamService.getDreamStateDescription(nexState);
+
+//                    String response = dreamService.getUserDream(user.getId()).contextCollectForResult();
+                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Продолжить");
+                    sendMessages.add(msgFactory.createMarkdownMessage(nexStateDescription, keyboard));
                 }
 
             }
@@ -133,9 +143,12 @@ public class MessageHandlerService {
                     sendMessages.add(msgFactory.createMarkdownMessage(String.format("- *%s*:", nextActor.getCharacteristic())));
 
                 } else {
-                    String response = dreamService.getUserDream(user.getId()).senseCollectForResult();
-                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand("Интерпретация", DreamCommand.INTERPRETATION);
-                    sendMessages.add(msgFactory.createMarkdownMessage(response, keyboard));
+                    DreamState nexState = DreamState.INTERPRETATION;
+                    String nexStateDescription = dreamService.getDreamStateDescription(nexState);
+
+//                    String response = dreamService.getUserDream(user.getId()).senseCollectForResult();
+                    InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Интерпретация");
+                    sendMessages.add(msgFactory.createMarkdownMessage(nexStateDescription, keyboard));
                 }
 
             }
@@ -150,36 +163,30 @@ public class MessageHandlerService {
 
     public List<SendMessage> start(Message message) {
 
-        List<SendMessage> responseMessageList = new ArrayList<>();
+        User user = message.getFrom();
+        TelegramMessageFactory msgFactory = new TelegramMessageFactory(user.getId());
 
-        var inlineKeyboardMarkup = new InlineKeyboardMarkupBuilder()
-                .addKey("Начать \u2705", DreamCommand.CREATE.toString())
-                .addKey("Отмена \u274C", DreamCommand.CANCEL.toString())
-                .build();
+        DreamState nexState = DreamState.HISTORY;
+        String nexStateDescription = dreamService.getDreamStateDescription(nexState);
 
-        String msgStart = botConfig.getStartDescription();
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(message.getChatId());
-        sendMessage.setText(msgStart);
-        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-        sendMessage.enableMarkdown(true);
-
-        responseMessageList.add(sendMessage);
-        return responseMessageList;
+        List<SendMessage> sendMessages = new ArrayList<>();
+        InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Начать");
+        sendMessages.add(msgFactory.createMarkdownMessage(nexStateDescription, keyboard));
+        return sendMessages;
     }
 
-    public List<SendMessage> help(long chatId) {
+    public List<SendMessage> help(Message message) {
 
-        List<SendMessage> responseMessageList = new ArrayList<>();
+        User user = message.getFrom();
+        TelegramMessageFactory msgFactory = new TelegramMessageFactory(user.getId());
 
-        String response = "Hi, nice to meet you!";
+        DreamState nexState = DreamState.HISTORY;
+        String nexStateDescription = dreamService.getDreamStateDescription(nexState);
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId);
-        sendMessage.setText(response);
-        responseMessageList.add(sendMessage);
-        return responseMessageList;
+        List<SendMessage> sendMessages = new ArrayList<>();
+        InlineKeyboardMarkup keyboard = KeyboardFactory.simpleWithCommand(nexState, "Начать");
+        sendMessages.add(msgFactory.createMarkdownMessage(nexStateDescription, keyboard));
+        return sendMessages;
     }
 
     public List<SendMessage> handleCallbackQuery(CallbackQuery callbackQuery) {
@@ -190,18 +197,18 @@ public class MessageHandlerService {
         List<SendMessage> responseMessageList = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(user.getId());
 
-        switch (DreamCommand.fromString(callbackQuery.getData())) {
-            case CREATE -> dreamService.create(user.getId());
-            case FIND_ASSOCIATIONS -> {
+        switch (DreamState.fromString(callbackQuery.getData())) {
+            case HISTORY -> dreamService.create(user.getId());
+            case ASSOCIATION -> {
                 dreamService.changeDreamState(user.getId(), DreamState.ASSOCIATION);
                 dreamService.findDreamElements(user.getId());
             }
-            case FIND_ACTORS -> {
+            case PERSONALITY -> {
                 dreamService.changeDreamState(user.getId(), DreamState.PERSONALITY);
                 dreamService.findDreamActors(user.getId());
             }
-            case SET_CONTEXT -> dreamService.changeDreamState(user.getId(), DreamState.CONTEXT);
-            case SET_SENSE -> dreamService.changeDreamState(user.getId(), DreamState.SENSE);
+            case CONTEXT -> dreamService.changeDreamState(user.getId(), DreamState.CONTEXT);
+            case SENSE -> dreamService.changeDreamState(user.getId(), DreamState.SENSE);
             case INTERPRETATION -> {
                 dreamService.changeDreamState(user.getId(), DreamState.ASSOCIATION);
                 String result = dreamService.interpretUserDream(user.getId(), chatUserName(user));
