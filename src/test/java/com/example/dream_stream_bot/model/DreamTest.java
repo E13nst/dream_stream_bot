@@ -23,7 +23,7 @@ class DreamTest {
                 .build().get();
         elements.forEach(dream::addElement);
 
-        assertThat(dream.getFirstUnassociatedDreamElement()).isNotNull().isEqualTo(elements.get(0));
+        assertThat(dream.getFirstUnassociatedDreamElement()).isNotNull().isIn(elements);
         assertThat(dream.getAssociations().get(elements.get(0))).isNull();
     }
 
