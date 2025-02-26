@@ -15,7 +15,7 @@ import java.util.List;
 @Configuration
 @Data
 public class BotConfig {
-    @Value("${openai.token}") String openaiToken;
+//    @Value("${openai.token}") String openaiToken;
 
     @Value("${bot.name}") String botName;
     @Value("${bot.token}") String token;
@@ -24,8 +24,8 @@ public class BotConfig {
     @Value("${bot.triggers:}") String botTriggers;
     @Value("${bot.description.start}") String startDescription;
 
-    @Value("${proxy.host:}") String proxyHost;
-    @Value("${proxy.port:1337}") Integer proxyPort;
+//    @Value("${proxy.host:}") String proxyHost;
+//    @Value("${proxy.port:1337}") Integer proxyPort;
 
     public List<String> getBotAliasesList() {
         String[] split = getBotAliases().split(",");
@@ -36,15 +36,15 @@ public class BotConfig {
         return Arrays.stream(split).toList();
     }
 
-    public InetSocketAddress getProxySocketAddress() {
-
-        if (proxyHost == null || proxyHost.trim().isEmpty()) {
-            return null;
-        }
-
-        int port = proxyPort != null ? proxyPort : 1337;
-        return new InetSocketAddress(proxyHost, port);
-    }
+//    public InetSocketAddress getProxySocketAddress() {
+//
+//        if (proxyHost == null || proxyHost.trim().isEmpty()) {
+//            return null;
+//        }
+//
+//        int port = proxyPort != null ? proxyPort : 1337;
+//        return new InetSocketAddress(proxyHost, port);
+//    }
 
     @Bean
     public InMemoryChatMemory inMemoryChatMemory() {

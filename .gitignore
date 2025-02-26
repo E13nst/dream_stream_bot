@@ -38,5 +38,4 @@ build/
 /application.properties.txt
 /src/test/java/com/example/dream_stream_bot/application.properties
 /src/test/java/com/example/dream_stream_bot/application.yaml
-/application.yaml
 /src/test/resources/application.yaml

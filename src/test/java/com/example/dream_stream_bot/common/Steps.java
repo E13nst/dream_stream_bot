@@ -20,17 +20,17 @@ public class Steps {
 //        this.botConfig = botConfig;
 //    }
 
-    @Step("Get proxy address")
-    public InetSocketAddress getProxySocketAddressStep() {
-
-        if (botConfig.getProxyHost() == null || botConfig.getProxyHost().trim().isEmpty()) {
-            return null;
-        }
-
-        int port = botConfig.getProxyPort() != null ? botConfig.getProxyPort() : 1337;
-
-        return new InetSocketAddress(botConfig.getProxyHost(), port);
-    }
+//    @Step("Get proxy address")
+//    public InetSocketAddress getProxySocketAddressStep() {
+//
+//        if (botConfig.getProxyHost() == null || botConfig.getProxyHost().trim().isEmpty()) {
+//            return null;
+//        }
+//
+//        int port = botConfig.getProxyPort() != null ? botConfig.getProxyPort() : 1337;
+//
+//        return new InetSocketAddress(botConfig.getProxyHost(), port);
+//    }
 
 //    @Step("Get Chat Session")
 //    public ChatSession getChatSessionStep(String token, String prompt) {
