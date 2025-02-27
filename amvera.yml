@@ -2,7 +2,7 @@ meta:
   environment: jvm
   toolchain:
     name: maven
-    version: 22
+    version: 17
 build:
   artifacts:
     target/*.jar: /
