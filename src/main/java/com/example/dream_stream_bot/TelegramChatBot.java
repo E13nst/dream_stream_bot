@@ -2,11 +2,11 @@ package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
 import com.example.dream_stream_bot.service.MessageHandlerService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ActionType;
@@ -17,11 +17,8 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 @Component
@@ -29,8 +26,6 @@ import java.util.stream.Stream;
 public class TelegramChatBot extends TelegramLongPollingBot {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     private static final int CHARACTERS_PER_SECOND = 100;
 
@@ -51,17 +46,17 @@ public class TelegramChatBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        handleUpdateAsync(update);
+    }
 
-        if (update.hasMessage() && update.getMessage().hasText()) {
-
-            Message message = update.getMessage();
-            User user = message.getFrom();
-
-            LOGGER.info(message.toString());
-
-            try {
+    @Async
+    public void handleUpdateAsync(Update update) {
+        try {
+            if (update.hasMessage() && update.getMessage().hasText()) {
+                Message message = update.getMessage();
+                User user = message.getFrom();
+                LOGGER.info(message.toString());
                 LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), message.getText());
-                LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), objectMapper.writeValueAsString(message));
 
                 // Персональное сообщение
                 if (message.getChat().isUserChat()) {
@@ -104,25 +99,48 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                     }
                 }
 
-            } catch (IOException e) {
-                LOGGER.error("Error: {}", e.getMessage());
-                e.printStackTrace();
+            } else if (update.hasCallbackQuery()) {
+                var callbackQuery = update.getCallbackQuery();
+                long chatId = callbackQuery.getMessage().getChatId();
+                var user = callbackQuery.getFrom();
+
+                LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
+
+                List<SendMessage> sendMessageList = messageHandlerService.handleCallbackQuery(callbackQuery);
+
+                if (sendMessageList != null) {
+                    LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
+                    sendMessageWithTyping(sendMessageList);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error handling update", e);
+            if (update.hasMessage()) {
+                sendErrorMessage(update.getMessage().getChatId(), "Произошла ошибка. Попробуйте позже.");
             }
         }
-        else if (update.hasCallbackQuery()) {
+    }
 
-            var callbackQuery = update.getCallbackQuery();
-            long chatId = callbackQuery.getMessage().getChatId();
-            var user = callbackQuery.getFrom();
-
-            LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
-
-            List<SendMessage> sendMessageList = messageHandlerService.handleCallbackQuery(callbackQuery);
-
-            if (sendMessageList != null) {
-                LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
-                sendMessageWithTyping(sendMessageList);
+    @Async
+    public void sendMessageWithTyping(List<SendMessage> sendMessages) {
+        for (SendMessage msg : sendMessages) {
+            try {
+                execute(msg);
+            } catch (TelegramApiException e) {
+                LOGGER.error("Failed to send message via Telegram API", e);
             }
+        }
+    }
+
+    public void sendErrorMessage(Long chatId, String text) {
+        try {
+            SendMessage errorMsg = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(text)
+                    .build();
+            execute(errorMsg);
+        } catch (TelegramApiException e) {
+            LOGGER.error("Failed to send error message", e);
         }
     }
 
@@ -167,19 +185,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private void sendMessageWithTyping(SendMessage message) {
 
         int durationInSeconds = message.getText().length() / CHARACTERS_PER_SECOND;
-        executorService.submit(() -> {
-            sendTypingAction(message.getChatId(), durationInSeconds);
-            sendMessage(message);
-        });
-    }
-
-    private void sendMessageWithTyping(List<SendMessage> messages) {
-
-        executorService.submit(() -> messages.forEach(m-> {
-            int durationInSeconds = m.getText().length() / CHARACTERS_PER_SECOND;
-            sendTypingAction(m.getChatId(), durationInSeconds);
-            sendMessage(m);
-        }));
+        sendTypingAction(message.getChatId(), durationInSeconds);
+        sendMessage(message);
     }
 
 }
