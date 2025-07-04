@@ -1,66 +1,100 @@
-# Dream Interpretation Telegram Bot
+# Telegram Dream Stream Bot
 
-This project is a Telegram bot designed to help with dream interpretation using methods from Jungian analysis. The bot provides users with an interactive experience to explore and understand the symbols and themes in their dreams.
+Telegram бот для анализа снов с использованием OpenAI GPT.
 
-You can find the bot on Telegram at https://t.me/einst_gpt_bot
+## 🚀 Быстрый старт
 
-## 🚀 Quick Start
+### Локальная разработка
 
-### Prerequisites
-- Java 17+
-- Maven 3.6+
-- Telegram Bot Token
-- OpenAI API Key
-
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd telegram-bot-dream-stream
-   ```
-
-2. **Configure environment variables**
-   ```bash
-   cp .env.example .env.app
-   ```
-   
-   Edit `.env.app` and add your actual tokens:
-   ```bash
-   TELEGRAM_API_TOKEN=your_actual_telegram_token
-   TELEGRAM_BOT_NAME=your_bot_name
-   OPENAI_API_KEY=your_actual_openai_key
-   ```
-
-3. **Build and run**
-   ```bash
-   mvn clean package -DskipTests
-   export $(cat .env.app | xargs) && java -jar target/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
-   ```
-
-## 🔒 Security
-
-- **Never commit secrets**: The `.env.app` file is ignored by git
-- **Use environment variables**: All sensitive data should be passed via environment variables
-- **Test configuration**: Test files use placeholder values, not real tokens
-
-## 📁 Project Structure
-
-- `src/main/resources/application.yaml` - Main configuration
-- `src/main/resources/application-prod.yaml` - Production configuration
-- `amvera.yml` - Deployment configuration for cloud.amvera.ru
-- `docker-compose.yml` - Docker configuration
-
-## 🐳 Docker
-
+1. **Клонируйте репозиторий:**
 ```bash
-docker-compose up -d
+git clone <repository-url>
+cd telegram-bot-dream-stream
 ```
 
-## 📝 Features
+2. **Создайте файл `.env.app` с вашими переменными:**
+```bash
+# Telegram Bot Configuration
+TELEGRAM_API_TOKEN=your_telegram_bot_token_here
+TELEGRAM_BOT_NAME=your_bot_name_here
 
-- Interactive dream analysis using Jungian psychology
-- AI-powered conversation with personality (Dalek the cat)
-- Multi-step dream interpretation process
-- Telegram webhook and long polling support
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+3. **Запустите приложение:**
+```bash
+export $(cat .env.app | xargs) && java -jar target/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+```
+
+### Деплой на Amvera
+
+1. **Создайте переменные окружения в панели Amvera:**
+
+   Перейдите в раздел **Переменные окружения** вашего приложения и добавьте:
+
+   | Переменная | Описание | Пример значения |
+   |------------|----------|-----------------|
+   | `TELEGRAM_API_TOKEN` | Токен вашего Telegram бота | `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz` |
+   | `TELEGRAM_BOT_NAME` | Имя вашего бота | `my_dream_bot` |
+   | `OPENAI_API_KEY` | API ключ OpenAI | `sk-...` |
+   | `BOT_WEBHOOK_URL` | URL для webhook (ваш домен) | `https://your-app.amvera.io/webhook` |
+
+2. **Получите ваш домен:**
+   - После создания приложения на Amvera, вам будет присвоен домен вида `your-app.amvera.io`
+   - Используйте его для формирования `BOT_WEBHOOK_URL`
+
+3. **Деплой:**
+```bash
+git add .
+git commit -m "Deploy to Amvera"
+git push origin main
+```
+
+## 🔧 Конфигурация
+
+### Переменные окружения
+
+| Переменная | Обязательная | Описание |
+|------------|--------------|----------|
+| `TELEGRAM_API_TOKEN` | ✅ | Токен бота от @BotFather |
+| `TELEGRAM_BOT_NAME` | ✅ | Имя бота |
+| `OPENAI_API_KEY` | ✅ | API ключ OpenAI |
+| `BOT_WEBHOOK_URL` | ✅ | URL для webhook (только для продакшена) |
+| `SERVER_PORT` | ❌ | Порт сервера (по умолчанию: 8080) |
+
+### Профили
+
+- **dev** - локальная разработка с long polling
+- **prod** - продакшен с webhook
+
+## 📝 Функциональность
+
+- 💬 Обычные сообщения обрабатываются через OpenAI
+- 🌙 Анализ снов с пошаговым процессом
+- 🔘 Интерактивные кнопки
+- 📊 История снов
+
+## 🔒 Безопасность
+
+⚠️ **ВАЖНО:** Никогда не коммитьте секретные данные в репозиторий!
+
+- Файл `.env.app` добавлен в `.gitignore`
+- Все секреты передаются через переменные окружения
+- В продакшене используйте переменные окружения хостинга
+
+## 🛠 Технологии
+
+- Java 17
+- Spring Boot 3.3.3
+- Telegram Bot API
+- OpenAI GPT API
+- Maven
+
+## 📞 Поддержка
+
+При возникновении проблем проверьте:
+1. Правильность переменных окружения
+2. Доступность API ключей
+3. Логи приложения в панели Amvera
 

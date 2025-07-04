@@ -25,7 +25,7 @@ run:
     - name: OPENAI_API_KEY
       value: "${OPENAI_API_KEY}"
     - name: BOT_WEBHOOK_URL
-      value: "https://dalek-e13nst.amvera.io/webhook"
+      value: "${BOT_WEBHOOK_URL}"
   healthcheck:
     path: /actuator/health
     port: 8080

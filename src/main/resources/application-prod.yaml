@@ -26,21 +26,24 @@ management:
     defaults:
       enabled: true
 
-bot:
-  token: ${TELEGRAM_API_TOKEN}
-  name: ${TELEGRAM_BOT_NAME:einst_gpt_bot}
-  webhook:
-    url: ${BOT_WEBHOOK_URL}
+telegram:
+  bot:
+    token: ${TELEGRAM_API_TOKEN}
+    name: ${TELEGRAM_BOT_NAME}
+    webhook:
+      url: ${BOT_WEBHOOK_URL}
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY}
 
 logging:
   level:
-    root: INFO
-    com.example.dream_stream_bot: DEBUG
+    com.example.dream_stream_bot: INFO
     org.springframework.web: INFO
     org.telegram: INFO
-    org.springframework.boot: INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: /data/app.log
