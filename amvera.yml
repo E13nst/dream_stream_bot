@@ -3,11 +3,41 @@ meta:
   toolchain:
     name: maven
     version: 17
+
 build:
   artifacts:
     target/*.jar: /
   args: 'spring-boot:repackage -B -X'
+
 run:
   jarName: target/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar
   persistenceMount: /data
-  containerPort: 80
+  containerPort: 8080
+  env:
+    - name: SERVER_PORT
+      value: "8080"
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: BOT_WEBHOOK_URL
+      value: "${AMVERA_APP_URL}"
+  healthcheck:
+    path: /actuator/health
+    port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+deploy:
+  replicas: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
