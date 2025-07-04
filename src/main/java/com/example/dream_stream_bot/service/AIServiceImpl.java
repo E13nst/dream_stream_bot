@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -18,6 +19,9 @@ import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvis
 public class AIServiceImpl implements AIService {
 
     private static final Logger logger = LoggerFactory.getLogger(AIServiceImpl.class);
+
+    @Value("${bot.prompt}")
+    private String systemPrompt;
 
     private static final String ELEMENTS_PROMPT = """
             Выбери из текста сновидения все неодушевленные образы, предметы, символы и ситуации вместе с их свойствами и характеристиками, 
@@ -72,6 +76,7 @@ public class AIServiceImpl implements AIService {
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
+                .system(systemPrompt)
                 .user(String.format("User %s says:\n%s", userName, message))
                 .call()
                 .content();
@@ -93,9 +98,10 @@ public class AIServiceImpl implements AIService {
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
-                    .user(message)
-                    .call()
-                    .content();
+                .system(systemPrompt)
+                .user(message)
+                .call()
+                .content();
 
         logger.info("🤖 AI Response | Chat: {} | Length: {} chars", 
             chatId, response.length());
