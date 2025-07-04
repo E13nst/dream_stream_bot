@@ -31,11 +31,26 @@ build/
 
 ### VS Code ###
 .vscode/
-/src/main/java/com/example/dream_stream_bot/example/
-/src/main/resources/application.yaml
+
+### Logs ###
+*.log
+logs/
+app.log
+bot.log
+
+### Environment and secrets ###
+.env*
+*.env
+.env.app
+.env.local
+.env.production
+
+### Configuration files with secrets ###
 /proxy.sh
-/.env.app
 /application.properties.txt
 /src/test/java/com/example/dream_stream_bot/application.properties
 /src/test/java/com/example/dream_stream_bot/application.yaml
-/src/test/resources/application.yaml
+
+### Documentation with secrets ###
+doc.txt
+/vpn.md
