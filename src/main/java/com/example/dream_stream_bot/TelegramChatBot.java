@@ -53,72 +53,83 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     public void handleUpdateAsync(Update update) {
         try {
             if (update.hasMessage() && update.getMessage().hasText()) {
-                Message message = update.getMessage();
-                User user = message.getFrom();
-                LOGGER.info(message.toString());
-                LOGGER.info("Message from {} [{}]: {}", user.getUserName(), user.getFirstName(), message.getText());
-
-                // Персональное сообщение
-                if (message.getChat().isUserChat()) {
-                    var sendMessageList = switch (message.getText()) {
-                        case "/start" -> messageHandlerService.start(message);
-                        case "/help" -> messageHandlerService.help(message);
-                        // Персональное сообщение
-                        default -> messageHandlerService.handlePersonalMessage(message);
-                    };
-
-                    if (sendMessageList != null) {
-                        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
-                        sendMessageWithTyping(sendMessageList);
-                    }
-
-                }
-
-                // Сообщение в группе
-                else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
-
-                    List<SendMessage> sendMessageList = null;
-
-                    // Ответ на сообщение бота
-                    if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
-                        sendMessageList = messageHandlerService.handleReplyToBotMessage(message);
-                    }
-                    // Упоминание имени бота
-                    else if (containsBotName(message.getText()) || containsTriggers(message.getText())) {
-                        sendMessageList = messageHandlerService.handleReplyToBotMessage(message);
-                    }
-
-                    // Сообщение в канале
-//                    else if (message.getIsAutomaticForward()) {  // проверить null
-//                        response = messageHandlerService.handleChannelMessage(message);
-//                    }
-
-                    if (sendMessageList != null) {
-                        LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
-                        sendMessageWithTyping(sendMessageList);
-                    }
-                }
-
+                handleTextMessage(update.getMessage());
             } else if (update.hasCallbackQuery()) {
-                var callbackQuery = update.getCallbackQuery();
-                long chatId = callbackQuery.getMessage().getChatId();
-                var user = callbackQuery.getFrom();
-
-                LOGGER.info("CallbackQuery {} [{}]: {}", user.getFirstName(), user.getUserName(), callbackQuery);
-
-                List<SendMessage> sendMessageList = messageHandlerService.handleCallbackQuery(callbackQuery);
-
-                if (sendMessageList != null) {
-                    LOGGER.info("Response from {} [{}]: {}", user.getFirstName(), user.getUserName(), sendMessageList);
-                    sendMessageWithTyping(sendMessageList);
-                }
+                handleCallbackQuery(update.getCallbackQuery());
             }
         } catch (Exception e) {
-            LOGGER.error("Error handling update", e);
+            LOGGER.error("Error handling update ID: {}", update.getUpdateId(), e);
             if (update.hasMessage()) {
                 sendErrorMessage(update.getMessage().getChatId(), "Произошла ошибка. Попробуйте позже.");
             }
         }
+    }
+
+    private void handleTextMessage(Message message) {
+        User user = message.getFrom();
+        String chatType = getChatType(message.getChat());
+        
+        LOGGER.info("📨 Received message | User: {} (@{}) | Chat: {} | Text: '{}'", 
+            user.getFirstName(), user.getUserName(), chatType, message.getText());
+
+        List<SendMessage> response = null;
+
+        if (message.getChat().isUserChat()) {
+            response = handlePersonalMessage(message);
+        } else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
+            response = handleGroupMessage(message);
+        }
+
+        if (response != null && !response.isEmpty()) {
+            LOGGER.info("📤 Sending response | User: {} (@{}) | Messages: {}", 
+                user.getFirstName(), user.getUserName(), response.size());
+            sendMessageWithTyping(response);
+        }
+    }
+
+    private void handleCallbackQuery(org.telegram.telegrambots.meta.api.objects.CallbackQuery callbackQuery) {
+        User user = callbackQuery.getFrom();
+        String data = callbackQuery.getData();
+        
+        LOGGER.info("🔘 Callback query | User: {} (@{}) | Data: '{}'", 
+            user.getFirstName(), user.getUserName(), data);
+
+        List<SendMessage> response = messageHandlerService.handleCallbackQuery(callbackQuery);
+
+        if (response != null && !response.isEmpty()) {
+            LOGGER.info("📤 Sending callback response | User: {} (@{}) | Messages: {}", 
+                user.getFirstName(), user.getUserName(), response.size());
+            sendMessageWithTyping(response);
+        }
+    }
+
+    private List<SendMessage> handlePersonalMessage(Message message) {
+        return switch (message.getText()) {
+            case "/start" -> messageHandlerService.start(message);
+            case "/help" -> messageHandlerService.help(message);
+            default -> messageHandlerService.handlePersonalMessage(message);
+        };
+    }
+
+    private List<SendMessage> handleGroupMessage(Message message) {
+        // Ответ на сообщение бота
+        if (message.isReply() && getBotUsername().equals(message.getReplyToMessage().getFrom().getUserName())) {
+            return messageHandlerService.handleReplyToBotMessage(message);
+        }
+        // Упоминание имени бота
+        else if (containsBotName(message.getText()) || containsTriggers(message.getText())) {
+            return messageHandlerService.handleReplyToBotMessage(message);
+        }
+        
+        return null;
+    }
+
+    private String getChatType(org.telegram.telegrambots.meta.api.objects.Chat chat) {
+        if (chat.isUserChat()) return "private";
+        if (chat.isGroupChat()) return "group";
+        if (chat.isSuperGroupChat()) return "supergroup";
+        if (chat.isChannelChat()) return "channel";
+        return "unknown";
     }
 
     @Async
@@ -126,8 +137,11 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         for (SendMessage msg : sendMessages) {
             try {
                 execute(msg);
+                LOGGER.debug("✅ Message sent successfully | Chat: {} | Text: '{}'", 
+                    msg.getChatId(), truncateText(msg.getText(), 50));
             } catch (TelegramApiException e) {
-                LOGGER.error("Failed to send message via Telegram API", e);
+                LOGGER.error("❌ Failed to send message | Chat: {} | Error: {}", 
+                    msg.getChatId(), e.getMessage());
             }
         }
     }
@@ -139,8 +153,10 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                     .text(text)
                     .build();
             execute(errorMsg);
+            LOGGER.info("⚠️ Error message sent | Chat: {}", chatId);
         } catch (TelegramApiException e) {
-            LOGGER.error("Failed to send error message", e);
+            LOGGER.error("❌ Failed to send error message | Chat: {} | Error: {}", 
+                chatId, e.getMessage());
         }
     }
 
@@ -154,7 +170,6 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     }
 
     private void sendTypingAction(String chatId, long durationInSeconds) {
-
         SendChatAction chatAction = new SendChatAction();
         chatAction.setChatId(chatId);
         chatAction.setAction(ActionType.TYPING);
@@ -166,27 +181,33 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 Thread.sleep(5000);
             }
         } catch (TelegramApiException e) {
-            LOGGER.error("Telegram API exception occurred", e);
+            LOGGER.error("❌ Failed to send typing action | Chat: {} | Error: {}", 
+                chatId, e.getMessage());
         } catch (InterruptedException e) {
-            LOGGER.error("Thread was interrupted", e);
+            LOGGER.error("❌ Typing action interrupted | Chat: {}", chatId);
             Thread.currentThread().interrupt();
         }
     }
 
     private void sendMessage(SendMessage message) {
-
         try {
             execute(message);
+            LOGGER.debug("✅ Message sent | Chat: {} | Text: '{}'", 
+                message.getChatId(), truncateText(message.getText(), 50));
         } catch (TelegramApiException e) {
-            LOGGER.error("Failed to send message via Telegram API", e);
+            LOGGER.error("❌ Failed to send message | Chat: {} | Error: {}", 
+                message.getChatId(), e.getMessage());
         }
     }
 
     private void sendMessageWithTyping(SendMessage message) {
-
         int durationInSeconds = message.getText().length() / CHARACTERS_PER_SECOND;
         sendTypingAction(message.getChatId(), durationInSeconds);
         sendMessage(message);
     }
 
+    private String truncateText(String text, int maxLength) {
+        if (text == null) return "null";
+        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
+    }
 }

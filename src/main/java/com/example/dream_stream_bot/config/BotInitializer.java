@@ -22,12 +22,14 @@ public class BotInitializer {
 
     @EventListener({ContextRefreshedEvent.class})
     public void init() throws TelegramApiException {
+        log.info("🤖 Initializing Telegram bot...");
+        
         try {
             TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
             telegramBotsApi.registerBot(telegramBot);
-            log.info("Bot registered successfully for long polling");
+            log.info("✅ Bot '{}' registered successfully for long polling", telegramBot.getBotUsername());
         } catch (TelegramApiException e) {
-            log.error("Failed to register bot", e);
+            log.error("❌ Failed to register bot '{}': {}", telegramBot.getBotUsername(), e.getMessage());
             throw e;
         }
     }

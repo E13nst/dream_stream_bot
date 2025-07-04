@@ -65,48 +65,68 @@ public class AIServiceImpl implements AIService {
 
     @Override
     public String completion(long chatId, String message, String userName) {
+        logger.info("🤖 AI Request | Chat: {} | User: {} | Message: '{}'", 
+            chatId, userName, truncateText(message, 100));
 
-        logger.info("[{}]: {}", userName, message);
-
-        return chatClient.prompt()
+        String response = chatClient.prompt()
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
                 .user(String.format("User %s says:\n%s", userName, message))
                 .call()
                 .content();
+
+        logger.info("🤖 AI Response | Chat: {} | User: {} | Length: {} chars", 
+            chatId, userName, response.length());
+        logger.debug("🤖 AI Response content | Chat: {} | User: {} | Text: '{}'", 
+            chatId, userName, truncateText(response, 200));
+
+        return response;
     }
 
     @Override
     public String completion(long chatId, String message) {
+        logger.info("🤖 AI Request | Chat: {} | Message: '{}'", 
+            chatId, truncateText(message, 100));
 
-        logger.info("completion: {}", message);
-
-        return chatClient.prompt()
+        String response = chatClient.prompt()
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
                     .user(message)
                     .call()
                     .content();
+
+        logger.info("🤖 AI Response | Chat: {} | Length: {} chars", 
+            chatId, response.length());
+        logger.debug("🤖 AI Response content | Chat: {} | Text: '{}'", 
+            chatId, truncateText(response, 200));
+
+        return response;
     }
 
     @Override
     public String findElements(long chatId, String text) {
+        logger.info("🔍 Extracting elements | Chat: {} | Text length: {}", chatId, text.length());
         String query = String.format("%s %s", ELEMENTS_PROMPT, text);
         return completion(chatId, query);
     }
 
     @Override
     public String findActors(long chatId, String text) {
+        logger.info("👥 Extracting actors | Chat: {} | Text length: {}", chatId, text.length());
         String query = String.format("%s %s", ACTORS_PROMPT, text);
         return completion(chatId, query);
     }
 
     @Override
     public List<String> extractAndSplitItems(long chatId, String text, String userName, String prompt) {
+        logger.info("📋 Extracting items | Chat: {} | User: {} | Text length: {}", 
+            chatId, userName, text.length());
         String query = String.format("%s %s", prompt, text);
-        return splitItems(completion(chatId, query, userName));
+        List<String> items = splitItems(completion(chatId, query, userName));
+        logger.info("📋 Extracted {} items | Chat: {} | User: {}", items.size(), chatId, userName);
+        return items;
     }
 
     @Override
@@ -121,6 +141,8 @@ public class AIServiceImpl implements AIService {
 
     @Override
     public String interpretDream(long chatId, String userName, Dream dream) {
+        logger.info("🌙 Dream interpretation | Chat: {} | User: {} | Dream length: {}", 
+            chatId, userName, dream.getHistory().length());
 
         String text = String.format(INTERPRET_PROMPT,
                 dream.associationsCollectForResult(),
@@ -135,6 +157,8 @@ public class AIServiceImpl implements AIService {
 
     @Override
     public String interpretDream(long chatId, Dream dream) {
+        logger.info("🌙 Dream interpretation | Chat: {} | Dream length: {}", 
+            chatId, dream.getHistory().length());
 
         String text = String.format(INTERPRET_PROMPT,
                 dream.associationsCollectForResult(),
@@ -149,7 +173,6 @@ public class AIServiceImpl implements AIService {
 
     //TODO перенести
     static List<String> splitItems(String rawText) {
-
         int startIndex = rawText.indexOf('[') + 1;
         int endIndex = rawText.lastIndexOf(']');
 
@@ -157,10 +180,16 @@ public class AIServiceImpl implements AIService {
             String extracted = rawText.substring(startIndex, endIndex);
             List<String> list = Arrays.asList(extracted.split(","));
             list = list.stream().map(e -> e.replace("\"", "")).map(String::trim).toList();
+            logger.debug("✅ Successfully parsed {} items from JSON", list.size());
             return list;
         } else {
-            logger.error("Elements not found");
+            logger.error("❌ Failed to parse JSON array from text: '{}'", truncateText(rawText, 100));
             return List.of();
         }
+    }
+
+    private static String truncateText(String text, int maxLength) {
+        if (text == null) return "null";
+        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
     }
 }

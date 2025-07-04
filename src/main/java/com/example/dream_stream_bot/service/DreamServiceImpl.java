@@ -4,6 +4,8 @@ import com.example.dream_stream_bot.config.DreamStateConfig;
 import com.example.dream_stream_bot.model.DreamActor;
 import com.example.dream_stream_bot.model.Dream;
 import com.example.dream_stream_bot.model.DreamState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,8 @@ import java.util.Map;
 
 @Service
 public class DreamServiceImpl implements DreamService {
+
+    private static final Logger logger = LoggerFactory.getLogger(DreamServiceImpl.class);
 
     private final DreamStateConfig dreamStateConfig;
 
@@ -28,46 +32,62 @@ public class DreamServiceImpl implements DreamService {
 
     @Override
     public String getDreamText(long userId) {
-        return userDreams.getOrDefault(userId, new Dream()).getHistory();
+        String text = userDreams.getOrDefault(userId, new Dream()).getHistory();
+        logger.debug("📖 Retrieved dream text | User: {} | Length: {} chars", userId, text.length());
+        return text;
     }
 
     @Override
     public void addDreamText(long userId, String dreamText) {
-        Dream dream = userDreams.computeIfAbsent(userId, k -> new Dream());
+        Dream dream = userDreams.computeIfAbsent(userId, k -> {
+            logger.info("🌙 Created new dream session | User: {}", userId);
+            return new Dream();
+        });
         dream.addToHistory(dreamText);
+        logger.info("📝 Added dream text | User: {} | Length: {} chars", userId, dreamText.length());
     }
 
     @Override
     public String getFirstUnassociatedDreamElement(long userId) {
-        return userDreams.computeIfAbsent(userId, k -> new Dream()).getFirstUnassociatedDreamElement();
+        String element = userDreams.computeIfAbsent(userId, k -> new Dream()).getFirstUnassociatedDreamElement();
+        logger.debug("🔍 Retrieved unassociated element | User: {} | Element: '{}'", userId, element);
+        return element;
     }
 
     @Override
     public void addDreamActor(long userId, DreamActor actor) {
         Dream dream = userDreams.computeIfAbsent(userId, k -> new Dream());
         dream.addActor(actor);
+        logger.info("👤 Added dream actor | User: {} | Actor: '{}'", userId, actor.getPerson());
     }
 
     @Override
     public void setCurrentDreamAssociation(long userId, String association) {
         Dream dream = userDreams.computeIfAbsent(userId, k -> new Dream());
         dream.setCurrentAssociation(association);
+        logger.info("💭 Set dream association | User: {} | Association: '{}'", userId, truncateText(association, 50));
     }
 
     @Override
     public Dream getUserDream(long userId) {
-        return userDreams.getOrDefault(userId, null);
+        Dream dream = userDreams.getOrDefault(userId, null);
+        logger.debug("📋 Retrieved user dream | User: {} | Exists: {}", userId, dream != null);
+        return dream;
     }
 
     @Override
     public Dream removeUserDream(long userId) {
-        return userDreams.remove(userId);
+        Dream dream = userDreams.remove(userId);
+        logger.info("🗑️ Removed user dream | User: {} | Existed: {}", userId, dream != null);
+        return dream;
     }
 
     @Override
     public void changeDreamState(long userId, DreamState newState) {
         Dream dream = userDreams.getOrDefault(userId, new Dream());
+        DreamState oldState = dream.getCurrentState();
         dream.changeState(newState);
+        logger.info("🔄 Changed dream state | User: {} | {} → {}", userId, oldState, newState);
     }
 
     @Override
@@ -75,9 +95,12 @@ public class DreamServiceImpl implements DreamService {
         Dream dream = userDreams.get(userId);
 
         if (dream != null) {
+            logger.info("🔮 Starting dream interpretation | User: {} | State: {}", userId, dream.getCurrentState());
             return aiService.interpretDream(userId, dream);
+        } else {
+            logger.warn("⚠️ No dream found for interpretation | User: {}", userId);
+            return null;
         }
-        return null;
     }
 
     @Override
@@ -85,22 +108,32 @@ public class DreamServiceImpl implements DreamService {
         Dream dream = userDreams.get(userId);
 
         if (dream != null) {
+            logger.info("🔮 Starting dream interpretation | User: {} ({}) | State: {}", userId, userName, dream.getCurrentState());
             String result = aiService.interpretDream(userId, userName, dream);
             dream.changeState(DreamState.COMPLETE);
+            logger.info("✅ Dream interpretation completed | User: {} ({}) | Result length: {} chars", userId, userName, result.length());
             return result;
+        } else {
+            logger.warn("⚠️ No dream found for interpretation | User: {} ({})", userId, userName);
+            return null;
         }
-        return null;
     }
 
     @Override
     public String getDreamCurrentStateDescription(long userId) {
         Dream dream = userDreams.getOrDefault(userId, null);
-        return dream != null ? dreamStateConfig.getDescription(dream.getCurrentState().name()) : null;
+        String description = dream != null ? dreamStateConfig.getDescription(dream.getCurrentState().name()) : null;
+        logger.debug("📄 Retrieved state description | User: {} | State: {} | Description: '{}'", 
+            userId, dream != null ? dream.getCurrentState() : "null", truncateText(description, 50));
+        return description;
     }
 
     @Override
     public String getDreamStateDescription(DreamState dreamState) {
-        return dreamStateConfig.getDescription(dreamState.name());
+        String description = dreamStateConfig.getDescription(dreamState.name());
+        logger.debug("📄 Retrieved state description | State: {} | Description: '{}'", 
+            dreamState, truncateText(description, 50));
+        return description;
     }
 
     @Override
@@ -109,17 +142,22 @@ public class DreamServiceImpl implements DreamService {
         int currentIndex = currentDreamState.ordinal();
         if (currentIndex < states.length)
             currentIndex++;
-        return states[currentIndex];
+        DreamState nextState = states[currentIndex];
+        logger.debug("➡️ Next dream state | Current: {} | Next: {}", currentDreamState, nextState);
+        return nextState;
     }
 
     @Override
     public String create(Long userId) {
         userDreams.put(userId, new Dream());
-        return getDreamStateDescription(DreamState.HISTORY);
+        String description = getDreamStateDescription(DreamState.HISTORY);
+        logger.info("🌙 Created new dream session | User: {} | Initial state: {}", userId, DreamState.HISTORY);
+        return description;
     }
 
     @Override
     public String findDreamElements(Long userId) {
+        logger.info("🔍 Finding dream elements | User: {}", userId);
 
         Dream dream = userDreams.get(userId);
 
@@ -127,6 +165,7 @@ public class DreamServiceImpl implements DreamService {
         List<String> elements = AIServiceImpl.splitItems(rawText);
 
         if (elements.isEmpty()) {
+            logger.warn("⚠️ No elements found in dream | User: {} | Raw response: '{}'", userId, truncateText(rawText, 100));
             return rawText;
         }
 
@@ -135,11 +174,15 @@ public class DreamServiceImpl implements DreamService {
 
         String description = getDreamCurrentStateDescription(userId);
         String element = dream.getFirstUnassociatedDreamElement();
+        
+        logger.info("✅ Found {} dream elements | User: {} | Next element: '{}'", elements.size(), userId, element);
+        
         return String.format("%s\n\n- *%s*:", description, element);
     }
 
     @Override
     public String findDreamActors(Long userId) {
+        logger.info("👥 Finding dream actors | User: {}", userId);
 
         Dream dream = userDreams.get(userId);
 
@@ -147,11 +190,14 @@ public class DreamServiceImpl implements DreamService {
         List<String> elements = AIServiceImpl.splitItems(rawText);
 
         if (elements.isEmpty()) { // TODO добавить выброс exception
+            logger.warn("⚠️ No actors found in dream | User: {} | Raw response: '{}'", userId, truncateText(rawText, 100));
             return rawText;
         }
 
         elements.forEach(e -> dream.addActor(new DreamActor(e)));
         dream.changeState(DreamState.PERSONALITY);
+
+        logger.info("✅ Found {} dream actors | User: {} | Next actor: '{}'", elements.size(), userId, dream.getNextActor().getPerson());
 
         return String.format("%s\n- *%s*:",
                 getDreamCurrentStateDescription(userId),
@@ -160,6 +206,7 @@ public class DreamServiceImpl implements DreamService {
 
     @Override
     public String stepDescription(Long userId) {
+        logger.debug("📋 Getting step description | User: {}", userId);
 
         StringBuilder descBuilder = new StringBuilder();
 
@@ -183,8 +230,16 @@ public class DreamServiceImpl implements DreamService {
             }
         }
 
-        return descBuilder.toString();
+        String description = descBuilder.toString();
+        logger.debug("📋 Step description | User: {} | State: {} | Description: '{}'", 
+            userId, dream != null ? dream.getCurrentState() : "null", truncateText(description, 100));
+        
+        return description;
     }
 
+    private String truncateText(String text, int maxLength) {
+        if (text == null) return "null";
+        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
+    }
 }
 
