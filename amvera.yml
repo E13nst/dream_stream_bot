@@ -18,6 +18,12 @@ run:
       value: "8080"
     - name: SPRING_PROFILES_ACTIVE
       value: "prod"
+    - name: TELEGRAM_API_TOKEN
+      value: "${TELEGRAM_API_TOKEN}"
+    - name: TELEGRAM_BOT_NAME
+      value: "${TELEGRAM_BOT_NAME}"
+    - name: OPENAI_API_KEY
+      value: "${OPENAI_API_KEY}"
     - name: BOT_WEBHOOK_URL
       value: "${AMVERA_APP_URL}"
   healthcheck:
