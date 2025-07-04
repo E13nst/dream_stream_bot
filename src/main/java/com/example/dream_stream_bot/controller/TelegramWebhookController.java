@@ -19,7 +19,7 @@ public class TelegramWebhookController {
         this.telegramBot = telegramBot;
     }
 
-    @PostMapping("/telegram")
+    @PostMapping
     public ResponseEntity<String> handleTelegramWebhook(@RequestBody Update update) {
         try {
             log.info("📨 Webhook update received | ID: {} | Type: {}", 
@@ -34,6 +34,11 @@ public class TelegramWebhookController {
                 update.getUpdateId(), e.getMessage());
             return ResponseEntity.internalServerError().body("Error processing update");
         }
+    }
+
+    @PostMapping("/telegram")
+    public ResponseEntity<String> handleTelegramWebhookLegacy(@RequestBody Update update) {
+        return handleTelegramWebhook(update);
     }
 
     @GetMapping("/health")
