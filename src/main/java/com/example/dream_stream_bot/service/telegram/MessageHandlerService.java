@@ -1,9 +1,9 @@
-package com.example.dream_stream_bot.service;
+package com.example.dream_stream_bot.service.telegram;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.DreamState;
-import com.example.dream_stream_bot.model.InlineKeyboardMarkupBuilder;
-import com.example.dream_stream_bot.model.KeyboardFactory;
+import com.example.dream_stream_bot.model.dream.DreamState;
+import com.example.dream_stream_bot.model.keyboard.InlineKeyboardMarkupBuilder;
+import com.example.dream_stream_bot.model.keyboard.KeyboardFactory;
 import jakarta.annotation.PostConstruct;
 import net.gcardone.junidecode.Junidecode;
 import org.slf4j.Logger;
@@ -25,11 +25,11 @@ public class MessageHandlerService {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
 
     @Autowired
-    private DreamService dreamService;
+    private com.example.dream_stream_bot.service.dream.DreamService dreamService;
     @Autowired
     private BotConfig botConfig;
     @Autowired
-    private AIService aiService;
+    private com.example.dream_stream_bot.service.ai.AIService aiService;
 
     @PostConstruct
     public void init() {

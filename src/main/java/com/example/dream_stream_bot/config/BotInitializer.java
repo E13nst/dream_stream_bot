@@ -1,6 +1,6 @@
 package com.example.dream_stream_bot.config;
 
-import com.example.dream_stream_bot.TelegramChatBot;
+import com.example.dream_stream_bot.bot.TelegramChatBot;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

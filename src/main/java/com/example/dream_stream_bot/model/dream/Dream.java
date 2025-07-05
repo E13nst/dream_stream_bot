@@ -1,4 +1,4 @@
-package com.example.dream_stream_bot.model;
+package com.example.dream_stream_bot.model.dream;
 
 import lombok.Getter;
 import lombok.Setter;

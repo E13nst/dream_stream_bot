@@ -1,9 +1,10 @@
-package com.example.dream_stream_bot.service;
+package com.example.dream_stream_bot.service.dream;
 
 import com.example.dream_stream_bot.config.DreamStateConfig;
-import com.example.dream_stream_bot.model.DreamActor;
-import com.example.dream_stream_bot.model.Dream;
-import com.example.dream_stream_bot.model.DreamState;
+import com.example.dream_stream_bot.model.dream.DreamActor;
+import com.example.dream_stream_bot.model.dream.Dream;
+import com.example.dream_stream_bot.model.dream.DreamState;
+import com.example.dream_stream_bot.util.AIUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ public class DreamServiceImpl implements DreamService {
     private final DreamStateConfig dreamStateConfig;
 
     @Autowired
-    AIService aiService;
+    com.example.dream_stream_bot.service.ai.AIService aiService;
 
     @Autowired
     public DreamServiceImpl(DreamStateConfig dreamStateConfig) {
@@ -162,7 +163,7 @@ public class DreamServiceImpl implements DreamService {
         Dream dream = userDreams.get(userId);
 
         String rawText = aiService.findElements(userId, dream.getHistory());
-        List<String> elements = AIServiceImpl.splitItems(rawText);
+        List<String> elements = AIUtils.splitItems(rawText);
 
         if (elements.isEmpty()) {
             logger.warn("⚠️ No elements found in dream | User: {} | Raw response: '{}'", userId, truncateText(rawText, 100));
@@ -187,7 +188,7 @@ public class DreamServiceImpl implements DreamService {
         Dream dream = userDreams.get(userId);
 
         String rawText = aiService.findActors(userId, dream.getHistory());
-        List<String> elements = AIServiceImpl.splitItems(rawText);
+        List<String> elements = AIUtils.splitItems(rawText);
 
         if (elements.isEmpty()) { // TODO добавить выброс exception
             logger.warn("⚠️ No actors found in dream | User: {} | Raw response: '{}'", userId, truncateText(rawText, 100));

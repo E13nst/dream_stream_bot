@@ -1,6 +1,6 @@
 package com.example.dream_stream_bot.config;
 
-import com.example.dream_stream_bot.service.InMemoryChatMemory;
+import com.example.dream_stream_bot.service.memory.InMemoryChatMemory;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package com.example.dream_stream_bot.model;
+package com.example.dream_stream_bot.model.keyboard;
 
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;

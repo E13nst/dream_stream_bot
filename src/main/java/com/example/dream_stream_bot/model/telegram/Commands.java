@@ -1,4 +1,4 @@
-package com.example.dream_stream_bot.model;
+package com.example.dream_stream_bot.model.telegram;
 
 public enum Commands {
 

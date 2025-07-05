@@ -1,4 +1,4 @@
-package com.example.dream_stream_bot.service;
+package com.example.dream_stream_bot.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

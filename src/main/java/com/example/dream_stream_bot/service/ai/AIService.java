@@ -1,6 +1,6 @@
-package com.example.dream_stream_bot.service;
+package com.example.dream_stream_bot.service.ai;
 
-import com.example.dream_stream_bot.model.Dream;
+import com.example.dream_stream_bot.model.dream.Dream;
 
 import java.util.List;
 

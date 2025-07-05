@@ -1,8 +1,8 @@
-package com.example.dream_stream_bot.service;
+package com.example.dream_stream_bot.service.dream;
 
-import com.example.dream_stream_bot.model.DreamActor;
-import com.example.dream_stream_bot.model.Dream;
-import com.example.dream_stream_bot.model.DreamState;
+import com.example.dream_stream_bot.model.dream.DreamActor;
+import com.example.dream_stream_bot.model.dream.Dream;
+import com.example.dream_stream_bot.model.dream.DreamState;
 
 public interface DreamService {
     void addDreamText(long userId, String dreamText);

@@ -1,7 +1,7 @@
-package com.example.dream_stream_bot;
+package com.example.dream_stream_bot.bot;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.service.MessageHandlerService;
+import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

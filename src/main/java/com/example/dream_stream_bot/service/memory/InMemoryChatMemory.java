@@ -1,4 +1,4 @@
-package com.example.dream_stream_bot.service;
+package com.example.dream_stream_bot.service.memory;
 
 import java.util.ArrayList;
 import java.util.Collections;
