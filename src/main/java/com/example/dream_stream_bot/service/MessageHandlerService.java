@@ -302,10 +302,10 @@ public class MessageHandlerService {
     }
 
     public static String chatUserName(User user) {
-        if (user.getUserName() != null) {
+        if (user.getFirstName() != null) {
+            return user.getFirstName();
+        } else if (user.getUserName() != null) {
             return user.getUserName();
-        } else if (user.getFirstName() != null) {
-            return transliterateUserName(user);
         } else {
             return "User" + user.getId();
         }
