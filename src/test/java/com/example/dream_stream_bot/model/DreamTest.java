@@ -1,5 +1,8 @@
 package com.example.dream_stream_bot.model;
 
+import com.example.dream_stream_bot.model.dream.Dream;
+import com.example.dream_stream_bot.model.dream.DreamActor;
+import com.example.dream_stream_bot.model.dream.DreamState;
 import io.qameta.allure.Step;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.Disabled;

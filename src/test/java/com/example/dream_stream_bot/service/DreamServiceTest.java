@@ -1,7 +1,9 @@
 package com.example.dream_stream_bot.service;
 
 import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.model.DreamActor;
+import com.example.dream_stream_bot.model.dream.DreamActor;
+import com.example.dream_stream_bot.service.ai.AIService;
+import com.example.dream_stream_bot.service.dream.DreamService;
 import net.datafaker.Faker;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
