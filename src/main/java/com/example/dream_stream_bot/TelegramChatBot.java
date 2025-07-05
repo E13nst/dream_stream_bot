@@ -58,9 +58,12 @@ public class TelegramChatBot extends TelegramLongPollingBot {
                 handleCallbackQuery(update.getCallbackQuery());
             }
         } catch (Exception e) {
-            LOGGER.error("Error handling update ID: {}", update.getUpdateId(), e);
+            LOGGER.error("❌ Error handling update ID: {} | Error: {} | Stack trace: {}", 
+                update.getUpdateId(), e.getMessage(), e.getStackTrace()[0]);
+            LOGGER.error("❌ Full stack trace:", e);
             if (update.hasMessage()) {
-                sendErrorMessage(update.getMessage().getChatId(), "Произошла ошибка. Попробуйте позже.");
+                sendErrorMessage(update.getMessage().getChatId(), 
+                    "Произошла ошибка: " + e.getClass().getSimpleName() + ". Попробуйте позже.");
             }
         }
     }

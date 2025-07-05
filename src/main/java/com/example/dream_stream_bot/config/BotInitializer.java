@@ -20,7 +20,7 @@ public class BotInitializer {
     @Value("${spring.profiles.active:dev}")
     private String activeProfile;
 
-    @Value("${bot.webhook.url:}")
+    @Value("${telegram.bot.webhook.url:}")
     private String webhookUrl;
 
     @Autowired
