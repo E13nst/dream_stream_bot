@@ -2,6 +2,8 @@ package com.example.dream_stream_bot.config;
 
 import com.example.dream_stream_bot.service.InMemoryChatMemory;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +17,9 @@ import java.util.List;
 @Configuration
 @Data
 public class BotConfig {
+    
+    private static final Logger logger = LoggerFactory.getLogger(BotConfig.class);
+    
 //    @Value("${openai.token}") String openaiToken;
 
     @Value("${bot.name}") String botName;
@@ -53,7 +58,11 @@ public class BotConfig {
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder chatClientBuilder, InMemoryChatMemory inMemoryChatMemory, BotConfig botConfig) {
-
+        logger.info("🔧 BotConfig loaded | Bot Name: {} | Token: {} | Prompt loaded: {}", 
+            botName, 
+            token != null ? token.substring(0, Math.min(10, token.length())) + "..." : "null",
+            prompt != null ? "YES" : "NO");
+            
         return chatClientBuilder
                 .defaultAdvisors(new PromptChatMemoryAdvisor(inMemoryChatMemory))
                 .defaultSystem(botConfig.getPrompt())

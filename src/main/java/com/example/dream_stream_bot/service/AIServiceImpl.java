@@ -71,6 +71,11 @@ public class AIServiceImpl implements AIService {
     public String completion(long chatId, String message, String userName) {
         logger.info("🤖 AI Request | Chat: {} | User: {} | Message: '{}'", 
             chatId, userName, truncateText(message, 100));
+        
+        // Логируем конфигурацию для диагностики
+        logger.info("🔧 OpenAI Config | API Key: {} | System Prompt: {}", 
+            systemPrompt != null ? systemPrompt.substring(0, Math.min(50, systemPrompt.length())) + "..." : "null",
+            systemPrompt != null ? "loaded" : "NOT LOADED");
 
         String response = chatClient.prompt()
                 .advisors(a -> a
