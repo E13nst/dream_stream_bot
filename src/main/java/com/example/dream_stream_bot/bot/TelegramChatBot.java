@@ -139,6 +139,8 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     public void sendMessageWithTyping(List<SendMessage> sendMessages) {
         for (SendMessage msg : sendMessages) {
             try {
+                int durationInSeconds = Math.max(1, msg.getText() != null ? msg.getText().length() / CHARACTERS_PER_SECOND : 1);
+                sendTypingAction(msg.getChatId(), durationInSeconds);
                 execute(msg);
                 LOGGER.debug("✅ Message sent successfully | Chat: {} | Text: '{}'", 
                     msg.getChatId(), truncateText(msg.getText(), 50));
