@@ -101,7 +101,12 @@ amvera logs your-app-name
 ## 1. **Таблица ботов**
 
 ```sql
-<code_block_to_apply_changes_from>
+CREATE TABLE bot (
+    id SERIAL PRIMARY KEY,
+    bot_uid VARCHAR(64) NOT NULL UNIQUE,         -- уникальный идентификатор (username или свой)
+    telegram_bot_id BIGINT NOT NULL UNIQUE,      -- Telegram Bot ID
+    name VARCHAR(128) NOT NULL
+);
 ```
 - `id` — внутренний ключ.
 - `bot_uid` — уникальный идентификатор (можно использовать username или что-то своё).
@@ -115,15 +120,12 @@ amvera logs your-app-name
 ```sql
 CREATE TABLE chat_memory (
     id SERIAL PRIMARY KEY,
-    bot_id INT NOT NULL REFERENCES bot(id),
-    user_id BIGINT NOT NULL,           -- id пользователя Telegram
-    chat_id BIGINT,                    -- id чата (группы/канала), для приватных чатов — NULL
-    message_index INT NOT NULL,
-    role VARCHAR(16) NOT NULL,
-    content TEXT NOT NULL,
+    conversation_id VARCHAR(255) NOT NULL,   -- уникальный ключ диалога (например, chatId, userId, botId и т.д.)
+    message_index INT NOT NULL,              -- порядковый номер сообщения в рамках диалога
+    role VARCHAR(16) NOT NULL,               -- роль: 'user', 'assistant', 'system' и т.д.
+    content TEXT NOT NULL,                   -- текст сообщения
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    -- Составной уникальный ключ для истории:
-    UNIQUE (bot_id, user_id, chat_id, message_index)
+    CONSTRAINT chat_memory_conversation_id_message_index_key UNIQUE (conversation_id, message_index)
 );
 ```
 
@@ -131,25 +133,18 @@ CREATE TABLE chat_memory (
 
 ## 3. **Пояснения по полям**
 
-- **bot_id** — внешний ключ на таблицу ботов. Позволяет хранить историю для разных ботов.
-- **user_id** — id пользователя Telegram. Для групповых чатов — id отправителя, для приватных — id пользователя.
-- **chat_id** — id группы/канала. Для приватных чатов — NULL (или можно дублировать user_id, если так удобнее).
-- **message_index** — порядковый номер сообщения в рамках диалога (для конкретного сочетания bot_id, user_id, chat_id).
+- **conversation_id** — строковый идентификатор диалога. Формируется в коде (например, из chatId, userId, botId и т.д.).
+- **message_index** — порядковый номер сообщения в рамках одного диалога (conversation_id).
 - **role, content, created_at** — как и раньше.
-- **UNIQUE (bot_id, user_id, chat_id, message_index)** — обеспечивает уникальность сообщений в рамках одного диалога.
+- **UNIQUE (conversation_id, message_index)** — обеспечивает уникальность сообщений в рамках одного диалога.
 
 ---
 
 ## 4. **Как формировать ключ диалога в коде**
 
-- Для приватного чата:  
-  - `bot_id` = id бота  
-  - `user_id` = id пользователя  
-  - `chat_id` = NULL  
-- Для группового чата:  
-  - `bot_id` = id бота  
-  - `user_id` = id пользователя (отправителя)  
-  - `chat_id` = id группы
+- Для приватного чата: conversation_id = "botId:userId"
+- Для группового чата: conversation_id = "botId:chatId"
+- Формат ключа можно выбрать любой, главное — чтобы он был уникален для каждого диалога.
 
 ---
 
@@ -157,22 +152,9 @@ CREATE TABLE chat_memory (
 
 ```sql
 SELECT * FROM chat_memory
-WHERE bot_id = :botId
-  AND user_id = :userId
-  AND (chat_id = :chatId OR (:chatId IS NULL AND chat_id IS NULL))
+WHERE conversation_id = :conversationId
 ORDER BY message_index ASC
-LIMIT :lastN OFFSET GREATEST(0, (SELECT COUNT(*) FROM chat_memory WHERE ...) - :lastN)
+LIMIT :lastN OFFSET GREATEST(0, (SELECT COUNT(*) FROM chat_memory WHERE conversation_id = :conversationId) - :lastN)
 ```
 
 ---
-
-## 6. **Преимущества такого подхода**
-
-- Можно хранить историю для любого количества ботов.
-- Гарантируется раздельный контекст для каждого пользователя и чата.
-- Легко расширять (например, добавить поддержку других мессенджеров).
-
----
-
-**Если хотите — могу подготовить DDL-скрипты, JPA-entity и пример репозитория под такую структуру!**  
-Сообщите, если нужно реализовать это в коде или есть дополнительные пожелания по полям. 
