@@ -95,3 +95,84 @@ amvera logs your-app-name
 1. Увеличьте лимиты памяти в `amvera.yml`
 2. Проверьте утечки памяти в коде
 3. Настройте GC параметры JVM 
+
+---
+
+## 1. **Таблица ботов**
+
+```sql
+<code_block_to_apply_changes_from>
+```
+- `id` — внутренний ключ.
+- `bot_uid` — уникальный идентификатор (можно использовать username или что-то своё).
+- `telegram_bot_id` — Telegram Bot ID (числовой).
+- `name` — человекочитаемое имя.
+
+---
+
+## 2. **Таблица истории чата (chat_memory)**
+
+```sql
+CREATE TABLE chat_memory (
+    id SERIAL PRIMARY KEY,
+    bot_id INT NOT NULL REFERENCES bot(id),
+    user_id BIGINT NOT NULL,           -- id пользователя Telegram
+    chat_id BIGINT,                    -- id чата (группы/канала), для приватных чатов — NULL
+    message_index INT NOT NULL,
+    role VARCHAR(16) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Составной уникальный ключ для истории:
+    UNIQUE (bot_id, user_id, chat_id, message_index)
+);
+```
+
+---
+
+## 3. **Пояснения по полям**
+
+- **bot_id** — внешний ключ на таблицу ботов. Позволяет хранить историю для разных ботов.
+- **user_id** — id пользователя Telegram. Для групповых чатов — id отправителя, для приватных — id пользователя.
+- **chat_id** — id группы/канала. Для приватных чатов — NULL (или можно дублировать user_id, если так удобнее).
+- **message_index** — порядковый номер сообщения в рамках диалога (для конкретного сочетания bot_id, user_id, chat_id).
+- **role, content, created_at** — как и раньше.
+- **UNIQUE (bot_id, user_id, chat_id, message_index)** — обеспечивает уникальность сообщений в рамках одного диалога.
+
+---
+
+## 4. **Как формировать ключ диалога в коде**
+
+- Для приватного чата:  
+  - `bot_id` = id бота  
+  - `user_id` = id пользователя  
+  - `chat_id` = NULL  
+- Для группового чата:  
+  - `bot_id` = id бота  
+  - `user_id` = id пользователя (отправителя)  
+  - `chat_id` = id группы
+
+---
+
+## 5. **Пример запроса истории**
+
+```sql
+SELECT * FROM chat_memory
+WHERE bot_id = :botId
+  AND user_id = :userId
+  AND (chat_id = :chatId OR (:chatId IS NULL AND chat_id IS NULL))
+ORDER BY message_index ASC
+LIMIT :lastN OFFSET GREATEST(0, (SELECT COUNT(*) FROM chat_memory WHERE ...) - :lastN)
+```
+
+---
+
+## 6. **Преимущества такого подхода**
+
+- Можно хранить историю для любого количества ботов.
+- Гарантируется раздельный контекст для каждого пользователя и чата.
+- Легко расширять (например, добавить поддержку других мессенджеров).
+
+---
+
+**Если хотите — могу подготовить DDL-скрипты, JPA-entity и пример репозитория под такую структуру!**  
+Сообщите, если нужно реализовать это в коде или есть дополнительные пожелания по полям. 

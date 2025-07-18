@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
+import com.example.dream_stream_bot.service.memory.PostgresChatMemory;
 
 @Configuration
 @Data
@@ -52,19 +53,18 @@ public class BotConfig {
 //    }
 
     @Bean
-    public InMemoryChatMemory inMemoryChatMemory() {
-        return new InMemoryChatMemory();
+    public PostgresChatMemory postgresChatMemory() {
+        return new PostgresChatMemory();
     }
 
     @Bean
-    public ChatClient chatClient(ChatClient.Builder chatClientBuilder, InMemoryChatMemory inMemoryChatMemory, BotConfig botConfig) {
+    public ChatClient chatClient(ChatClient.Builder chatClientBuilder, PostgresChatMemory postgresChatMemory, BotConfig botConfig) {
         logger.info("🔧 BotConfig loaded | Bot Name: {} | Token: {} | Prompt loaded: {}", 
             botName, 
             token != null ? token.substring(0, Math.min(10, token.length())) + "..." : "null",
             prompt != null ? "YES" : "NO");
-            
         return chatClientBuilder
-                .defaultAdvisors(new PromptChatMemoryAdvisor(inMemoryChatMemory))
+                .defaultAdvisors(new PromptChatMemoryAdvisor(postgresChatMemory))
                 .defaultSystem(botConfig.getPrompt())
                 .build();
     }

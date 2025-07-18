@@ -10,7 +10,6 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.stereotype.Component;
 
-@Component
 public class InMemoryChatMemory implements ChatMemory {
 
     // Потокобезопасная карта для хранения сообщений по conversationId
