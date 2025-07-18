@@ -23,6 +23,9 @@ public class AIServiceImpl implements AIService {
     @Value("${bot.prompt}")
     private String systemPrompt;
 
+    @Value("${bot.memory-window-size:100}")
+    private int memoryWindowSize;
+
     private static final String ELEMENTS_PROMPT = """
             Выбери из текста сновидения все неодушевленные образы, предметы, символы и ситуации вместе с их свойствами и характеристиками, 
             которые можно использовать для анализа этого сновидения по Юнгу. Список не должен включать персонажей и действующих лиц. Не давай своих интерпретаций, 
@@ -80,7 +83,7 @@ public class AIServiceImpl implements AIService {
         String response = chatClient.prompt()
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memoryWindowSize))
                 .system(systemPrompt)
                 .user(String.format("User %s says:\n%s", userName, message))
                 .call()
@@ -102,7 +105,7 @@ public class AIServiceImpl implements AIService {
         String response = chatClient.prompt()
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 100))
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memoryWindowSize))
                 .system(systemPrompt)
                 .user(message)
                 .call()
