@@ -8,7 +8,7 @@ WORKDIR /app
 COPY build/libs/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar /app/telegram-bot-dream-stream.jar
 
 # Copy the external application.yaml file into the Docker container
-COPY application.yaml /app/config/application.yaml
+COPY src/main/resources/application.yaml /app/config/application.yaml
 
 # Copy the additional file to the container
 # COPY prompt.txt /app/prompt.txt
