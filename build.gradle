@@ -12,6 +12,9 @@ sourceCompatibility = '17'
 targetCompatibility = '17'
 
 repositories {
+    maven { url 'https://maven.yandex.ru/repository/maven-central/' }
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    maven { url 'https://jitpack.io' }
     mavenCentral()
     maven { url = uri('https://repo.spring.io/milestone') }
 }
