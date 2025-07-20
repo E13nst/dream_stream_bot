@@ -24,7 +24,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 3. **Запустите приложение:**
 ```bash
-export $(cat .env.app | xargs) && java -jar target/telegram-bot-dream-stream-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+export $(cat .env.app | xargs) && ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
 ### Деплой на Amvera
@@ -89,7 +89,7 @@ git push origin main
 - Spring Boot 3.3.3
 - Telegram Bot API
 - OpenAI GPT API
-- Maven
+- Gradle
 
 ## 📞 Поддержка
 

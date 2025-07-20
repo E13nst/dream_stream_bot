@@ -49,7 +49,7 @@ git push amvera main
 Файл `amvera.yml` содержит конфигурацию для деплоя:
 
 - **Java 17** - версия Java
-- **Maven** - система сборки
+- **Gradle** - система сборки
 - **Порт 8080** - порт приложения
 - **Health check** - проверка здоровья приложения
 - **Автоскейлинг** - автоматическое масштабирование
@@ -183,7 +183,7 @@ amvera deploy
 ```
 Amvera автоматически выполнит:
 - Скачивание исходников
-- Сборку проекта (`mvn clean install`)
+- Сборку проекта (`./gradlew clean build`)
 - Подтянет все зависимости из pom.xml
 - Соберёт jar и запустит приложение
 
@@ -208,12 +208,12 @@ amvera logs your-app-name
 ### 4. **(Опционально) Принудительная очистка кэша зависимостей**
 Если были проблемы с зависимостями, можно добавить в build-скрипт:
 ```sh
-mvn clean install -U
+./gradlew clean build --refresh-dependencies
 ```
 или в секцию `build.args` в `amvera.yml`:
 ```yaml
 build:
   args: 'clean install -U spring-boot:repackage -B -X'
 ```
-Это заставит Maven заново скачать все зависимости.
+Это заставит Gradle заново скачать все зависимости.
 
