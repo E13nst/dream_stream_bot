@@ -6,7 +6,7 @@ meta:
     version: "17"
 build:
   image: null
-  args: bootJar
+  args: bootJar --info
   artifacts:
     build/libs/*.jar: /
 run:
