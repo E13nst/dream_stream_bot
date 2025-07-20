@@ -28,6 +28,9 @@ public class TelegramChatBot extends TelegramLongPollingBot {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramChatBot.class);
 
     private static final int CHARACTERS_PER_SECOND = 100;
+    private static final String START_MESSAGE = "Привет! Я чат-бот. Просто напиши мне что-нибудь.";
+    private static final String HELP_MESSAGE = "Я могу поддержать беседу и ответить на твои вопросы. Просто напиши мне!";
+    private static final String CALLBACK_PLACEHOLDER = "Функция пока не реализована.";
 
     @Autowired
     private BotConfig botConfig;
@@ -78,7 +81,11 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         List<SendMessage> response = null;
 
         if (message.getChat().isUserChat()) {
-            response = handlePersonalMessage(message);
+            response = switch (message.getText()) {
+                case "/start" -> List.of(SendMessage.builder().chatId(message.getChatId()).text(START_MESSAGE).build());
+                case "/help" -> List.of(SendMessage.builder().chatId(message.getChatId()).text(HELP_MESSAGE).build());
+                default -> messageHandlerService.handlePersonalMessage(message);
+            };
         } else if (message.getChat().isGroupChat() || message.getChat().isSuperGroupChat()) {
             response = handleGroupMessage(message);
         }
@@ -97,19 +104,17 @@ public class TelegramChatBot extends TelegramLongPollingBot {
         LOGGER.info("🔘 Callback query | User: {} (@{}) | Data: '{}'", 
             user.getFirstName(), user.getUserName(), data);
 
-        List<SendMessage> response = messageHandlerService.handleCallbackQuery(callbackQuery);
-
-        if (response != null && !response.isEmpty()) {
-            LOGGER.info("📤 Sending callback response | User: {} (@{}) | Messages: {}", 
-                user.getFirstName(), user.getUserName(), response.size());
-            sendMessageWithTyping(response);
-        }
+        SendMessage placeholder = SendMessage.builder()
+            .chatId(callbackQuery.getMessage().getChatId())
+            .text(CALLBACK_PLACEHOLDER)
+            .build();
+        sendMessageWithTyping(List.of(placeholder));
     }
 
     private List<SendMessage> handlePersonalMessage(Message message) {
         return switch (message.getText()) {
-            case "/start" -> messageHandlerService.start(message);
-            case "/help" -> messageHandlerService.help(message);
+            case "/start" -> List.of(SendMessage.builder().chatId(message.getChatId()).text(START_MESSAGE).build());
+            case "/help" -> List.of(SendMessage.builder().chatId(message.getChatId()).text(HELP_MESSAGE).build());
             default -> messageHandlerService.handlePersonalMessage(message);
         };
     }

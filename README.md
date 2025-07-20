@@ -24,7 +24,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 3. **Запустите приложение:**
 ```bash
-export $(cat .env.app | xargs) && ./gradlew bootRun --args='--spring.profiles.active=dev'
+set -a; source .env.app; set +a; ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
 ### Деплой на Amvera
