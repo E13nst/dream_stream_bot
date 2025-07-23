@@ -23,28 +23,28 @@ public class MessageHandlerService {
     private com.example.dream_stream_bot.service.ai.AIService aiService;
 
     // Обработчик ответов на сообщения бота в чате
-    public List<SendMessage> handleReplyToBotMessage(Message message) {
+    public List<SendMessage> handleReplyToBotMessage(Message message, String conversationId) {
         User user = message.getFrom();
-        LOGGER.info("\uD83D\uDCAC Handling reply to bot message | User: {} (@{}) | Text: '{}'", 
-            user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50));
-
+        LOGGER.info("💭 Handling reply to bot message | User: {} (@{}) | Text: '{}' | ChatId: {} | ConversationId: {}", 
+            user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50), message.getChatId(), conversationId);
         List<SendMessage> sendMessages = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(message.getChatId());
-        String response = aiService.completion(message.getChat().getId(), message.getText(), chatUserName(message.getFrom()));
+        String response = aiService.completion(conversationId, message.getText(), chatUserName(message.getFrom()));
+        LOGGER.info("💬 Bot response to chatId {}: '{}'", message.getChatId(), truncateText(response, 100));
         sendMessages.add(msgFactory.createReplyToMessage(response, message.getMessageId()));
-        LOGGER.info("\uD83D\uDCAC Reply message prepared | User: {} (@{}) | Response length: {} chars", 
-            user.getFirstName(), user.getUserName(), response.length());
+        LOGGER.info("💭 Reply message prepared | User: {} (@{}) | Response length: {} chars | ChatId: {}", 
+            user.getFirstName(), user.getUserName(), response.length(), message.getChatId());
         return sendMessages;
     }
 
-    public List<SendMessage> handlePersonalMessage(Message message) {
+    public List<SendMessage> handlePersonalMessage(Message message, String conversationId) {
         User user = message.getFrom();
-        LOGGER.info("\uD83D\uDCAD Handling personal message | User: {} (@{}) | Text: '{}'", 
-            user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50));
-
+        LOGGER.info("💭 Handling personal message | User: {} (@{}) | Text: '{}' | ChatId: {} | ConversationId: {}", 
+            user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50), message.getChatId(), conversationId);
         List<SendMessage> sendMessages = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(message.getChatId());
-        String response = aiService.completion(user.getId(), message.getText(), chatUserName(user));
+        String response = aiService.completion(conversationId, message.getText(), chatUserName(user));
+        LOGGER.info("💬 Bot response to chatId {}: '{}'", message.getChatId(), truncateText(response, 100));
         sendMessages.add(msgFactory.createMarkdownMessage(response));
         return sendMessages;
     }

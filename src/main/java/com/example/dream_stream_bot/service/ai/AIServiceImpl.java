@@ -32,9 +32,9 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public String completion(long chatId, String message, String userName) {
-        logger.info("🤖 AI Request | Chat: {} | User: {} | Message: '{}'", 
-            chatId, userName, truncateText(message, 100));
+    public String completion(String conversationId, String message, String userName) {
+        logger.info("🤖 AI Request | Conversation: {} | User: {} | Message: '{}'", 
+            conversationId, userName, truncateText(message, 100));
         
         // Логируем конфигурацию для диагностики
         logger.info("🔧 OpenAI Config | API Key: {} | System Prompt: {}", 
@@ -43,39 +43,39 @@ public class AIServiceImpl implements AIService {
 
         String response = chatClient.prompt()
                 .advisors(a -> a
-                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memoryWindowSize))
                 .system(systemPrompt)
                 .user(String.format("User %s says:\n%s", userName, message))
                 .call()
                 .content();
 
-        logger.info("🤖 AI Response | Chat: {} | User: {} | Length: {} chars", 
-            chatId, userName, response.length());
-        logger.debug("🤖 AI Response content | Chat: {} | User: {} | Text: '{}'", 
-            chatId, userName, truncateText(response, 200));
+        logger.info("🤖 AI Response | Conversation: {} | User: {} | Length: {} chars", 
+            conversationId, userName, response.length());
+        logger.debug("🤖 AI Response content | Conversation: {} | User: {} | Text: '{}'", 
+            conversationId, userName, truncateText(response, 200));
 
         return response;
     }
 
     @Override
-    public String completion(long chatId, String message) {
-        logger.info("🤖 AI Request | Chat: {} | Message: '{}'", 
-            chatId, truncateText(message, 100));
+    public String completion(String conversationId, String message) {
+        logger.info("🤖 AI Request | Conversation: {} | Message: '{}'", 
+            conversationId, truncateText(message, 100));
 
         String response = chatClient.prompt()
                 .advisors(a -> a
-                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memoryWindowSize))
                 .system(systemPrompt)
                 .user(message)
                 .call()
                 .content();
 
-        logger.info("🤖 AI Response | Chat: {} | Length: {} chars", 
-            chatId, response.length());
-        logger.debug("🤖 AI Response content | Chat: {} | Text: '{}'", 
-            chatId, truncateText(response, 200));
+        logger.info("🤖 AI Response | Conversation: {} | Length: {} chars", 
+            conversationId, response.length());
+        logger.debug("🤖 AI Response content | Conversation: {} | Text: '{}'", 
+            conversationId, truncateText(response, 200));
 
         return response;
     }
