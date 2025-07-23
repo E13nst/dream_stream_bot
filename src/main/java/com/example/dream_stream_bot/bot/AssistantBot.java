@@ -15,7 +15,7 @@ public class AssistantBot extends AbstractTelegramBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             Message msg = update.getMessage();
             String conversationId = getConversationId(msg.getChatId());
-            var responses = messageHandlerService.handlePersonalMessage(msg, conversationId);
+            var responses = messageHandlerService.handlePersonalMessage(msg, conversationId, botEntity);
             for (var response : responses) {
                 sendWithLogging(response);
             }

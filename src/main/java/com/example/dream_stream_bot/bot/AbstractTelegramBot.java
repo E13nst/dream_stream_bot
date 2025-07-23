@@ -74,5 +74,13 @@ public abstract class AbstractTelegramBot extends TelegramLongPollingBot {
         return text.length() > maxLength ? text.substring(0, maxLength) + "..." : text;
     }
 
+    // Пример для будущих ботов:
+    // protected void handleReplyToBotMessage(Message message, String conversationId) {
+    //     messageHandlerService.handleReplyToBotMessage(message, conversationId, botEntity);
+    // }
+    // protected void handlePersonalMessage(Message message, String conversationId) {
+    //     messageHandlerService.handlePersonalMessage(message, conversationId, botEntity);
+    // }
+
     // Можно добавить общие методы для всех ботов, например, логирование, отправку сообщений и т.д.
 } 

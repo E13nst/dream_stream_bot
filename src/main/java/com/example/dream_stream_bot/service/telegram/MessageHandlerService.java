@@ -23,13 +23,13 @@ public class MessageHandlerService {
     private com.example.dream_stream_bot.service.ai.AIService aiService;
 
     // Обработчик ответов на сообщения бота в чате
-    public List<SendMessage> handleReplyToBotMessage(Message message, String conversationId) {
+    public List<SendMessage> handleReplyToBotMessage(Message message, String conversationId, com.example.dream_stream_bot.model.telegram.BotEntity botEntity) {
         User user = message.getFrom();
         LOGGER.info("💭 Handling reply to bot message | User: {} (@{}) | Text: '{}' | ChatId: {} | ConversationId: {}", 
             user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50), message.getChatId(), conversationId);
         List<SendMessage> sendMessages = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(message.getChatId());
-        String response = aiService.completion(conversationId, message.getText(), chatUserName(message.getFrom()));
+        String response = aiService.completion(conversationId, message.getText(), chatUserName(message.getFrom()), botEntity.getPrompt());
         LOGGER.info("💬 Bot response to chatId {}: '{}'", message.getChatId(), truncateText(response, 100));
         sendMessages.add(msgFactory.createReplyToMessage(response, message.getMessageId()));
         LOGGER.info("💭 Reply message prepared | User: {} (@{}) | Response length: {} chars | ChatId: {}", 
@@ -37,13 +37,13 @@ public class MessageHandlerService {
         return sendMessages;
     }
 
-    public List<SendMessage> handlePersonalMessage(Message message, String conversationId) {
+    public List<SendMessage> handlePersonalMessage(Message message, String conversationId, com.example.dream_stream_bot.model.telegram.BotEntity botEntity) {
         User user = message.getFrom();
         LOGGER.info("💭 Handling personal message | User: {} (@{}) | Text: '{}' | ChatId: {} | ConversationId: {}", 
             user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50), message.getChatId(), conversationId);
         List<SendMessage> sendMessages = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(message.getChatId());
-        String response = aiService.completion(conversationId, message.getText(), chatUserName(user));
+        String response = aiService.completion(conversationId, message.getText(), chatUserName(user), botEntity.getPrompt());
         LOGGER.info("💬 Bot response to chatId {}: '{}'", message.getChatId(), truncateText(response, 100));
         sendMessages.add(msgFactory.createMarkdownMessage(response));
         return sendMessages;
