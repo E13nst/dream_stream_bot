@@ -29,39 +29,20 @@ public class AIServiceImpl implements AIService {
     }
 
     @Override
-    public String completion(String conversationId, String message, String userName, String prompt) {
-        logger.info("🤖 AI Request | Conversation: {} | User: {} | Message: '{}'", 
-            conversationId, userName, truncateText(message, 100));
-        String response = chatClient.prompt()
-                .advisors(a -> a
-                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memoryWindowSize))
-                .system(prompt)
-                .user(String.format("User %s says:\n%s", userName, message))
-                .call()
-                .content();
-        logger.info("🤖 AI Response | Conversation: {} | User: {} | Length: {} chars", 
-            conversationId, userName, response.length());
-        logger.debug("🤖 AI Response content | Conversation: {} | User: {} | Text: '{}'", 
-            conversationId, userName, truncateText(response, 200));
-        return response;
-    }
-
-    @Override
-    public String completion(String conversationId, String message, String prompt) {
-        logger.info("🤖 AI Request | Conversation: {} | Message: '{}'", 
+    public String completion(String conversationId, String message, String prompt, Integer memWindow) {
+        logger.info("\uD83E\uDD16 AI Request | Conversation: {} | Message: '{}'", 
             conversationId, truncateText(message, 100));
         String response = chatClient.prompt()
                 .advisors(a -> a
                         .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memoryWindowSize))
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memWindow != null ? memWindow : 100))
                 .system(prompt)
                 .user(message)
                 .call()
                 .content();
-        logger.info("🤖 AI Response | Conversation: {} | Length: {} chars", 
+        logger.info("\uD83E\uDD16 AI Response | Conversation: {} | Length: {} chars", 
             conversationId, response.length());
-        logger.debug("🤖 AI Response content | Conversation: {} | Text: '{}'", 
+        logger.debug("\uD83E\uDD16 AI Response content | Conversation: {} | Text: '{}'", 
             conversationId, truncateText(response, 200));
         return response;
     }

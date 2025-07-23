@@ -1,6 +1,5 @@
 package com.example.dream_stream_bot.service.telegram;
 
-import com.example.dream_stream_bot.config.BotConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +17,6 @@ public class MessageHandlerService {
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageHandlerService.class);
 
     @Autowired
-    private BotConfig botConfig;
-    @Autowired
     private com.example.dream_stream_bot.service.ai.AIService aiService;
 
     // Обработчик ответов на сообщения бота в чате
@@ -29,7 +26,8 @@ public class MessageHandlerService {
             user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50), message.getChatId(), conversationId);
         List<SendMessage> sendMessages = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(message.getChatId());
-        String response = aiService.completion(conversationId, message.getText(), chatUserName(message.getFrom()), botEntity.getPrompt());
+        String groupMessage = "User " + chatUserName(user) + " says:\n" + message.getText();
+        String response = aiService.completion(conversationId, groupMessage, botEntity.getPrompt(), botEntity.getMemWindow());
         LOGGER.info("💬 Bot response to chatId {}: '{}'", message.getChatId(), truncateText(response, 100));
         sendMessages.add(msgFactory.createReplyToMessage(response, message.getMessageId()));
         LOGGER.info("💭 Reply message prepared | User: {} (@{}) | Response length: {} chars | ChatId: {}", 
@@ -43,7 +41,11 @@ public class MessageHandlerService {
             user.getFirstName(), user.getUserName(), truncateText(message.getText(), 50), message.getChatId(), conversationId);
         List<SendMessage> sendMessages = new ArrayList<>();
         TelegramMessageFactory msgFactory = new TelegramMessageFactory(message.getChatId());
-        String response = aiService.completion(conversationId, message.getText(), chatUserName(user), botEntity.getPrompt());
+        String prompt = botEntity.getPrompt() != null ? botEntity.getPrompt() : "";
+        if (user.getFirstName() != null && !user.getFirstName().isEmpty()) {
+            prompt = prompt + "\nUser name is " + user.getFirstName() + ".";
+        }
+        String response = aiService.completion(conversationId, message.getText(), prompt, botEntity.getMemWindow());
         LOGGER.info("💬 Bot response to chatId {}: '{}'", message.getChatId(), truncateText(response, 100));
         sendMessages.add(msgFactory.createMarkdownMessage(response));
         return sendMessages;

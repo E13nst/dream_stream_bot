@@ -50,6 +50,9 @@ public class BotEntity {
     @Column(length = 256)
     private String triggers;
 
+    @Column(name = "mem_window")
+    private Integer memWindow = 100;
+
     public java.util.List<String> getBotAliasesList() {
         if (name == null) return java.util.Collections.emptyList();
         return java.util.Arrays.stream(name.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();

@@ -15,9 +15,31 @@ public class AssistantBot extends AbstractTelegramBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             Message msg = update.getMessage();
             String conversationId = getConversationId(msg.getChatId());
-            var responses = messageHandlerService.handlePersonalMessage(msg, conversationId, botEntity);
-            for (var response : responses) {
-                sendWithLogging(response);
+            boolean isGroup = msg.isGroupMessage() || msg.isSuperGroupMessage();
+            boolean isReplyToBot = msg.getReplyToMessage() != null &&
+                    msg.getReplyToMessage().getFrom() != null &&
+                    msg.getReplyToMessage().getFrom().getUserName() != null &&
+                    msg.getReplyToMessage().getFrom().getUserName().equalsIgnoreCase(getBotUsername());
+            boolean isMention = msg.getText().toLowerCase().contains("@" + getBotUsername().toLowerCase());
+            boolean isName = msg.getText().toLowerCase().contains(botEntity.getName().toLowerCase());
+            boolean isAlias = botEntity.getBotAliasesList().stream().anyMatch(alias -> !alias.isEmpty() && msg.getText().toLowerCase().contains(alias.toLowerCase()));
+            boolean isTrigger = botEntity.getBotTriggersList().stream().anyMatch(trigger -> !trigger.isEmpty() && msg.getText().toLowerCase().contains(trigger.toLowerCase()));
+            if (isGroup) {
+                if (!(isReplyToBot || isMention || isName || isAlias || isTrigger)) {
+                    // Игнорируем сообщение, если не обращение к боту
+                    return;
+                }
+                // В группе всегда отвечаем с reply
+                var responses = messageHandlerService.handleReplyToBotMessage(msg, conversationId, botEntity);
+                for (var response : responses) {
+                    sendWithLogging(response);
+                }
+            } else {
+                // Личное сообщение — обычная обработка
+                var responses = messageHandlerService.handlePersonalMessage(msg, conversationId, botEntity);
+                for (var response : responses) {
+                    sendWithLogging(response);
+                }
             }
         }
     }

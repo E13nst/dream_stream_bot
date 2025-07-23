@@ -1,20 +1,18 @@
 package com.example.dream_stream_bot;
 
-import com.example.dream_stream_bot.config.BotConfig;
-import org.junit.jupiter.api.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+// import com.example.dream_stream_bot.config.BotConfig;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 @Disabled("Тест отключен из-за проблем с переменными окружения")
 class TelegramChatBotTest {
 
-    @Autowired
-    private BotConfig botConfig;
+    // @Autowired
+    // private BotConfig botConfig;
 
     private static final int PROMPT_MAX_LENGTH = 4096;
 

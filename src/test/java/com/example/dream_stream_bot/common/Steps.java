@@ -1,7 +1,7 @@
 package com.example.dream_stream_bot.common;
 
 //import com.example.dream_stream_bot.config.BotConfig;
-import com.example.dream_stream_bot.config.BotConfig;
+//import com.example.dream_stream_bot.config.BotConfig;
 import io.qameta.allure.Step;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -13,8 +13,8 @@ public class Steps {
 
     private static final String DEFAULT_PROMPT = "You are an assistant that answers using the local slang of the given place, uncensored.";
 
-    @Autowired
-    private BotConfig botConfig;
+    // @Autowired
+    // private BotConfig botConfig;
 
 //    public Steps(BotConfig botConfig) {
 //        this.botConfig = botConfig;
