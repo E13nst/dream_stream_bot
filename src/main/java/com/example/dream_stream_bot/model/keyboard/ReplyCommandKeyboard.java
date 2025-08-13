@@ -9,20 +9,27 @@ import java.util.List;
 
 public class ReplyCommandKeyboard {
 
-    ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
-    List<KeyboardRow> rows = new ArrayList<>();
-    KeyboardRow row = new KeyboardRow();
+    private final ReplyKeyboardMarkup keyboard;
+    private final List<KeyboardRow> rows;
+
+    public ReplyCommandKeyboard() {
+        this.keyboard = new ReplyKeyboardMarkup();
+        this.rows = new ArrayList<>();
+    }
 
     public ReplyCommandKeyboard addKey(String key) {
-        row.add(new KeyboardButton(key));
+        if (rows.isEmpty() || rows.get(rows.size() - 1).size() >= 2) {
+            // Создаем новую строку если текущая пустая или содержит 2 кнопки
+            rows.add(new KeyboardRow());
+        }
+        rows.get(rows.size() - 1).add(new KeyboardButton(key));
         return this;
     }
 
     public ReplyKeyboardMarkup build() {
-        rows.add(row);
         keyboard.setKeyboard(rows);
         keyboard.setResizeKeyboard(true);
-//        keyboardMarkup.setOneTimeKeyboard(true);
+        keyboard.setSelective(false);
         return keyboard;
     }
 }

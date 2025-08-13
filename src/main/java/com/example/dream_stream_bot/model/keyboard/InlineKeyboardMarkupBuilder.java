@@ -8,21 +8,40 @@ import java.util.List;
 
 public class InlineKeyboardMarkupBuilder {
 
-    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
-    List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-    List<InlineKeyboardButton> row = new ArrayList<>();
+    private final InlineKeyboardMarkup keyboard;
+    private final List<List<InlineKeyboardButton>> rows;
 
-    public InlineKeyboardMarkupBuilder addKey(String key, String value) {
+    public InlineKeyboardMarkupBuilder() {
+        this.keyboard = new InlineKeyboardMarkup();
+        this.rows = new ArrayList<>();
+    }
+
+    public InlineKeyboardMarkupBuilder addKey(String text, String callbackData) {
+        if (rows.isEmpty()) {
+            rows.add(new ArrayList<>());
+        }
+        
         InlineKeyboardButton button = new InlineKeyboardButton();
-        button.setText(key);
-        button.setCallbackData(value);
+        button.setText(text);
+        button.setCallbackData(callbackData);
+        
+        rows.get(rows.size() - 1).add(button);
+        return this;
+    }
 
-        row.add(button);
+    public InlineKeyboardMarkupBuilder addRow(String... buttons) {
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        for (String buttonText : buttons) {
+            InlineKeyboardButton button = new InlineKeyboardButton();
+            button.setText(buttonText);
+            button.setCallbackData(buttonText.toLowerCase().replace(" ", "_"));
+            row.add(button);
+        }
+        rows.add(row);
         return this;
     }
 
     public InlineKeyboardMarkup build() {
-        rows.add(row);
         keyboard.setKeyboard(rows);
         return keyboard;
     }

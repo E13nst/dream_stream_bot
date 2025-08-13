@@ -5,6 +5,9 @@ import com.example.dream_stream_bot.bot.AbstractTelegramBot;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
+import com.example.dream_stream_bot.service.telegram.UserStateService;
+import com.example.dream_stream_bot.service.telegram.StickerPackService;
+import com.example.dream_stream_bot.service.telegram.StickerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,12 +28,20 @@ import java.util.Map;
 public class BotInitializer {
     private final BotService botService;
     private final MessageHandlerService messageHandlerService;
+    private final UserStateService userStateService;
+    private final StickerPackService stickerPackService;
+    private final StickerService stickerService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Autowired
-    public BotInitializer(BotService botService, MessageHandlerService messageHandlerService) {
+    public BotInitializer(BotService botService, MessageHandlerService messageHandlerService, 
+                         UserStateService userStateService, StickerPackService stickerPackService,
+                         StickerService stickerService) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
+        this.userStateService = userStateService;
+        this.stickerPackService = stickerPackService;
+        this.stickerService = stickerService;
     }
 
     @Bean
@@ -45,7 +56,7 @@ public class BotInitializer {
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
         for (BotEntity bot : bots) {
             if (Boolean.TRUE.equals(bot.getIsActive())) {
-                AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService);
+                AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerPackService, stickerService);
                 telegramBotsApi.registerBot(telegramBot);
                 botRegistry.put(bot.getUsername(), telegramBot);
                 log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());
