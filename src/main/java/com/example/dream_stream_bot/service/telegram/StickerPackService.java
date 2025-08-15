@@ -34,4 +34,8 @@ public class StickerPackService {
     public java.util.List<StickerPack> findByUserId(Long userId) {
         return stickerPackRepository.findByUserId(userId);
     }
+    
+    public StickerPack findById(Long id) {
+        return stickerPackRepository.findById(id).orElse(null);
+    }
 } 

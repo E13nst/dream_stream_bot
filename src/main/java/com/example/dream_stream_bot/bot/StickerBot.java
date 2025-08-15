@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.example.dream_stream_bot.model.telegram.StickerPack;
 
 import java.util.List;
+import java.util.ArrayList;
 
 public class StickerBot extends AbstractTelegramBot {
     
@@ -68,6 +69,23 @@ public class StickerBot extends AbstractTelegramBot {
                         .build();
                 sendWithLogging(infoMessage);
                 return;
+            } else if ("редактировать_набор".equals(callbackData)) {
+                // Показываем список наборов пользователя
+                showUserStickerPacks(chatId, 0);
+                return;
+            } else if (callbackData.startsWith("pack_")) {
+                // Обработка выбора конкретного набора
+                handlePackSelection(chatId, callbackData);
+                return;
+            } else if (callbackData.startsWith("page_")) {
+                // Обработка пагинации
+                int page = Integer.parseInt(callbackData.substring(5));
+                showUserStickerPacks(chatId, page);
+                return;
+            } else if ("back_to_main".equals(callbackData)) {
+                // Возврат в главное меню
+                showMainMenu(chatId);
+                return;
             }
         }
         
@@ -96,20 +114,38 @@ public class StickerBot extends AbstractTelegramBot {
             if (msg.hasPhoto() || msg.hasDocument()) {
                 LOGGER.info("🖼️ Обрабатываем изображение | ChatId: {} | Тип: {}", msg.getChatId(), msg.hasPhoto() ? "PHOTO" : "DOCUMENT");
                 
-                // Получаем name стикерпака из базы данных для этого пользователя
+                // Получаем name стикерпака для этого пользователя
                 String stickerPackName = null;
                 try {
-                    List<StickerPack> userPacks = stickerPackService.findByUserId(msg.getChatId());
-                    if (!userPacks.isEmpty()) {
-                        // Берем последний созданный стикерпак (самый новый)
-                        StickerPack latestPack = userPacks.stream()
-                                .max((p1, p2) -> p1.getCreatedAt().compareTo(p2.getCreatedAt()))
-                                .orElse(userPacks.get(0));
-                        stickerPackName = latestPack.getName();
-                        LOGGER.info("📦 Найден стикерпак для пользователя {}: Name='{}', Created={}", 
-                                msg.getChatId(), stickerPackName, latestPack.getCreatedAt());
-                    } else {
-                        LOGGER.warn("⚠️ Стикерпак для пользователя {} не найден в базе данных", msg.getChatId());
+                    // Сначала проверяем, есть ли выбранный набор
+                    Long selectedPackId = userStateService.getSelectedPackId(msg.getChatId());
+                    if (selectedPackId != null) {
+                        StickerPack selectedPack = stickerPackService.findById(selectedPackId);
+                        if (selectedPack != null && selectedPack.getUserId().equals(msg.getChatId())) {
+                            stickerPackName = selectedPack.getName();
+                            LOGGER.info("📦 Используем выбранный стикерпак для пользователя {}: Name='{}', ID={}", 
+                                    msg.getChatId(), stickerPackName, selectedPackId);
+                        } else {
+                            // Выбранный набор не найден или не принадлежит пользователю, очищаем
+                            userStateService.clearSelectedPackId(msg.getChatId());
+                            LOGGER.warn("⚠️ Выбранный стикерпак не найден или не принадлежит пользователю {}, очищаем выбор", msg.getChatId());
+                        }
+                    }
+                    
+                    // Если выбранный набор не найден, берем последний созданный
+                    if (stickerPackName == null) {
+                        List<StickerPack> userPacks = stickerPackService.findByUserId(msg.getChatId());
+                        if (!userPacks.isEmpty()) {
+                            // Берем последний созданный стикерпак (самый новый)
+                            StickerPack latestPack = userPacks.stream()
+                                    .max((p1, p2) -> p1.getCreatedAt().compareTo(p2.getCreatedAt()))
+                                    .orElse(userPacks.get(0));
+                            stickerPackName = latestPack.getName();
+                            LOGGER.info("📦 Используем последний созданный стикерпак для пользователя {}: Name='{}', Created={}", 
+                                    msg.getChatId(), stickerPackName, latestPack.getCreatedAt());
+                        } else {
+                            LOGGER.warn("⚠️ Стикерпак для пользователя {} не найден в базе данных", msg.getChatId());
+                        }
                     }
                 } catch (Exception e) {
                     LOGGER.error("❌ Ошибка при поиске стикерпака для пользователя {}: {}", msg.getChatId(), e.getMessage());
@@ -203,7 +239,7 @@ public class StickerBot extends AbstractTelegramBot {
                 // Обработка команды /start
                 if (text.equals("/start")) {
                     InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
-                            .addRow("Создать новый набор")
+                            .addRow("Создать новый набор", "Редактировать набор")
                             .build();
                     
                     SendMessage startMessage = SendMessage.builder()
@@ -287,6 +323,156 @@ public class StickerBot extends AbstractTelegramBot {
                         .build();
                 sendWithLogging(response);
             }
+        }
+    }
+    
+    /**
+     * Показывает главное меню
+     */
+    private void showMainMenu(Long chatId) {
+        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
+                .addRow("Создать новый набор", "Редактировать набор")
+                .build();
+        
+        SendMessage mainMenuMessage = SendMessage.builder()
+                .chatId(chatId)
+                .text("🎯 **Главное меню StickerBot**\n\n" +
+                        "Выберите действие:")
+                .parseMode("Markdown")
+                .replyMarkup(keyboard)
+                .build();
+        
+        sendWithLogging(mainMenuMessage);
+    }
+    
+    /**
+     * Показывает список стикерпаков пользователя с пагинацией
+     */
+    private void showUserStickerPacks(Long chatId, int page) {
+        try {
+            List<StickerPack> userPacks = stickerPackService.findByUserId(chatId);
+            
+            if (userPacks.isEmpty()) {
+                SendMessage noPacksMessage = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("📭 У вас пока нет созданных наборов стикеров.\n\n" +
+                                "Создайте первый набор, нажав кнопку 'Создать новый набор'!")
+                        .build();
+                sendWithLogging(noPacksMessage);
+                return;
+            }
+            
+            // Сортируем по дате создания (новые сначала)
+            userPacks.sort((p1, p2) -> p2.getCreatedAt().compareTo(p1.getCreatedAt()));
+            
+            int itemsPerPage = 10;
+            int totalPages = (userPacks.size() + itemsPerPage - 1) / itemsPerPage;
+            int startIndex = page * itemsPerPage;
+            int endIndex = Math.min(startIndex + itemsPerPage, userPacks.size());
+            
+            // Получаем наборы для текущей страницы
+            List<StickerPack> pagePacks = userPacks.subList(startIndex, endIndex);
+            
+            // Создаем клавиатуру с наборами
+            InlineKeyboardMarkupBuilder keyboardBuilder = new InlineKeyboardMarkupBuilder();
+            
+            // Добавляем кнопки для каждого набора
+            for (StickerPack pack : pagePacks) {
+                String buttonText = String.format("📦 %s", 
+                    pack.getTitle().length() > 20 ? pack.getTitle().substring(0, 17) + "..." : pack.getTitle());
+                keyboardBuilder.addRow(buttonText, "pack_" + pack.getId());
+            }
+            
+            // Добавляем навигацию по страницам
+            if (totalPages > 1) {
+                if (page > 0) {
+                    keyboardBuilder.addRow("⬅️ Предыдущая", "page_" + (page - 1));
+                }
+                if (page < totalPages - 1) {
+                    keyboardBuilder.addRow("Следующая ➡️", "page_" + (page + 1));
+                }
+                
+                // Добавляем информацию о странице
+                keyboardBuilder.addRow("📄 Страница " + (page + 1) + " из " + totalPages);
+            }
+            
+            // Добавляем кнопку возврата
+            keyboardBuilder.addRow("🔙 Назад", "back_to_main");
+            
+            String messageText = String.format("📋 **Ваши наборы стикеров**\n\n" +
+                    "Всего наборов: %d\n" +
+                    "Страница: %d из %d\n\n" +
+                    "Выберите набор для редактирования:",
+                    userPacks.size(), page + 1, totalPages);
+            
+            SendMessage packsListMessage = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(messageText)
+                    .parseMode("Markdown")
+                    .replyMarkup(keyboardBuilder.build())
+                    .build();
+            
+            sendWithLogging(packsListMessage);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении списка наборов для пользователя {}: {}", chatId, e.getMessage());
+            SendMessage errorMessage = SendMessage.builder()
+                    .chatId(chatId)
+                    .text("❌ Произошла ошибка при получении списка наборов. Попробуйте еще раз.")
+                    .build();
+            sendWithLogging(errorMessage);
+        }
+    }
+    
+    /**
+     * Обрабатывает выбор конкретного набора
+     */
+    private void handlePackSelection(Long chatId, String callbackData) {
+        try {
+            Long packId = Long.parseLong(callbackData.substring(5));
+            StickerPack pack = stickerPackService.findById(packId);
+            
+            if (pack == null) {
+                SendMessage errorMessage = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("❌ Набор не найден. Возможно, он был удален.")
+                        .build();
+                sendWithLogging(errorMessage);
+                return;
+            }
+            
+            // Проверяем, что набор принадлежит пользователю
+            if (!pack.getUserId().equals(chatId)) {
+                SendMessage errorMessage = SendMessage.builder()
+                        .chatId(chatId)
+                        .text("❌ У вас нет доступа к этому набору.")
+                        .build();
+                sendWithLogging(errorMessage);
+                return;
+            }
+            
+            // Устанавливаем состояние для добавления стикера в выбранный набор
+            userStateService.setSelectedPackId(chatId, packId);
+            
+            SendMessage packSelectedMessage = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(String.format("✅ **Выбран набор:** %s\n\n" +
+                            "📝 Название: %s\n" +
+                            "🔗 Имя: %s\n\n" +
+                            "Теперь отправьте изображение, чтобы добавить стикер в этот набор!",
+                            pack.getTitle(), pack.getTitle(), pack.getName()))
+                    .parseMode("Markdown")
+                    .build();
+            
+            sendWithLogging(packSelectedMessage);
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при выборе набора {} для пользователя {}: {}", callbackData, chatId, e.getMessage());
+            SendMessage errorMessage = SendMessage.builder()
+                    .chatId(chatId)
+                    .text("❌ Произошла ошибка при выборе набора. Попробуйте еще раз.")
+                    .build();
+            sendWithLogging(errorMessage);
         }
     }
 } 

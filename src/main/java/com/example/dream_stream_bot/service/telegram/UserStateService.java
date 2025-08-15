@@ -9,6 +9,7 @@ public class UserStateService {
     
     private final Map<Long, UserState> userStates = new ConcurrentHashMap<>();
     private final Map<Long, StickerPackData> userData = new ConcurrentHashMap<>();
+    private final Map<Long, Long> selectedPackIds = new ConcurrentHashMap<>();
     
     public enum UserState {
         WAITING_FOR_PACK_TITLE,
@@ -51,5 +52,18 @@ public class UserStateService {
     public void clearUserState(Long userId) {
         userStates.remove(userId);
         userData.remove(userId);
+        selectedPackIds.remove(userId);
+    }
+    
+    public void setSelectedPackId(Long userId, Long packId) {
+        selectedPackIds.put(userId, packId);
+    }
+    
+    public Long getSelectedPackId(Long userId) {
+        return selectedPackIds.get(userId);
+    }
+    
+    public void clearSelectedPackId(Long userId) {
+        selectedPackIds.remove(userId);
     }
 } 
