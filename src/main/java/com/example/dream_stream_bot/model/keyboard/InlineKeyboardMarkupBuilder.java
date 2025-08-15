@@ -16,6 +16,9 @@ public class InlineKeyboardMarkupBuilder {
         this.rows = new ArrayList<>();
     }
 
+    /**
+     * Добавляет кнопку в текущую строку (или создает новую, если строк нет)
+     */
     public InlineKeyboardMarkupBuilder addKey(String text, String callbackData) {
         if (rows.isEmpty()) {
             rows.add(new ArrayList<>());
@@ -29,6 +32,23 @@ public class InlineKeyboardMarkupBuilder {
         return this;
     }
 
+    /**
+     * Добавляет кнопку на отдельную строку
+     */
+    public InlineKeyboardMarkupBuilder addButtonOnNewRow(String text, String callbackData) {
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        InlineKeyboardButton button = new InlineKeyboardButton();
+        button.setText(text);
+        button.setCallbackData(callbackData);
+        row.add(button);
+        rows.add(row);
+        System.out.println("🔧 InlineKeyboardMarkupBuilder: Создана новая строка для кнопки '" + text + "'");
+        return this;
+    }
+
+    /**
+     * Добавляет несколько кнопок в одну строку
+     */
     public InlineKeyboardMarkupBuilder addRow(String... buttons) {
         List<InlineKeyboardButton> row = new ArrayList<>();
         for (String buttonText : buttons) {
@@ -41,6 +61,51 @@ public class InlineKeyboardMarkupBuilder {
         return this;
     }
 
+    /**
+     * Добавляет кнопку с указанным callback'ом на отдельную строку
+     */
+    public InlineKeyboardMarkupBuilder addRow(String buttonText, String callbackData) {
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        InlineKeyboardButton button = new InlineKeyboardButton();
+        button.setText(buttonText);
+        button.setCallbackData(callbackData);
+        row.add(button);
+        rows.add(row);
+        return this;
+    }
+
+    /**
+     * Добавляет кнопки навигации (номера страниц) в одну строку
+     */
+    public InlineKeyboardMarkupBuilder addPageNavigation(int currentPage, int totalPages) {
+        if (totalPages > 1) {
+            List<InlineKeyboardButton> row = new ArrayList<>();
+            for (int i = 0; i < totalPages; i++) {
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setText(String.valueOf(i + 1));
+                button.setCallbackData(String.valueOf(i + 1));
+                row.add(button);
+            }
+            rows.add(row);
+        }
+        return this;
+    }
+
+    /**
+     * Добавляет информационный текст (не кликабельный) на отдельную строку
+     */
+    public InlineKeyboardMarkupBuilder addInfoRow(String text) {
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        InlineKeyboardButton button = new InlineKeyboardButton();
+        button.setText(text);
+        button.setCallbackData("info_" + System.currentTimeMillis()); // Уникальный callback для информации
+        rows.add(row);
+        return this;
+    }
+
+    /**
+     * Создает клавиатуру
+     */
     public InlineKeyboardMarkup build() {
         keyboard.setKeyboard(rows);
         return keyboard;

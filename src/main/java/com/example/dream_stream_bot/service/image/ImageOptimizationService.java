@@ -28,6 +28,7 @@ public class ImageOptimizationService {
     
     /**
      * Оптимизирует изображение для использования в качестве стикера
+     * Масштабирует до 512 пикселей по большей стороне, сохраняя пропорции
      * @param imagePath Путь к исходному изображению
      * @return Путь к оптимизированному изображению
      */
@@ -61,19 +62,8 @@ public class ImageOptimizationService {
         gResized.drawImage(scaledImg, 0, 0, null);
         gResized.dispose();
 
-        // 4. Создаём квадрат 512×512 с прозрачным фоном и помещаем изображение по центру
-        BufferedImage square = new BufferedImage(512, 512, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D gSquare = square.createGraphics();
-        gSquare.setComposite(AlphaComposite.Clear);
-        gSquare.fillRect(0, 0, 512, 512);
-        gSquare.setComposite(AlphaComposite.SrcOver);
-        int x = (512 - newWidth) / 2;
-        int y = (512 - newHeight) / 2;
-        gSquare.drawImage(resized, x, y, null);
-        gSquare.dispose();
-
-        // 5. Сжимаем PNG с максимальной оптимизацией
-        byte[] optimizedImageData = encodePNGWithMaxCompression(square);
+        // 4. Сжимаем PNG с максимальной оптимизацией (используем resized вместо square)
+        byte[] optimizedImageData = encodePNGWithMaxCompression(resized);
         
         LOGGER.info("✅ Изображение оптимизировано: {} bytes | формат: PNG", optimizedImageData.length);
         

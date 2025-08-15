@@ -228,24 +228,23 @@ public class StickerService {
      */
     private void sendOptimizedImage(Long chatId, TelegramLongPollingBot bot, Path optimizedFile, StickerResult result) {
         try {
-            String caption = result != null && result.isSuccess() ? 
-                "🎉 **Стикер создан успешно!**\n\n" +
-                "📦 **Информация о стикерпаке:**\n" +
-                "• Название: " + result.getStickerSetName() + "\n" +
+            String caption = result != null && result.isSuccess() ?
+                "🎉 Стикер создан успешно!\n\n" +
+                "📦 Информация о стикерпаке:\n" +
+                "• Ссылка: https://t.me/addstickers/" + result.getStickerSetName() + "\n" +
                 "• Заголовок: " + result.getStickerSetTitle() + "\n" +
                 "• Тип: " + (result.isNewSet() ? "Новый стикерпак" : "Добавлен к существующему") :
                 "📸 Изображение оптимизировано для стикера";
-            
+
             SendPhoto sendPhoto = SendPhoto.builder()
                     .chatId(chatId)
                     .photo(new InputFile(optimizedFile.toFile()))
                     .caption(caption)
-                    .parseMode("Markdown")
                     .build();
-            
+
             LOGGER.info("🚀 Отправляем изображение в чат: {}", chatId);
             bot.execute(sendPhoto);
-            
+
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при отправке изображения: {}", e.getMessage());
         }

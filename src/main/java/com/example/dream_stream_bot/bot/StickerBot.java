@@ -77,14 +77,17 @@ public class StickerBot extends AbstractTelegramBot {
                 // Обработка выбора конкретного набора
                 handlePackSelection(chatId, callbackData);
                 return;
-            } else if (callbackData.startsWith("page_")) {
-                // Обработка пагинации
-                int page = Integer.parseInt(callbackData.substring(5));
+            } else if (callbackData.matches("\\d+")) {
+                // Обработка пагинации (кнопки с номерами страниц)
+                int page = Integer.parseInt(callbackData) - 1; // Нумерация страниц с 0
                 showUserStickerPacks(chatId, page);
                 return;
             } else if ("back_to_main".equals(callbackData)) {
                 // Возврат в главное меню
                 showMainMenu(chatId);
+                return;
+            } else if (callbackData.startsWith("info_")) {
+                // Игнорируем клик по информационным строкам
                 return;
             }
         }
@@ -226,8 +229,8 @@ public class StickerBot extends AbstractTelegramBot {
                             .chatId(msg.getChatId())
                             .text("✅ Стикерпак создан!\n\n" +
                                     "📝 Название: " + packData.getTitle() + "\n" +
-                                    "🔗 Имя: " + packData.getName() + "\n\n" +
-                                    "Теперь отправьте изображение для создания стикера!")
+                                    "🔗 Ссылка: https://t.me/addstickers/" + packData.getName() + "\n\n" +
+                                    "Отправьте изображение для создания стикера!")
                             .build();
                     sendWithLogging(successMessage);
                     return;
@@ -239,23 +242,24 @@ public class StickerBot extends AbstractTelegramBot {
                 // Обработка команды /start
                 if (text.equals("/start")) {
                     InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
-                            .addRow("Создать новый набор", "Редактировать набор")
+                            .addRow("Создать новый набор", "создать_новый_набор")
+                            .addRow("Редактировать набор", "редактировать_набор")
                             .build();
                     
-                    SendMessage startMessage = SendMessage.builder()
+                    SendMessage welcomeMessage = SendMessage.builder()
                             .chatId(msg.getChatId())
                             .text("🎯 **Добро пожаловать в StickerBot!**\n\n" +
                                     "Я помогу вам создавать стикеры из изображений.\n\n" +
                                     "📸 **Как использовать:**\n" +
-                                    "• Нажмите кнопку 'Создать новый набор' или\n" +
-                                    "• Отправьте фото или изображение (JPG, PNG, GIF)\n" +
-                                    "• Бот автоматически создаст стикер\n" +
-                                    "• Готовый стикер будет отправлен в чат\n\n" +
-                                    "🚀 **Начните прямо сейчас!**")
+                                    "1. Нажмите 'Создать новый набор'\n" +
+                                    "2. Введите название для набора\n" +
+                                    "3. Введите короткую ссылку\n" +
+                                    "4. Отправьте изображение\n\n" +
+                                    "**Выберите действие:**")
                             .parseMode("Markdown")
                             .replyMarkup(keyboard)
                             .build();
-                    sendWithLogging(startMessage);
+                    sendWithLogging(welcomeMessage);
                     return;
                 }
                 
@@ -331,13 +335,14 @@ public class StickerBot extends AbstractTelegramBot {
      */
     private void showMainMenu(Long chatId) {
         InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
-                .addRow("Создать новый набор", "Редактировать набор")
+                .addRow("Создать новый набор", "создать_новый_набор")
+                .addRow("Редактировать набор", "редактировать_набор")
                 .build();
         
         SendMessage mainMenuMessage = SendMessage.builder()
                 .chatId(chatId)
                 .text("🎯 **Главное меню StickerBot**\n\n" +
-                        "Выберите действие:")
+                        "**Выберите действие:**")
                 .parseMode("Markdown")
                 .replyMarkup(keyboard)
                 .build();
@@ -376,33 +381,30 @@ public class StickerBot extends AbstractTelegramBot {
             // Создаем клавиатуру с наборами
             InlineKeyboardMarkupBuilder keyboardBuilder = new InlineKeyboardMarkupBuilder();
             
-            // Добавляем кнопки для каждого набора
+            // Добавляем кнопки для каждого набора (по одной на строку)
             for (StickerPack pack : pagePacks) {
                 String buttonText = String.format("📦 %s", 
-                    pack.getTitle().length() > 20 ? pack.getTitle().substring(0, 17) + "..." : pack.getTitle());
-                keyboardBuilder.addRow(buttonText, "pack_" + pack.getId());
+                    pack.getTitle().length() > 40 ? pack.getTitle().substring(0, 37) + "..." : pack.getTitle());
+                LOGGER.info("🔘 Создаем кнопку для набора: '{}' с callback '{}'", buttonText, "pack_" + pack.getId());
+                keyboardBuilder.addButtonOnNewRow(buttonText, "pack_" + pack.getId());
             }
             
             // Добавляем навигацию по страницам
             if (totalPages > 1) {
-                if (page > 0) {
-                    keyboardBuilder.addRow("⬅️ Предыдущая", "page_" + (page - 1));
-                }
-                if (page < totalPages - 1) {
-                    keyboardBuilder.addRow("Следующая ➡️", "page_" + (page + 1));
-                }
+                // Создаем кнопки страниц в одну строку
+                keyboardBuilder.addPageNavigation(page, totalPages);
                 
                 // Добавляем информацию о странице
-                keyboardBuilder.addRow("📄 Страница " + (page + 1) + " из " + totalPages);
+                keyboardBuilder.addInfoRow("📄 Страница " + (page + 1) + " из " + totalPages);
             }
             
             // Добавляем кнопку возврата
-            keyboardBuilder.addRow("🔙 Назад", "back_to_main");
+            keyboardBuilder.addButtonOnNewRow("🔙 Назад", "back_to_main");
             
             String messageText = String.format("📋 **Ваши наборы стикеров**\n\n" +
                     "Всего наборов: %d\n" +
                     "Страница: %d из %d\n\n" +
-                    "Выберите набор для редактирования:",
+                    "**Выберите набор для редактирования:**",
                     userPacks.size(), page + 1, totalPages);
             
             SendMessage packsListMessage = SendMessage.builder()
@@ -430,9 +432,12 @@ public class StickerBot extends AbstractTelegramBot {
     private void handlePackSelection(Long chatId, String callbackData) {
         try {
             Long packId = Long.parseLong(callbackData.substring(5));
+            LOGGER.info("🔍 Отладка: Ищем набор с ID: {}", packId);
+
             StickerPack pack = stickerPackService.findById(packId);
-            
+
             if (pack == null) {
+                LOGGER.error("❌ Набор с ID {} не найден в базе данных", packId);
                 SendMessage errorMessage = SendMessage.builder()
                         .chatId(chatId)
                         .text("❌ Набор не найден. Возможно, он был удален.")
@@ -440,9 +445,10 @@ public class StickerBot extends AbstractTelegramBot {
                 sendWithLogging(errorMessage);
                 return;
             }
-            
+
             // Проверяем, что набор принадлежит пользователю
             if (!pack.getUserId().equals(chatId)) {
+                LOGGER.error("❌ Набор {} не принадлежит пользователю {}", packId, chatId);
                 SendMessage errorMessage = SendMessage.builder()
                         .chatId(chatId)
                         .text("❌ У вас нет доступа к этому набору.")
@@ -450,22 +456,24 @@ public class StickerBot extends AbstractTelegramBot {
                 sendWithLogging(errorMessage);
                 return;
             }
-            
+
             // Устанавливаем состояние для добавления стикера в выбранный набор
             userStateService.setSelectedPackId(chatId, packId);
-            
+
+            String messageText = String.format("✅ **Выбран набор:** %s\n\n" +
+                            "📝 Название: %s\n" +
+                            "🔗 Ссылка: https://t.me/addstickers/%s\n\n" +
+                            "Отправьте изображение для добавления стикера!",
+                            pack.getTitle(), pack.getTitle(), pack.getName());
+
             SendMessage packSelectedMessage = SendMessage.builder()
                     .chatId(chatId)
-                    .text(String.format("✅ **Выбран набор:** %s\n\n" +
-                            "📝 Название: %s\n" +
-                            "🔗 Имя: %s\n\n" +
-                            "Теперь отправьте изображение, чтобы добавить стикер в этот набор!",
-                            pack.getTitle(), pack.getTitle(), pack.getName()))
+                    .text(messageText)
                     .parseMode("Markdown")
                     .build();
-            
+
             sendWithLogging(packSelectedMessage);
-            
+
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при выборе набора {} для пользователя {}: {}", callbackData, chatId, e.getMessage());
             SendMessage errorMessage = SendMessage.builder()
