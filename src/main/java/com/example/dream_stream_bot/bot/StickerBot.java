@@ -68,40 +68,6 @@ public class StickerBot extends AbstractTelegramBot {
                         .build();
                 sendWithLogging(infoMessage);
                 return;
-            } else if ("помощь".equals(callbackData)) {
-                SendMessage helpMessage = SendMessage.builder()
-                        .chatId(chatId)
-                        .text("🎯 **StickerBot** - создание стикеров из изображений\n\n" +
-                                "📸 **Как использовать:**\n" +
-                                "• Отправьте фото или изображение (JPG, PNG, GIF)\n" +
-                                "• Бот автоматически создаст стикер\n" +
-                                "• Готовый стикер будет отправлен в чат\n\n" +
-                                "⚠️ **Требования к изображению:**\n" +
-                                "• Формат: PNG, WebP\n" +
-                                "• Размер: до 512KB\n" +
-                                "• Разрешение: квадратное (512x512 пикселей)\n\n" +
-                                "🚀 **Начните прямо сейчас** - отправьте изображение!")
-                        .parseMode("Markdown")
-                        .build();
-                sendWithLogging(helpMessage);
-                return;
-            } else if ("информация".equals(callbackData)) {
-                SendMessage infoMessage = SendMessage.builder()
-                        .chatId(chatId)
-                        .text("ℹ️ **Информация о StickerBot**\n\n" +
-                                "🤖 **Версия:** 1.0\n" +
-                                "📅 **Дата:** 2024\n" +
-                                "🔧 **Технологии:** Spring Boot, Telegram Bot API\n\n" +
-                                "📱 **Возможности:**\n" +
-                                "• Автоматическое создание стикеров\n" +
-                                "• Оптимизация изображений\n" +
-                                "• Сохранение пропорций\n" +
-                                "• Поддержка PNG/WebP\n\n" +
-                                "💡 **Для создания стикера отправьте изображение!**")
-                        .parseMode("Markdown")
-                        .build();
-                sendWithLogging(infoMessage);
-                return;
             }
         }
         
@@ -237,7 +203,7 @@ public class StickerBot extends AbstractTelegramBot {
                 // Обработка команды /start
                 if (text.equals("/start")) {
                     InlineKeyboardMarkup keyboard = new InlineKeyboardMarkupBuilder()
-                            .addRow("Создать новый набор", "Помощь", "Информация")
+                            .addRow("Создать новый набор")
                             .build();
                     
                     SendMessage startMessage = SendMessage.builder()
@@ -262,55 +228,16 @@ public class StickerBot extends AbstractTelegramBot {
                     SendMessage infoMessage = SendMessage.builder()
                             .chatId(msg.getChatId())
                             .text("📸 **Отправьте изображение для создания стикера!**\n\n" +
-                                    "Поддерживаемые форматы: JPG, PNG, GIF\n" +
-                                    "Для справки напишите: помощь")
+                                    "Поддерживаемые форматы: JPG, PNG, GIF")
                             .parseMode("Markdown")
                             .build();
                     sendWithLogging(infoMessage);
                     return;
                 }
                 
-                // Обработка кнопки "Помощь"
-                if (text.equals("помощь")) {
-                    SendMessage helpMessage = SendMessage.builder()
-                            .chatId(msg.getChatId())
-                            .text("🎯 **StickerBot** - создание стикеров из изображений\n\n" +
-                                    "📸 **Как использовать:**\n" +
-                                    "• Отправьте фото или изображение (JPG, PNG, GIF)\n" +
-                                    "• Бот автоматически создаст стикер\n" +
-                                    "• Готовый стикер будет отправлен в чат\n\n" +
-                                    "⚠️ **Требования к изображению:**\n" +
-                                    "• Формат: PNG, WebP\n" +
-                                    "• Размер: до 512KB\n" +
-                                    "• Разрешение: квадратное (512x512 пикселей)\n\n" +
-                                    "🚀 **Начните прямо сейчас** - отправьте изображение!")
-                            .parseMode("Markdown")
-                            .build();
-                    sendWithLogging(helpMessage);
-                    return;
-                }
+
                 
-                // Обработка кнопки "Информация"
-                if (text.equals("информация")) {
-                    SendMessage infoMessage = SendMessage.builder()
-                            .chatId(msg.getChatId())
-                            .text("ℹ️ **Информация о StickerBot**\n\n" +
-                                    "🤖 **Версия:** 1.0\n" +
-                                    "📅 **Дата:** 2024\n" +
-                                    "🔧 **Технологии:** Spring Boot, Telegram Bot API\n\n" +
-                                    "📱 **Возможности:**\n" +
-                                    "• Автоматическое создание стикеров\n" +
-                                    "• Оптимизация изображений\n" +
-                                    "• Сохранение пропорций\n" +
-                                    "• Поддержка PNG/WebP\n\n" +
-                                    "💡 **Для создания стикера отправьте изображение!**")
-                            .parseMode("Markdown")
-                            .build();
-                    sendWithLogging(infoMessage);
-                    return;
-                }
-                
-                if (text.contains("стикер") || text.contains("sticker") || text.contains("помощь") || text.contains("help")) {
+                if (text.contains("стикер") || text.contains("sticker") || text.contains("help")) {
                     SendMessage helpMessage = SendMessage.builder()
                             .chatId(msg.getChatId())
                             .text("🎯 **StickerBot** - создание стикеров из изображений\n\n" +
@@ -330,8 +257,7 @@ public class StickerBot extends AbstractTelegramBot {
                     SendMessage infoMessage = SendMessage.builder()
                             .chatId(msg.getChatId())
                             .text("🎯 Отправьте изображение для создания стикера!\n\n" +
-                                    "Поддерживаемые форматы: JPG, PNG, GIF\n" +
-                                    "Для справки напишите: помощь")
+                                    "Поддерживаемые форматы: JPG, PNG, GIF")
                             .build();
                     sendWithLogging(infoMessage);
                 }

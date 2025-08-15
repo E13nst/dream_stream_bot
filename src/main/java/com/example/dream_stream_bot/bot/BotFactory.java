@@ -15,12 +15,23 @@ public class BotFactory {
         if (type == null) {
             throw new IllegalArgumentException("Bot type is not specified");
         }
+        
+        // Логируем для отладки
+        System.out.println("🔍 BotFactory: Создаем бота типа: '" + type + "' (username: " + botEntity.getUsername() + ")");
+        
         return switch (type.toLowerCase()) {
             case "cotycat" -> new CopyCatBot(botEntity, messageHandlerService);
             case "assistant" -> new AssistantBot(botEntity, messageHandlerService);
             case "sticker" -> new StickerBot(botEntity, messageHandlerService, userStateService, stickerPackService, stickerService);
             // Добавляй новые типы ботов здесь
-            default -> throw new IllegalArgumentException("Unknown bot type: " + type);
+            default -> {
+                // Fallback: если тип не распознан, но username содержит "sticker", создаем StickerBot
+                if (botEntity.getUsername() != null && botEntity.getUsername().toLowerCase().contains("sticker")) {
+                    System.out.println("🔄 Fallback: Создаем StickerBot для username '" + botEntity.getUsername() + "' с типом '" + type + "'");
+                    yield new StickerBot(botEntity, messageHandlerService, userStateService, stickerPackService, stickerService);
+                }
+                throw new IllegalArgumentException("Unknown bot type: " + type + ". Supported types: cotycat, assistant, sticker");
+            }
         };
     }
 } 

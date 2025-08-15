@@ -52,14 +52,36 @@ public class BotInitializer {
     @EventListener({ContextRefreshedEvent.class})
     public void init() throws TelegramApiException {
         log.info("🤖 Initializing all Telegram bots...");
+        
+        // Проверяем зависимости
+        log.info("🔍 Проверяем зависимости:");
+        log.info("  - BotService: {}", botService != null ? "✅" : "❌");
+        log.info("  - MessageHandlerService: {}", messageHandlerService != null ? "✅" : "❌");
+        log.info("  - UserStateService: {}", userStateService != null ? "✅" : "❌");
+        log.info("  - StickerPackService: {}", stickerPackService != null ? "✅" : "❌");
+        log.info("  - StickerService: {}", stickerService != null ? "✅" : "❌");
+        
         List<BotEntity> bots = botService.getAllBots();
+        log.info("📋 Найдено ботов в базе: {}", bots.size());
+        
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
         for (BotEntity bot : bots) {
+            log.info("🔍 Обрабатываем бота: username='{}', type='{}', active={}", 
+                    bot.getUsername(), bot.getType(), bot.getIsActive());
+            
             if (Boolean.TRUE.equals(bot.getIsActive())) {
-                AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerPackService, stickerService);
-                telegramBotsApi.registerBot(telegramBot);
-                botRegistry.put(bot.getUsername(), telegramBot);
-                log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());
+                try {
+                    AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerPackService, stickerService);
+                    telegramBotsApi.registerBot(telegramBot);
+                    botRegistry.put(bot.getUsername(), telegramBot);
+                    log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());
+                } catch (Exception e) {
+                    log.error("❌ Ошибка при создании бота '{}' (type: {}): {}", 
+                            bot.getUsername(), bot.getType(), e.getMessage(), e);
+                    throw e;
+                }
+            } else {
+                log.info("⏸️ Bot '{}' пропущен (неактивен)", bot.getUsername());
             }
         }
     }
