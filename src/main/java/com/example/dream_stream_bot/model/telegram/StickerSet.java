@@ -6,11 +6,11 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 @Entity
-@Table(name = "stickerpack")
+@Table(name = "stickserset")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class StickerPack {
+public class StickerSet {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,7 +20,7 @@ public class StickerPack {
     private Long userId;
     
     @Column(name = "title", length = 64, nullable = false)
-    private String title; // Название стикерпака (например, "Мои стикеры") - не уникальное
+    private String title; // Название стикерсета (например, "Мои стикеры") - не уникальное
     
     @Column(name = "name", nullable = false, unique = true)
     private String name; // Полное имя для Telegram API (например, "my_stickers_by_StickerGalleryBot")

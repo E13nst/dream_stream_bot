@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface StickerPackRepository extends JpaRepository<StickerPack, Long> {
+public interface StickerSetRepository extends JpaRepository<StickerSet, Long> {
     
-    List<StickerPack> findByUserId(Long userId);
+    List<StickerSet> findByUserId(Long userId);
     
-    Optional<StickerPack> findByName(String name);
+    Optional<StickerSet> findByName(String name);
     
-    StickerPack findByTitle(String title);
+    StickerSet findByTitle(String title);
 } 

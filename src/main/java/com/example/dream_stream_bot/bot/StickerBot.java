@@ -5,16 +5,17 @@ import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.StickerService;
 
 import com.example.dream_stream_bot.service.telegram.UserStateService;
-import com.example.dream_stream_bot.service.telegram.StickerPackService;
+import com.example.dream_stream_bot.service.telegram.StickerSetService;
 import com.example.dream_stream_bot.model.keyboard.InlineKeyboardMarkupBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.example.dream_stream_bot.model.telegram.StickerPack;
+import com.example.dream_stream_bot.model.telegram.StickerSet;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -23,25 +24,25 @@ public class StickerBot extends AbstractTelegramBot {
     
     private final StickerService stickerService;
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerBot.class);
-    
+
     private final UserStateService userStateService;
-    private final StickerPackService stickerPackService;
+    private final StickerSetService stickerSetService;
     
     public StickerBot(BotEntity botEntity, MessageHandlerService messageHandlerService, 
-                     UserStateService userStateService, StickerPackService stickerPackService,
+                     UserStateService userStateService, StickerSetService stickerSetService,
                      StickerService stickerService) {
         super(botEntity, messageHandlerService);
         this.stickerService = stickerService;
         this.userStateService = userStateService;
-        this.stickerPackService = stickerPackService;
+        this.stickerSetService = stickerSetService;
     }
-
+    
     @Override
     public void onUpdateReceived(Update update) {
         // Добавляем логирование всех входящих сообщений
         if (update.hasMessage()) {
             Message msg = update.getMessage();
-            LOGGER.info("📨 Получено сообщение | ChatId: {} | Тип: {} | HasPhoto: {} | HasDocument: {} | HasText: {} | HasSticker: {} | HasVideo: {} | HasAudio: {} | Text: '{}'", 
+            LOGGER.info("📨 Получено сообщение | ChatId: {} | Тип: {} | HasPhoto: {} | HasDocument: {} | HasText: {} | HasSticker: {} | HasVideo: {} | HasAudio: {} | Text: '{}'",
                     msg.getChatId(),
                     msg.hasPhoto() ? "PHOTO" : msg.hasDocument() ? "DOCUMENT" : msg.hasText() ? "TEXT" : msg.hasSticker() ? "STICKER" : msg.hasVideo() ? "VIDEO" : msg.hasAudio() ? "AUDIO" : "OTHER",
                     msg.hasPhoto(),
@@ -52,17 +53,17 @@ public class StickerBot extends AbstractTelegramBot {
                     msg.hasAudio(),
                     msg.hasText() ? msg.getText() : "N/A");
         }
-        
+
         // Обработка callback-ов от inline кнопок
         if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             Long chatId = update.getCallbackQuery().getMessage().getChatId();
             LOGGER.info("🔘 Получен callback | ChatId: {} | Data: {}", chatId, callbackData);
-            
+
             if ("создать_новый_набор".equals(callbackData)) {
                 // Начинаем процесс создания стикерпака
                 userStateService.setUserState(chatId, UserStateService.UserState.WAITING_FOR_PACK_TITLE);
-                
+
                 SendMessage infoMessage = SendMessage.builder()
                         .chatId(chatId)
                         .text("Введи имя для нового стикерпака:")
@@ -91,11 +92,11 @@ public class StickerBot extends AbstractTelegramBot {
                 return;
             }
         }
-        
+
         if (update.hasMessage()) {
             Message msg = update.getMessage();
             String conversationId = getConversationId(msg.getChatId());
-            
+
             // Проверяем, нужно ли отвечать (для групповых чатов)
             boolean isGroup = msg.isGroupMessage() || msg.isSuperGroupMessage();
             if (isGroup) {
@@ -107,40 +108,40 @@ public class StickerBot extends AbstractTelegramBot {
                 boolean isName = msg.hasText() && msg.getText().toLowerCase().contains(botEntity.getName().toLowerCase());
                 boolean isAlias = msg.hasText() && botEntity.getBotTriggersList().stream().anyMatch(alias -> !alias.isEmpty() && msg.getText().toLowerCase().contains(alias.toLowerCase()));
                 boolean isTrigger = msg.hasText() && botEntity.getBotTriggersList().stream().anyMatch(trigger -> !trigger.isEmpty() && msg.getText().toLowerCase().contains(trigger.toLowerCase()));
-                
+
                 if (!(isReplyToBot || isMention || isName || isAlias || isTrigger)) {
                     return; // Игнорируем сообщение, если не обращение к боту
                 }
             }
-            
+
             // Обрабатываем изображения
             if (msg.hasPhoto() || msg.hasDocument()) {
                 LOGGER.info("🖼️ Обрабатываем изображение | ChatId: {} | Тип: {}", msg.getChatId(), msg.hasPhoto() ? "PHOTO" : "DOCUMENT");
-                
+
                 // Получаем name стикерпака для этого пользователя
                 String stickerPackName = null;
                 try {
                     // Сначала проверяем, есть ли выбранный набор
-                    Long selectedPackId = userStateService.getSelectedPackId(msg.getChatId());
+                    Long selectedPackId = userStateService.getSelectedSetId(msg.getChatId());
                     if (selectedPackId != null) {
-                        StickerPack selectedPack = stickerPackService.findById(selectedPackId);
+                        StickerSet selectedPack = stickerSetService.findById(selectedPackId);
                         if (selectedPack != null && selectedPack.getUserId().equals(msg.getChatId())) {
                             stickerPackName = selectedPack.getName();
-                            LOGGER.info("📦 Используем выбранный стикерпак для пользователя {}: Name='{}', ID={}", 
+                            LOGGER.info("📦 Используем выбранный стикерпак для пользователя {}: Name='{}', ID={}",
                                     msg.getChatId(), stickerPackName, selectedPackId);
                         } else {
                             // Выбранный набор не найден или не принадлежит пользователю, очищаем
-                            userStateService.clearSelectedPackId(msg.getChatId());
+                            userStateService.clearSelectedSetId(msg.getChatId());
                             LOGGER.warn("⚠️ Выбранный стикерпак не найден или не принадлежит пользователю {}, очищаем выбор", msg.getChatId());
                         }
                     }
                     
                     // Если выбранный набор не найден, берем последний созданный
                     if (stickerPackName == null) {
-                        List<StickerPack> userPacks = stickerPackService.findByUserId(msg.getChatId());
+                        List<StickerSet> userPacks = stickerSetService.findByUserId(msg.getChatId());
                         if (!userPacks.isEmpty()) {
                             // Берем последний созданный стикерпак (самый новый)
-                            StickerPack latestPack = userPacks.stream()
+                            StickerSet latestPack = userPacks.stream()
                                     .max((p1, p2) -> p1.getCreatedAt().compareTo(p2.getCreatedAt()))
                                     .orElse(userPacks.get(0));
                             stickerPackName = latestPack.getName();
@@ -153,7 +154,7 @@ public class StickerBot extends AbstractTelegramBot {
                 } catch (Exception e) {
                     LOGGER.error("❌ Ошибка при поиске стикерпака для пользователя {}: {}", msg.getChatId(), e.getMessage());
                 }
-                
+
                 SendMessage response = stickerService.handleImageMessage(msg, this, stickerPackName);
                 if (response != null) {
                     sendWithLogging(response);
@@ -176,9 +177,9 @@ public class StickerBot extends AbstractTelegramBot {
                     }
                     
                     // Сохраняем название и переходим к следующему шагу
-                    UserStateService.StickerPackData packData = new UserStateService.StickerPackData();
-                    packData.setTitle(title);
-                    userStateService.setStickerPackData(msg.getChatId(), packData);
+                    UserStateService.StickerSetData setData = new UserStateService.StickerSetData();
+                    setData.setTitle(title);
+                    userStateService.setStickerSetData(msg.getChatId(), setData);
                     userStateService.setUserState(msg.getChatId(), UserStateService.UserState.WAITING_FOR_PACK_NAME);
                     
                     SendMessage nextStepMessage = SendMessage.builder()
@@ -201,7 +202,7 @@ public class StickerBot extends AbstractTelegramBot {
                     }
                     
                     // Проверяем уникальность имени
-                    StickerPack existingPack = stickerPackService.findByName(name);
+                    StickerSet existingPack = stickerSetService.findByName(name);
                     if (existingPack != null) {
                         SendMessage errorMessage = SendMessage.builder()
                                 .chatId(msg.getChatId())
@@ -213,11 +214,11 @@ public class StickerBot extends AbstractTelegramBot {
                     }
                     
                     // Сохраняем имя и завершаем создание
-                    UserStateService.StickerPackData packData = userStateService.getStickerPackData(msg.getChatId());
+                    UserStateService.StickerSetData packData = userStateService.getStickerSetData(msg.getChatId());
                     packData.setName(name);
                     
                     // Сохраняем в базу данных
-                    StickerPack savedPack = stickerPackService.createStickerPack(
+                    StickerSet savedPack = stickerSetService.createStickerSet(
                         msg.getChatId(), packData.getTitle(), packData.getName());
                     LOGGER.info("📦 Создан стикерпак: Title='{}', Name='{}', UserId={}, DB_ID={}", 
                             packData.getTitle(), packData.getName(), msg.getChatId(), savedPack.getId());
@@ -338,7 +339,7 @@ public class StickerBot extends AbstractTelegramBot {
                 .addRow("Создать новый набор", "создать_новый_набор")
                 .addRow("Редактировать набор", "редактировать_набор")
                 .build();
-        
+
         SendMessage mainMenuMessage = SendMessage.builder()
                 .chatId(chatId)
                 .text("🎯 **Главное меню StickerBot**\n\n" +
@@ -346,7 +347,7 @@ public class StickerBot extends AbstractTelegramBot {
                 .parseMode("Markdown")
                 .replyMarkup(keyboard)
                 .build();
-        
+
         sendWithLogging(mainMenuMessage);
     }
     
@@ -355,7 +356,7 @@ public class StickerBot extends AbstractTelegramBot {
      */
     private void showUserStickerPacks(Long chatId, int page) {
         try {
-            List<StickerPack> userPacks = stickerPackService.findByUserId(chatId);
+            List<StickerSet> userPacks = stickerSetService.findByUserId(chatId);
             
             if (userPacks.isEmpty()) {
                 SendMessage noPacksMessage = SendMessage.builder()
@@ -376,13 +377,13 @@ public class StickerBot extends AbstractTelegramBot {
             int endIndex = Math.min(startIndex + itemsPerPage, userPacks.size());
             
             // Получаем наборы для текущей страницы
-            List<StickerPack> pagePacks = userPacks.subList(startIndex, endIndex);
+            List<StickerSet> pagePacks = userPacks.subList(startIndex, endIndex);
             
             // Создаем клавиатуру с наборами
             InlineKeyboardMarkupBuilder keyboardBuilder = new InlineKeyboardMarkupBuilder();
             
             // Добавляем кнопки для каждого набора (по одной на строку)
-            for (StickerPack pack : pagePacks) {
+            for (StickerSet pack : pagePacks) {
                 String buttonText = String.format("📦 %s", 
                     pack.getTitle().length() > 40 ? pack.getTitle().substring(0, 37) + "..." : pack.getTitle());
                 LOGGER.info("🔘 Создаем кнопку для набора: '{}' с callback '{}'", buttonText, "pack_" + pack.getId());
@@ -393,7 +394,7 @@ public class StickerBot extends AbstractTelegramBot {
             if (totalPages > 1) {
                 // Создаем кнопки страниц в одну строку
                 keyboardBuilder.addPageNavigation(page, totalPages);
-                
+
                 // Добавляем информацию о странице
                 keyboardBuilder.addInfoRow("📄 Страница " + (page + 1) + " из " + totalPages);
             }
@@ -434,7 +435,7 @@ public class StickerBot extends AbstractTelegramBot {
             Long packId = Long.parseLong(callbackData.substring(5));
             LOGGER.info("🔍 Отладка: Ищем набор с ID: {}", packId);
 
-            StickerPack pack = stickerPackService.findById(packId);
+            StickerSet pack = stickerSetService.findById(packId);
 
             if (pack == null) {
                 LOGGER.error("❌ Набор с ID {} не найден в базе данных", packId);
@@ -458,7 +459,7 @@ public class StickerBot extends AbstractTelegramBot {
             }
 
             // Устанавливаем состояние для добавления стикера в выбранный набор
-            userStateService.setSelectedPackId(chatId, packId);
+            userStateService.setSelectedSetId(chatId, packId);
 
             String messageText = String.format("✅ **Выбран набор:** %s\n\n" +
                             "📝 Название: %s\n" +
@@ -466,13 +467,13 @@ public class StickerBot extends AbstractTelegramBot {
                             "Отправьте изображение для добавления стикера!",
                             pack.getTitle(), pack.getTitle(), pack.getName());
 
-            SendMessage packSelectedMessage = SendMessage.builder()
+            SendMessage setSelectedMessage = SendMessage.builder()
                     .chatId(chatId)
                     .text(messageText)
                     .parseMode("Markdown")
                     .build();
 
-            sendWithLogging(packSelectedMessage);
+            sendWithLogging(setSelectedMessage);
 
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при выборе набора {} для пользователя {}: {}", callbackData, chatId, e.getMessage());

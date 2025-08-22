@@ -1,12 +1,13 @@
 package com.example.dream_stream_bot.config;
 
+import com.example.dream_stream_bot.bot.AbstractTelegramBot;
 import com.example.dream_stream_bot.bot.BotFactory;
 import com.example.dream_stream_bot.bot.AbstractTelegramBot;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
-import com.example.dream_stream_bot.service.telegram.StickerPackService;
+import com.example.dream_stream_bot.service.telegram.StickerSetService;
 import com.example.dream_stream_bot.service.telegram.StickerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,24 +24,24 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import java.util.List;
 import java.util.Map;
 
-@Component
 @Slf4j
+@Component
 public class BotInitializer {
     private final BotService botService;
     private final MessageHandlerService messageHandlerService;
     private final UserStateService userStateService;
-    private final StickerPackService stickerPackService;
+    private final StickerSetService stickerSetService;
     private final StickerService stickerService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Autowired
-    public BotInitializer(BotService botService, MessageHandlerService messageHandlerService, 
-                         UserStateService userStateService, StickerPackService stickerPackService,
+    public BotInitializer(BotService botService, MessageHandlerService messageHandlerService,
+                         UserStateService userStateService, StickerSetService stickerSetService,
                          StickerService stickerService) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userStateService = userStateService;
-        this.stickerPackService = stickerPackService;
+        this.stickerSetService = stickerSetService;
         this.stickerService = stickerService;
     }
 
@@ -58,25 +59,25 @@ public class BotInitializer {
         log.info("  - BotService: {}", botService != null ? "✅" : "❌");
         log.info("  - MessageHandlerService: {}", messageHandlerService != null ? "✅" : "❌");
         log.info("  - UserStateService: {}", userStateService != null ? "✅" : "❌");
-        log.info("  - StickerPackService: {}", stickerPackService != null ? "✅" : "❌");
+        log.info("  - StickerSetService: {}", stickerSetService != null ? "✅" : "❌");
         log.info("  - StickerService: {}", stickerService != null ? "✅" : "❌");
         
         List<BotEntity> bots = botService.getAllBots();
         log.info("📋 Найдено ботов в базе: {}", bots.size());
-        
+
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
         for (BotEntity bot : bots) {
-            log.info("🔍 Обрабатываем бота: username='{}', type='{}', active={}", 
+            log.info("🔍 Обрабатываем бота: username='{}', type='{}', active={}",
                     bot.getUsername(), bot.getType(), bot.getIsActive());
-            
+
             if (Boolean.TRUE.equals(bot.getIsActive())) {
                 try {
-                    AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerPackService, stickerService);
+                    AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerSetService, stickerService);
                     telegramBotsApi.registerBot(telegramBot);
                     botRegistry.put(bot.getUsername(), telegramBot);
                     log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());
                 } catch (Exception e) {
-                    log.error("❌ Ошибка при создании бота '{}' (type: {}): {}", 
+                    log.error("❌ Ошибка при создании бота '{}' (type: {}): {}",
                             bot.getUsername(), bot.getType(), e.getMessage(), e);
                     throw e;
                 }
