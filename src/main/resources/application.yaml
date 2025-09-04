@@ -21,12 +21,36 @@ spring:
     username: ${DB_USERNAME:dalek}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 10000
+      maximum-pool-size: 5
+      minimum-idle: 2
+      leak-detection-threshold: 30000
+      connection-test-query: SELECT 1
+      auto-commit: false
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
+        use_sql_comments: false
+        jdbc:
+          batch_size: 20
+          time_zone: UTC
+        connection:
+          provider_disables_autocommit: true
+
+# Подробное логирование для диагностики
+logging:
+  level:
+    org.springframework.jdbc: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+    com.zaxxer.hikari: INFO
+    org.springframework.orm.jpa: INFO
+    com.example.dream_stream_bot: DEBUG
+    org.springframework.boot.autoconfigure: INFO
   
