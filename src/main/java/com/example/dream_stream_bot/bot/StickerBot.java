@@ -19,6 +19,12 @@ import com.example.dream_stream_bot.model.telegram.StickerSet;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.time.Instant;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 
 public class StickerBot extends AbstractTelegramBot {
     
@@ -264,6 +270,26 @@ public class StickerBot extends AbstractTelegramBot {
                     return;
                 }
                 
+                // Обработка команды /initdata
+                if (text.equals("/initdata")) {
+                    String initData = generateInitData(msg.getChatId(), msg.getFrom());
+                    SendMessage initDataMessage = SendMessage.builder()
+                            .chatId(msg.getChatId())
+                            .text("🔐 **Ваш initData для Swagger UI:**\n\n" +
+                                    "```\n" + initData + "\n```\n\n" +
+                                    "📋 **Как использовать:**\n" +
+                                    "1. Скопируйте строку выше\n" +
+                                    "2. Откройте http://localhost:8080/swagger-ui.html\n" +
+                                    "3. Нажмите кнопку 'Authorize' (🔒)\n" +
+                                    "4. Вставьте строку в поле 'X-Telegram-Init-Data'\n" +
+                                    "5. Нажмите 'Authorize'\n\n" +
+                                    "✅ Теперь вы можете тестировать API!")
+                            .parseMode("Markdown")
+                            .build();
+                    sendWithLogging(initDataMessage);
+                    return;
+                }
+                
                 // Обработка кнопки "Создать новый набор"
                 if (text.equals("создать новый набор")) {
                     SendMessage infoMessage = SendMessage.builder()
@@ -483,5 +509,70 @@ public class StickerBot extends AbstractTelegramBot {
                     .build();
             sendWithLogging(errorMessage);
         }
+    }
+    
+    /**
+     * Генерирует initData для Telegram Web App аутентификации
+     */
+    private String generateInitData(Long chatId, org.telegram.telegrambots.meta.api.objects.User user) {
+        try {
+            // Создаем параметры initData
+            TreeMap<String, String> params = new TreeMap<>();
+            
+            // Добавляем обязательные параметры
+            params.put("query_id", "AAHdF6IQAAAAAN0XohDhrOrc");
+            params.put("auth_date", String.valueOf(Instant.now().getEpochSecond()));
+            
+            // Добавляем информацию о пользователе
+            String userJson = String.format(
+                "{\"id\":%d,\"first_name\":\"%s\",\"last_name\":\"%s\",\"username\":\"%s\",\"language_code\":\"%s\"}",
+                user.getId(),
+                user.getFirstName() != null ? user.getFirstName() : "",
+                user.getLastName() != null ? user.getLastName() : "",
+                user.getUserName() != null ? user.getUserName() : "",
+                user.getLanguageCode() != null ? user.getLanguageCode() : "en"
+            );
+            params.put("user", userJson);
+            
+            // Создаем строку для подписи (все параметры кроме hash, отсортированные)
+            String dataCheckString = params.entrySet().stream()
+                    .map(entry -> entry.getKey() + "=" + entry.getValue())
+                    .collect(Collectors.joining("\n"));
+            
+            // Вычисляем HMAC-SHA256 подпись
+            String secretKey = "WebAppData";
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(botEntity.getToken().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(secretKeySpec);
+            
+            byte[] hashBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            String hash = bytesToHex(hashBytes);
+            
+            // Добавляем hash к параметрам
+            params.put("hash", hash);
+            
+            // Формируем финальную строку initData
+            String initData = params.entrySet().stream()
+                    .map(entry -> entry.getKey() + "=" + entry.getValue())
+                    .collect(Collectors.joining("&"));
+            
+            LOGGER.info("🔐 Сгенерирован initData для пользователя {}: {}", chatId, initData);
+            return initData;
+            
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка генерации initData для пользователя {}: {}", chatId, e.getMessage());
+            return "error_generating_initdata";
+        }
+    }
+    
+    /**
+     * Конвертирует байты в hex строку
+     */
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02x", b));
+        }
+        return result.toString();
     }
 } 

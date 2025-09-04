@@ -43,6 +43,19 @@ spring:
         connection:
           provider_disables_autocommit: true
 
+# Swagger/OpenAPI конфигурация
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    filter: true
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+
 # Подробное логирование для диагностики
 logging:
   level:
@@ -53,4 +66,5 @@ logging:
     org.springframework.orm.jpa: INFO
     com.example.dream_stream_bot: DEBUG
     org.springframework.boot.autoconfigure: INFO
+    org.springframework.security: DEBUG
   
