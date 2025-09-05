@@ -16,6 +16,14 @@ const user = tg.initDataUnsafe?.user;
 const userId = user?.id;
 const initData = tg.initData;
 
+// Отладочная информация
+console.log('🔍 Telegram Web App данные:');
+console.log('tg.initData:', initData ? 'present (' + initData.length + ' chars)' : 'null');
+console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
+console.log('user:', user);
+console.log('platform:', tg.platform);
+console.log('version:', tg.version);
+
 // Отображение информации о пользователе
 if (user) {
     document.getElementById('userInfo').innerHTML = `
@@ -35,11 +43,22 @@ const AUTH_BASE = '/auth';
 
 // Функция для добавления заголовков аутентификации
 function getAuthHeaders() {
+    console.log('🔍 Подготовка заголовков аутентификации:');
+    console.log('initData:', initData ? 'present (' + initData.length + ' chars)' : 'null');
+    console.log('User ID:', user?.id);
+    
     const headers = {
         'Content-Type': 'application/json',
         'X-Telegram-Init-Data': initData,
         'X-Telegram-Bot-Name': 'StickerGallery'
     };
+    
+    console.log('🔍 Заголовки для API запроса:', {
+        'Content-Type': headers['Content-Type'],
+        'X-Telegram-Init-Data': headers['X-Telegram-Init-Data'] ? 'present' : 'null',
+        'X-Telegram-Bot-Name': headers['X-Telegram-Bot-Name']
+    });
+    
     return headers;
 }
 
@@ -50,6 +69,18 @@ async function checkAuthStatus() {
         authStatusElement.innerHTML = '<p>🔐 Проверка авторизации...</p>';
         authStatusElement.className = 'auth-status';
 
+        // Проверяем наличие initData
+        if (!initData || initData.trim() === '') {
+            console.error('❌ InitData отсутствует или пустая');
+            authStatusElement.innerHTML = `
+                <p>❌ Ошибка: InitData не получена от Telegram</p>
+                <p>Убедитесь, что приложение открыто через Telegram бота</p>
+            `;
+            authStatusElement.className = 'auth-status error';
+            return false;
+        }
+
+        console.log('✅ InitData найдена, отправляем запрос на сервер');
         const response = await fetch(`${AUTH_BASE}/status`, {
             method: 'GET',
             headers: getAuthHeaders()
@@ -85,8 +116,11 @@ async function checkAuthStatus() {
 // Загрузка стикеров
 async function loadStickers() {
     try {
+        // Безопасное обновление loading элемента
         const loading = document.getElementById('loading');
-        loading.innerHTML = '<p>Загрузка стикеров...</p>';
+        if (loading) {
+            loading.innerHTML = '<p>Загрузка стикеров...</p>';
+        }
 
         // Сначала проверяем авторизацию
         const isAuthenticated = await checkAuthStatus();
