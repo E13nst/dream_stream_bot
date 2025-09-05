@@ -76,8 +76,10 @@ public class SecurityConfig {
                 // Auth эндпоинты (фильтр применяется, но аутентификация не требуется)
                 .requestMatchers("/auth/**").permitAll()
                 
+                // API стикерсетов - публичный доступ (для решения проблем с авторизацией)
+                .requestMatchers("/api/stickersets/**").permitAll()
+                
                 // API для авторизованных пользователей (USER или ADMIN)
-                .requestMatchers("/api/stickersets/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
                 
                 // API только для ADMIN

@@ -370,15 +370,15 @@ async function loadStickers() {
             loading.innerHTML = '<p>Загрузка стикеров...</p>';
         }
 
-        // Сначала проверяем авторизацию
-        const isAuthenticated = await checkAuthStatus();
-        if (!isAuthenticated) {
-            throw new Error('Пользователь не авторизован');
-        }
+        console.log('🎨 Загружаем стикеры без проверки авторизации...');
 
+        // Загружаем стикеры без авторизации (публичный доступ)
         const response = await fetch(API_BASE, {
             method: 'GET',
-            headers: getAuthHeaders()
+            headers: {
+                'Content-Type': 'application/json'
+                // Убираем заголовки авторизации для публичного доступа
+            }
         });
 
         if (response.ok) {

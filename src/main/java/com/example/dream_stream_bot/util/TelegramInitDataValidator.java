@@ -189,6 +189,7 @@ public class TelegramInitDataValidator {
      * Проверяет HMAC-SHA256 подпись (старый формат с hash)
      */
     private boolean validateHash(Map<String, String> params, String expectedHash, String botToken) {
+        LOGGER.info("🔍 НАЧАЛО validateHash - ожидаемый hash: {}", expectedHash);
         try {
             // Создаем строку для подписи (все параметры кроме hash и signature, отсортированные)
             String dataCheckString = params.entrySet().stream()
@@ -197,12 +198,22 @@ public class TelegramInitDataValidator {
                     .map(entry -> entry.getKey() + "=" + entry.getValue())
                     .collect(Collectors.joining("\n"));
             
-            // Вычисляем подпись
-            String secretKey = "WebAppData";
-            Mac mac = Mac.getInstance(HMAC_SHA256);
-            SecretKeySpec secretKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
-            mac.init(secretKeySpec);
+            LOGGER.info("🔍 Data check string для hash: {}", dataCheckString);
             
+            // Вычисляем подпись согласно документации Telegram:
+            // secret_key = HMAC-SHA256(bot_token, "WebAppData")
+            // hash = HMAC-SHA256(data_check_string, secret_key)
+            
+            // Шаг 1: Создаем секретный ключ
+            Mac mac = Mac.getInstance(HMAC_SHA256);
+            SecretKeySpec webAppDataKeySpec = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
+            mac.init(webAppDataKeySpec);
+            byte[] secretKey = mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
+            
+            // Шаг 2: Подписываем данные секретным ключом
+            mac = Mac.getInstance(HMAC_SHA256);
+            SecretKeySpec dataKeySpec = new SecretKeySpec(secretKey, HMAC_SHA256);
+            mac.init(dataKeySpec);
             byte[] hashBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
             String calculatedHash = bytesToHex(hashBytes);
             
