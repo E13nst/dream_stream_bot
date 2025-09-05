@@ -274,3 +274,64 @@ body {
     border-radius: 8px;
     margin: 8px 0;
 }
+
+/* Стили для отладочной панели */
+.debug-panel {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 8px;
+    margin: 8px 0;
+    padding: 8px;
+}
+
+.debug-panel summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #FFC107;
+    padding: 4px;
+    list-style: none;
+}
+
+.debug-panel summary::-webkit-details-marker {
+    display: none;
+}
+
+.debug-panel summary::before {
+    content: "▶ ";
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.debug-panel[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.debug-content {
+    margin-top: 8px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--tg-theme-text-color);
+    background: rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.debug-content .debug-item {
+    margin: 4px 0;
+    padding: 4px;
+    border-left: 3px solid #FFC107;
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.debug-content .debug-label {
+    font-weight: bold;
+    color: #FFC107;
+}
+
+.debug-content .debug-value {
+    color: var(--tg-theme-text-color);
+    margin-left: 8px;
+}

@@ -99,6 +99,118 @@ if (!initDataCheck.valid) {
     console.warn('⚠️ Проблема с initData:', initDataCheck.reason);
 }
 
+// Функция для обновления отладочной информации с результатом запроса
+function updateDebugInfoWithResponse(status, statusText) {
+    const debugContent = document.getElementById('debugContent');
+    if (!debugContent) return;
+    
+    // Добавляем информацию о последнем запросе
+    const responseInfo = `
+<div class="debug-item" style="border-left-color: ${status === 200 ? '#4CAF50' : '#F44336'};">
+    <span class="debug-label">🌐 Последний запрос к API:</span>
+    <span class="debug-value">${status} ${statusText}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">🕐 Время запроса:</span>
+    <span class="debug-value">${new Date().toLocaleTimeString()}</span>
+</div>
+    `;
+    
+    // Добавляем в начало отладочной информации
+    debugContent.innerHTML = responseInfo + debugContent.innerHTML;
+}
+
+// Функция для отображения отладочной информации
+function updateDebugInfo() {
+    const debugContent = document.getElementById('debugContent');
+    if (!debugContent) return;
+    
+    const now = new Date();
+    const authDate = initData ? new URLSearchParams(initData).get('auth_date') : null;
+    const authDateTime = authDate ? new Date(parseInt(authDate) * 1000) : null;
+    const signature = initData ? new URLSearchParams(initData).get('signature') : null;
+    const hash = initData ? new URLSearchParams(initData).get('hash') : null;
+    const queryId = initData ? new URLSearchParams(initData).get('query_id') : null;
+    
+    const debugInfo = `
+<div class="debug-item">
+    <span class="debug-label">🕐 Текущее время:</span>
+    <span class="debug-value">${now.toLocaleString()}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">📱 Telegram Platform:</span>
+    <span class="debug-value">${tg.platform || 'unknown'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">📋 Telegram Version:</span>
+    <span class="debug-value">${tg.version || 'unknown'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">🔐 InitData присутствует:</span>
+    <span class="debug-value">${initData ? '✅ Да' : '❌ Нет'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">📏 InitData длина:</span>
+    <span class="debug-value">${initData ? initData.length + ' символов' : 'N/A'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">🕒 Auth Date:</span>
+    <span class="debug-value">${authDateTime ? authDateTime.toLocaleString() : 'не найден'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">⏰ Возраст InitData:</span>
+    <span class="debug-value">${authDate ? Math.floor((now.getTime() - authDateTime.getTime()) / 1000) + ' секунд' : 'N/A'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">✍️ Signature:</span>
+    <span class="debug-value">${signature ? '✅ Присутствует (' + signature.length + ' символов)' : '❌ Отсутствует'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">#️⃣ Hash:</span>
+    <span class="debug-value">${hash ? '✅ Присутствует (' + hash.length + ' символов)' : '❌ Отсутствует'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">🆔 Query ID:</span>
+    <span class="debug-value">${queryId || 'не найден'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">👤 User ID:</span>
+    <span class="debug-value">${user?.id || 'не найден'}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">🌐 API Endpoint:</span>
+    <span class="debug-value">${window.location.origin}/auth/status</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">✅ InitData валидация:</span>
+    <span class="debug-value">${initDataCheck.valid ? '✅ Валидна' : '❌ ' + initDataCheck.reason}</span>
+</div>
+
+<div class="debug-item">
+    <span class="debug-label">🔤 InitData (первые 100 символов):</span>
+    <span class="debug-value">${initData ? initData.substring(0, 100) + '...' : 'отсутствует'}</span>
+</div>
+    `;
+    
+    debugContent.innerHTML = debugInfo;
+}
+
+// Обновляем отладочную информацию при загрузке
+updateDebugInfo();
+
 // Отображение информации о пользователе
 if (user) {
     document.getElementById('userInfo').innerHTML = `
@@ -199,6 +311,9 @@ async function checkAuthStatus() {
         });
         
         console.log('📊 Ответ сервера на проверку аутентификации:', response.status, response.statusText);
+        
+        // Обновляем отладочную информацию с результатом запроса
+        updateDebugInfoWithResponse(response.status, response.statusText);
         
         if (response.ok) {
             const authData = await response.json();
