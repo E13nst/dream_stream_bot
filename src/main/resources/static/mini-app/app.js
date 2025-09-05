@@ -272,7 +272,7 @@ async function checkAuthStatus() {
     try {
         if (!initData || initData.trim() === '') {
             console.warn('⚠️ initData отсутствует, пропускаем проверку аутентификации');
-            document.getElementById('auth-status').innerHTML = `
+            document.getElementById('authStatus').innerHTML = `
                 <div class="auth-error">
                     ❌ Данные аутентификации отсутствуют.
                     <br>Убедитесь, что приложение запущено из Telegram.
@@ -286,7 +286,7 @@ async function checkAuthStatus() {
         const check = checkInitDataExpiry(initData);
         if (!check.valid) {
             console.warn('⚠️ initData невалиден:', check.reason);
-            document.getElementById('auth-status').innerHTML = `
+            document.getElementById('authStatus').innerHTML = `
                 <div class="auth-error">
                     ❌ Данные аутентификации устарели.
                     <br>${check.reason}
@@ -320,7 +320,7 @@ async function checkAuthStatus() {
             console.log('✅ Данные аутентификации:', authData);
             
             if (authData.authenticated) {
-                document.getElementById('auth-status').innerHTML = `
+                document.getElementById('authStatus').innerHTML = `
                     <div class="auth-success">
                         ✅ Аутентификация успешна
                         <br>Роль: ${authData.role || 'не определена'}
@@ -330,7 +330,7 @@ async function checkAuthStatus() {
                 `;
                 return true;
             } else {
-                document.getElementById('auth-status').innerHTML = `
+                document.getElementById('authStatus').innerHTML = `
                     <div class="auth-error">
                         ❌ Ошибка авторизации: ${authData.message || 'Неизвестная ошибка'}
                         <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
@@ -341,7 +341,7 @@ async function checkAuthStatus() {
         } else {
             const errorText = await response.text();
             console.error('❌ Ошибка проверки аутентификации:', response.status, errorText);
-            document.getElementById('auth-status').innerHTML = `
+            document.getElementById('authStatus').innerHTML = `
                 <div class="auth-error">
                     ❌ Ошибка сервера: ${response.status} ${response.statusText}
                     <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
@@ -351,7 +351,7 @@ async function checkAuthStatus() {
         }
     } catch (error) {
         console.error('❌ Ошибка при проверке аутентификации:', error);
-        document.getElementById('auth-status').innerHTML = `
+        document.getElementById('authStatus').innerHTML = `
             <div class="auth-error">
                 ❌ Ошибка сети: ${error.message}
                 <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
