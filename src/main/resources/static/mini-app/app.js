@@ -12,9 +12,9 @@ document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.th
 document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f8f9fa');
 
 // Получение информации о пользователе
-const user = tg.initDataUnsafe?.user;
+let user = tg.initDataUnsafe?.user;
 const userId = user?.id;
-const initData = tg.initData;
+let initData = tg.initData;
 
 // Отладочная информация
 console.log('🔍 Telegram Web App данные:');
@@ -23,6 +23,81 @@ console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
 console.log('user:', user);
 console.log('platform:', tg.platform);
 console.log('version:', tg.version);
+
+// Функция проверки срока действия initData
+function checkInitDataExpiry(initDataString) {
+    if (!initDataString) return { valid: false, reason: 'initData отсутствует' };
+    
+    try {
+        const params = new URLSearchParams(initDataString);
+        const authDate = parseInt(params.get('auth_date'));
+        
+        if (!authDate) {
+            return { valid: false, reason: 'auth_date отсутствует' };
+        }
+        
+        const now = Math.floor(Date.now() / 1000);
+        const age = now - authDate;
+        const maxAge = 600; // 10 минут (как в валидаторе)
+        
+        console.log('🕐 Проверка срока действия initData:');
+        console.log('auth_date:', authDate, '(' + new Date(authDate * 1000).toLocaleString() + ')');
+        console.log('current time:', now, '(' + new Date(now * 1000).toLocaleString() + ')');
+        console.log('age:', age, 'секунд');
+        console.log('max age:', maxAge, 'секунд');
+        
+        if (age > maxAge) {
+            return { 
+                valid: false, 
+                reason: `initData устарел (возраст: ${age} сек, максимум: ${maxAge} сек)`,
+                age: age,
+                maxAge: maxAge
+            };
+        }
+        
+        return { valid: true, age: age, maxAge: maxAge };
+    } catch (error) {
+        console.error('❌ Ошибка при проверке срока действия initData:', error);
+        return { valid: false, reason: 'Ошибка парсинга initData: ' + error.message };
+    }
+}
+
+// Функция обновления initData
+function refreshInitData() {
+    console.log('🔄 Попытка обновления initData...');
+    
+    // Перезагружаем данные из Telegram Web App
+    const newUser = tg.initDataUnsafe?.user;
+    const newInitData = tg.initData;
+    
+    if (newInitData && newInitData !== initData) {
+        console.log('✅ initData обновлен');
+        user = newUser;
+        initData = newInitData;
+        return true;
+    } else {
+        console.log('❌ initData не изменился');
+        return false;
+    }
+}
+
+// Функция повторной попытки с обновлением
+function retryWithRefresh() {
+    console.log('🔄 Повторная попытка с обновлением данных...');
+    if (refreshInitData()) {
+        console.log('✅ Данные обновлены, перезагружаем стикеры...');
+        loadStickers();
+    } else {
+        console.log('❌ Не удалось обновить данные, попробуйте перезапустить приложение из бота');
+        alert('Не удалось обновить данные аутентификации. Попробуйте перезапустить приложение из бота.');
+    }
+}
+
+// Проверяем срок действия initData при загрузке
+const initDataCheck = checkInitDataExpiry(initData);
+if (!initDataCheck.valid) {
+    console.warn('⚠️ Проблема с initData:', initDataCheck.reason);
+}
 
 // Отображение информации о пользователе
 if (user) {
@@ -44,20 +119,38 @@ const AUTH_BASE = '/auth';
 // Функция для добавления заголовков аутентификации
 function getAuthHeaders() {
     console.log('🔍 Подготовка заголовков аутентификации:');
+    
+    // Проверяем срок действия текущего initData
+    const check = checkInitDataExpiry(initData);
+    if (!check.valid) {
+        console.warn('⚠️ initData невалиден:', check.reason);
+        
+        // Попытка обновить initData
+        if (refreshInitData()) {
+            const newCheck = checkInitDataExpiry(initData);
+            if (!newCheck.valid) {
+                console.error('❌ Не удалось получить валидный initData после обновления');
+            }
+        }
+    }
+    
     console.log('initData:', initData ? 'present (' + initData.length + ' chars)' : 'null');
     console.log('User ID:', user?.id);
     
     const headers = {
         'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': initData,
-        'X-Telegram-Bot-Name': 'StickerGallery'
+        'Accept': 'application/json'
     };
     
-    console.log('🔍 Заголовки для API запроса:', {
-        'Content-Type': headers['Content-Type'],
-        'X-Telegram-Init-Data': headers['X-Telegram-Init-Data'] ? 'present' : 'null',
-        'X-Telegram-Bot-Name': headers['X-Telegram-Bot-Name']
-    });
+    if (initData) {
+        headers['X-Telegram-Init-Data'] = initData;
+        headers['X-Telegram-Bot-Name'] = 'StickerGallery';
+        console.log('✅ Заголовки аутентификации добавлены');
+        console.log('X-Telegram-Bot-Name: StickerGallery');
+        console.log('X-Telegram-Init-Data: present');
+    } else {
+        console.warn('⚠️ initData отсутствует, запрос без аутентификации');
+    }
     
     return headers;
 }
@@ -65,50 +158,90 @@ function getAuthHeaders() {
 // Проверка статуса аутентификации
 async function checkAuthStatus() {
     try {
-        const authStatusElement = document.getElementById('authStatus');
-        authStatusElement.innerHTML = '<p>🔐 Проверка авторизации...</p>';
-        authStatusElement.className = 'auth-status';
-
-        // Проверяем наличие initData
         if (!initData || initData.trim() === '') {
-            console.error('❌ InitData отсутствует или пустая');
-            authStatusElement.innerHTML = `
-                <p>❌ Ошибка: InitData не получена от Telegram</p>
-                <p>Убедитесь, что приложение открыто через Telegram бота</p>
+            console.warn('⚠️ initData отсутствует, пропускаем проверку аутентификации');
+            document.getElementById('auth-status').innerHTML = `
+                <div class="auth-error">
+                    ❌ Данные аутентификации отсутствуют.
+                    <br>Убедитесь, что приложение запущено из Telegram.
+                    <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
+                </div>
             `;
-            authStatusElement.className = 'auth-status error';
             return false;
         }
-
-        console.log('✅ InitData найдена, отправляем запрос на сервер');
+        
+        // Проверяем срок действия initData
+        const check = checkInitDataExpiry(initData);
+        if (!check.valid) {
+            console.warn('⚠️ initData невалиден:', check.reason);
+            document.getElementById('auth-status').innerHTML = `
+                <div class="auth-error">
+                    ❌ Данные аутентификации устарели.
+                    <br>${check.reason}
+                    <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Обновить данные</button>
+                </div>
+            `;
+            
+            // Попытка автоматического обновления
+            if (refreshInitData()) {
+                console.log('✅ initData обновлен, повторяем проверку...');
+                return await checkAuthStatus();
+            }
+            return false;
+        }
+        
+        console.log('🔐 Проверяем статус аутентификации...');
+        console.log('📊 initData возраст:', check.age, 'сек из', check.maxAge, 'сек');
+        
         const response = await fetch(`${AUTH_BASE}/status`, {
             method: 'GET',
             headers: getAuthHeaders()
         });
-
-        const authData = await response.json();
         
-        if (authData.authenticated) {
-            authStatusElement.innerHTML = `
-                <p>✅ Авторизация успешна</p>
-                <p>Роль: <strong>${authData.role || 'USER'}</strong></p>
-            `;
-            authStatusElement.className = 'auth-status authenticated';
-            return true;
+        console.log('📊 Ответ сервера на проверку аутентификации:', response.status, response.statusText);
+        
+        if (response.ok) {
+            const authData = await response.json();
+            console.log('✅ Данные аутентификации:', authData);
+            
+            if (authData.authenticated) {
+                document.getElementById('auth-status').innerHTML = `
+                    <div class="auth-success">
+                        ✅ Аутентификация успешна
+                        <br>Роль: ${authData.role || 'не определена'}
+                        <br>ID: ${authData.telegramId || 'не определен'}
+                        <br><small>Данные действительны ещё ${check.maxAge - check.age} сек</small>
+                    </div>
+                `;
+                return true;
+            } else {
+                document.getElementById('auth-status').innerHTML = `
+                    <div class="auth-error">
+                        ❌ Ошибка авторизации: ${authData.message || 'Неизвестная ошибка'}
+                        <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
+                    </div>
+                `;
+                return false;
+            }
         } else {
-            authStatusElement.innerHTML = `
-                <p>❌ Ошибка авторизации: ${authData.message}</p>
+            const errorText = await response.text();
+            console.error('❌ Ошибка проверки аутентификации:', response.status, errorText);
+            document.getElementById('auth-status').innerHTML = `
+                <div class="auth-error">
+                    ❌ Ошибка сервера: ${response.status} ${response.statusText}
+                    <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
+                </div>
             `;
-            authStatusElement.className = 'auth-status error';
             return false;
         }
     } catch (error) {
-        console.error('Ошибка проверки авторизации:', error);
-        const authStatusElement = document.getElementById('authStatus');
-        authStatusElement.innerHTML = `
-            <p>❌ Ошибка проверки авторизации: ${error.message}</p>
+        console.error('❌ Ошибка при проверке аутентификации:', error);
+        document.getElementById('auth-status').innerHTML = `
+            <div class="auth-error">
+                ❌ Ошибка сети: ${error.message}
+                <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
+            </div>
         `;
-        authStatusElement.className = 'auth-status error';
         return false;
     }
 }

@@ -27,7 +27,7 @@ public class TelegramInitDataValidator {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramInitDataValidator.class);
     private static final String HMAC_SHA256 = "HmacSHA256";
-    private static final long MAX_AUTH_AGE_SECONDS = 300; // 5 минут для разработки
+    private static final long MAX_AUTH_AGE_SECONDS = 600; // 10 минут для разработки
     
     private final BotService botService;
     

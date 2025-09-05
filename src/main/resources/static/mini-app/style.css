@@ -234,3 +234,43 @@ body {
         width: 100%;
     }
 }
+
+/* Стили для кнопки повтора */
+.retry-btn {
+    background: var(--tg-theme-button-color);
+    color: var(--tg-theme-button-text-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+}
+
+.retry-btn:hover {
+    opacity: 0.8;
+}
+
+.retry-btn:active {
+    transform: scale(0.98);
+}
+
+/* Стили для статуса аутентификации */
+.auth-success {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #4CAF50;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+.auth-error {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: #F44336;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+}
