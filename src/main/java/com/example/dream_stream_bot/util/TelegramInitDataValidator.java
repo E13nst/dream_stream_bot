@@ -81,21 +81,22 @@ public class TelegramInitDataValidator {
             }
             
             // Определяем тип подписи (старый hash или новый signature)
-            String hash = params.get("hash");
-            String signature = params.get("signature");
-            String authDateStr = params.get("auth_date");
-            
-            if (hash == null && signature == null) {
-                LOGGER.warn("❌ Отсутствуют поля подписи (hash или signature)");
-                LOGGER.debug("🔍 Доступные поля: {}", params.keySet());
-                return false;
-            }
-            
-            if (signature != null) {
-                LOGGER.debug("🔍 Используем новый формат с signature: {} | AuthDate: {}", signature, authDateStr);
-            } else {
-                LOGGER.debug("🔍 Используем старый формат с hash: {} | AuthDate: {}", hash, authDateStr);
-            }
+                            String hash = params.get("hash");
+                String signature = params.get("signature");
+                String authDateStr = params.get("auth_date");
+                
+                if (hash == null && signature == null) {
+                    LOGGER.warn("❌ Отсутствуют поля подписи (hash или signature)");
+                    LOGGER.debug("🔍 Доступные поля: {}", params.keySet());
+                    return false;
+                }
+                
+                // ПРИОРИТЕТ: сначала пробуем hash (для владельцев бота), потом signature (для третьих сторон)
+                if (hash != null) {
+                    LOGGER.debug("🔍 Используем алгоритм hash (для владельцев бота): {} | AuthDate: {}", hash, authDateStr);
+                } else if (signature != null) {
+                    LOGGER.debug("🔍 Используем алгоритм signature (для третьих сторон): {} | AuthDate: {}", signature, authDateStr);
+                }
             
             // Проверяем время auth_date
             LOGGER.debug("🔍 Проверяем время auth_date");
@@ -106,20 +107,21 @@ public class TelegramInitDataValidator {
             LOGGER.debug("✅ Auth date валидна");
             
             // Проверяем подпись (поддерживаем оба формата)
-            boolean signatureValid = false;
-            if (signature != null) {
-                LOGGER.debug("🔍 Проверяем новую подпись signature");
-                signatureValid = validateSignature(params, signature, botToken);
-                if (!signatureValid) {
-                    LOGGER.warn("❌ Неверная подпись signature для бота '{}'", botName);
+                            boolean signatureValid = false;
+                // ПРИОРИТЕТ: сначала пробуем hash (рекомендуется для владельцев бота)
+                if (hash != null) {
+                    LOGGER.debug("🔍 Проверяем подпись hash (для владельцев бота)");
+                    signatureValid = validateHash(params, hash, botToken);
+                    if (!signatureValid) {
+                        LOGGER.warn("❌ Неверная подпись hash для бота '{}'", botName);
+                    }
+                } else if (signature != null) {
+                    LOGGER.debug("🔍 Проверяем подпись signature (для третьих сторон)");
+                    signatureValid = validateSignature(params, signature, botToken);
+                    if (!signatureValid) {
+                        LOGGER.warn("❌ Неверная подпись signature для бота '{}'", botName);
+                    }
                 }
-            } else if (hash != null) {
-                LOGGER.debug("🔍 Проверяем старую подпись hash");
-                signatureValid = validateHash(params, hash, botToken);
-                if (!signatureValid) {
-                    LOGGER.warn("❌ Неверная подпись hash для бота '{}'", botName);
-                }
-            }
             
             if (!signatureValid) {
                 return false;
