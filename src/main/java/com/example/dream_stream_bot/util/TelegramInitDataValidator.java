@@ -73,16 +73,29 @@ public class TelegramInitDataValidator {
             Map<String, String> params = parseInitData(initData);
             LOGGER.debug("🔍 Парсированные параметры: {}", params.keySet());
             
-            // Проверяем наличие обязательных полей
-            if (!params.containsKey("hash") || !params.containsKey("auth_date")) {
-                LOGGER.warn("❌ Отсутствуют обязательные поля hash или auth_date");
+            // Проверяем наличие обязательных полей (поддерживаем как hash, так и signature)
+            if (!params.containsKey("auth_date")) {
+                LOGGER.warn("❌ Отсутствует обязательное поле auth_date");
                 LOGGER.debug("🔍 Доступные поля: {}", params.keySet());
                 return false;
             }
             
+            // Определяем тип подписи (старый hash или новый signature)
             String hash = params.get("hash");
+            String signature = params.get("signature");
             String authDateStr = params.get("auth_date");
-            LOGGER.debug("🔍 Hash: {} | AuthDate: {}", hash, authDateStr);
+            
+            if (hash == null && signature == null) {
+                LOGGER.warn("❌ Отсутствуют поля подписи (hash или signature)");
+                LOGGER.debug("🔍 Доступные поля: {}", params.keySet());
+                return false;
+            }
+            
+            if (signature != null) {
+                LOGGER.debug("🔍 Используем новый формат с signature: {} | AuthDate: {}", signature, authDateStr);
+            } else {
+                LOGGER.debug("🔍 Используем старый формат с hash: {} | AuthDate: {}", hash, authDateStr);
+            }
             
             // Проверяем время auth_date
             LOGGER.debug("🔍 Проверяем время auth_date");
@@ -92,13 +105,26 @@ public class TelegramInitDataValidator {
             }
             LOGGER.debug("✅ Auth date валидна");
             
-            // Проверяем подпись
-            LOGGER.debug("🔍 Проверяем подпись hash");
-            if (!validateHash(params, hash, botToken)) {
-                LOGGER.warn("❌ Неверная подпись hash для бота '{}'", botName);
+            // Проверяем подпись (поддерживаем оба формата)
+            boolean signatureValid = false;
+            if (signature != null) {
+                LOGGER.debug("🔍 Проверяем новую подпись signature");
+                signatureValid = validateSignature(params, signature, botToken);
+                if (!signatureValid) {
+                    LOGGER.warn("❌ Неверная подпись signature для бота '{}'", botName);
+                }
+            } else if (hash != null) {
+                LOGGER.debug("🔍 Проверяем старую подпись hash");
+                signatureValid = validateHash(params, hash, botToken);
+                if (!signatureValid) {
+                    LOGGER.warn("❌ Неверная подпись hash для бота '{}'", botName);
+                }
+            }
+            
+            if (!signatureValid) {
                 return false;
             }
-            LOGGER.debug("✅ Подпись hash валидна");
+            LOGGER.debug("✅ Подпись валидна");
             
             LOGGER.info("✅ InitData валидна для бота '{}'", botName);
             return true;
@@ -158,13 +184,13 @@ public class TelegramInitDataValidator {
     }
     
     /**
-     * Проверяет HMAC-SHA256 подпись
+     * Проверяет HMAC-SHA256 подпись (старый формат с hash)
      */
     private boolean validateHash(Map<String, String> params, String expectedHash, String botToken) {
         try {
-            // Создаем строку для подписи (все параметры кроме hash, отсортированные)
+            // Создаем строку для подписи (все параметры кроме hash и signature, отсортированные)
             String dataCheckString = params.entrySet().stream()
-                    .filter(entry -> !"hash".equals(entry.getKey()))
+                    .filter(entry -> !"hash".equals(entry.getKey()) && !"signature".equals(entry.getKey()))
                     .sorted(Map.Entry.comparingByKey())
                     .map(entry -> entry.getKey() + "=" + entry.getValue())
                     .collect(Collectors.joining("\n"));
@@ -184,6 +210,68 @@ public class TelegramInitDataValidator {
             
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             LOGGER.error("❌ Ошибка вычисления HMAC: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Проверяет новую подпись signature (новый формат Telegram)
+     */
+    private boolean validateSignature(Map<String, String> params, String expectedSignature, String botToken) {
+        try {
+            LOGGER.debug("🔍 Валидация signature для нового формата Telegram");
+            
+            // Создаем строку для подписи (все параметры кроме signature и hash, отсортированные)
+            String dataCheckString = params.entrySet().stream()
+                    .filter(entry -> !"signature".equals(entry.getKey()) && !"hash".equals(entry.getKey()))
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(entry -> entry.getKey() + "=" + entry.getValue())
+                    .collect(Collectors.joining("\n"));
+            
+            LOGGER.debug("🔍 Строка для подписи signature: {}", dataCheckString);
+            
+            // Для нового формата попробуем несколько алгоритмов подписи
+            byte[] signatureBytes = null;
+            
+            // Алгоритм 1: Двухэтапный (стандартный для WebApp)
+            try {
+                Mac hmacSha256 = Mac.getInstance(HMAC_SHA256);
+                SecretKeySpec webAppKeySpec = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
+                hmacSha256.init(webAppKeySpec);
+                byte[] secretKey = hmacSha256.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
+                
+                hmacSha256 = Mac.getInstance(HMAC_SHA256);
+                SecretKeySpec dataKeySpec = new SecretKeySpec(secretKey, HMAC_SHA256);
+                hmacSha256.init(dataKeySpec);
+                signatureBytes = hmacSha256.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                LOGGER.debug("🔍 Ошибка алгоритма 1: {}", e.getMessage());
+            }
+            
+            // Signature в новом формате передается в Base64, а не hex
+            String calculatedSignature = java.util.Base64.getEncoder().encodeToString(signatureBytes);
+            
+            LOGGER.debug("🔍 Сравнение signature: ожидаемый={}, вычисленный={}", expectedSignature, calculatedSignature);
+            
+            boolean isValid = calculatedSignature.equals(expectedSignature);
+            
+            if (!isValid) {
+                // Пробуем альтернативный алгоритм - прямая подпись как в старом формате
+                LOGGER.debug("🔍 Пробуем альтернативный алгоритм для signature");
+                Mac simpleMac = Mac.getInstance(HMAC_SHA256);
+                SecretKeySpec simpleKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
+                simpleMac.init(simpleKeySpec);
+                byte[] simpleSignatureBytes = simpleMac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+                String simpleCalculatedSignature = java.util.Base64.getEncoder().encodeToString(simpleSignatureBytes);
+                
+                LOGGER.debug("🔍 Альтернативная signature: {}", simpleCalculatedSignature);
+                isValid = simpleCalculatedSignature.equals(expectedSignature);
+            }
+            
+            return isValid;
+            
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            LOGGER.error("❌ Ошибка вычисления signature: {}", e.getMessage(), e);
             return false;
         }
     }
