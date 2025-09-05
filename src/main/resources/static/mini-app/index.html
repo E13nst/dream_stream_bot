@@ -8,27 +8,36 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>🎨 Галерея стикеров</h1>
-        <p>Ваши созданные наборы стикеров</p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Галерея стикеров</h1>
+            <p>Ваши созданные наборы стикеров</p>
+        </div>
 
-    <div class="user-info" id="userInfo">
-        <p>Загрузка информации о пользователе...</p>
-    </div>
+        <div class="user-info" id="userInfo">
+            <p>Загрузка информации о пользователе...</p>
+        </div>
 
-    <div class="search-container">
-        <input type="text" class="search-input" id="searchInput" placeholder="�� Поиск стикеров..." oninput="filterStickers()">
-    </div>
+        <div class="auth-status" id="authStatus">
+            <p>Проверка авторизации...</p>
+        </div>
 
-    <div id="content">
-        <div class="loading" id="loading">
-            <p>Загрузка стикеров...</p>
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Поиск стикеров..." oninput="filterStickers()">
+        </div>
+
+        <div id="content">
+            <div class="loading" id="loading">
+                <p>Загрузка стикеров...</p>
+            </div>
+        </div>
+
+        <div class="debug-info" id="debugInfo" style="display: none;">
+            <h3>Отладочная информация:</h3>
+            <div id="debugContent"></div>
         </div>
     </div>
-</div>
 
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

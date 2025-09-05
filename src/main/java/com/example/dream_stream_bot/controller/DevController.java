@@ -117,4 +117,106 @@ public class DevController {
         
         return ResponseEntity.ok(response);
     }
+    
+    /**
+     * Тестовый эндпоинт для мини-приложения
+     */
+    @GetMapping("/mini-app-test")
+    @Operation(
+        summary = "Тест мини-приложения",
+        description = "Простой тест для проверки работы мини-приложения"
+    )
+    @ApiResponse(responseCode = "200", description = "Тест выполнен")
+    public ResponseEntity<String> miniAppTest() {
+        LOGGER.info("🔧 Тест мини-приложения");
+        return ResponseEntity.ok("Мини-приложение работает!");
+    }
+    
+    /**
+     * Тестовая страница мини-приложения
+     */
+    @GetMapping("/mini-app-test-page")
+    @Operation(
+        summary = "Тестовая страница мини-приложения",
+        description = "Возвращает HTML страницу для тестирования мини-приложения"
+    )
+    @ApiResponse(responseCode = "200", description = "Страница получена")
+    public ResponseEntity<String> miniAppTestPage() {
+        LOGGER.info("🔧 Запрос тестовой страницы мини-приложения");
+        
+        String html = """
+            <!DOCTYPE html>
+            <html lang="ru">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+                <title>Sticker Gallery - Test</title>
+                <script src="https://telegram.org/js/telegram-web-app.js"></script>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 16px; }
+                    .container { max-width: 600px; margin: 0 auto; }
+                    .header { text-align: center; margin-bottom: 24px; padding: 16px; background-color: #f8f9fa; border-radius: 12px; }
+                    .status { background-color: #f8f9fa; padding: 16px; border-radius: 12px; margin-bottom: 16px; text-align: center; }
+                    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; margin: 5px; background-color: #2481cc; color: #ffffff; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎨 Галерея стикеров</h1>
+                        <p>Тестовая версия мини-приложения</p>
+                    </div>
+                    <div class="status" id="status">Проверка инициализации...</div>
+                    <div class="status" id="authStatus">Проверка авторизации...</div>
+                    <div class="status" id="apiStatus">Проверка API...</div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="btn" onclick="testAuth()">Тест авторизации</button>
+                        <button class="btn" onclick="testAPI()">Тест API</button>
+                    </div>
+                </div>
+                <script>
+                    const tg = window.Telegram.WebApp;
+                    if (tg) {
+                        tg.expand(); tg.ready();
+                        document.getElementById('status').innerHTML = '✅ Telegram Web App инициализирован';
+                        const user = tg.initDataUnsafe?.user;
+                        if (user) {
+                            document.getElementById('authStatus').innerHTML = '✅ Пользователь: ' + user.first_name;
+                        }
+                    }
+                    async function testAuth() {
+                        try {
+                            const response = await fetch('/auth/status', {
+                                headers: { 'X-Telegram-Init-Data': tg.initData, 'X-Telegram-Bot-Name': 'StickerGallery' }
+                            });
+                            const data = await response.json();
+                            document.getElementById('authStatus').innerHTML = 'Результат: ' + (data.authenticated ? '✅ Да' : '❌ Нет');
+                        } catch (error) {
+                            document.getElementById('authStatus').innerHTML = '❌ Ошибка: ' + error.message;
+                        }
+                    }
+                    async function testAPI() {
+                        try {
+                            const response = await fetch('/api/stickersets', {
+                                headers: { 'X-Telegram-Init-Data': tg.initData, 'X-Telegram-Bot-Name': 'StickerGallery' }
+                            });
+                            if (response.ok) {
+                                const data = await response.json();
+                                document.getElementById('apiStatus').innerHTML = '✅ API работает, стикерсетов: ' + data.length;
+                            } else {
+                                document.getElementById('apiStatus').innerHTML = '❌ Ошибка API: ' + response.status;
+                            }
+                        } catch (error) {
+                            document.getElementById('apiStatus').innerHTML = '❌ Ошибка: ' + error.message;
+                        }
+                    }
+                </script>
+            </body>
+            </html>
+            """;
+        
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/html; charset=utf-8")
+                .body(html);
+    }
 }
