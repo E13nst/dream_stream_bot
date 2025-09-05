@@ -215,57 +215,77 @@ public class TelegramInitDataValidator {
     }
     
     /**
-     * Проверяет новую подпись signature (новый формат Telegram)
+     * Проверяет новую подпись signature (новый формат Telegram Web Apps)
+     * Согласно https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
      */
     private boolean validateSignature(Map<String, String> params, String expectedSignature, String botToken) {
         try {
-            LOGGER.debug("🔍 Валидация signature для нового формата Telegram");
+            LOGGER.debug("🔍 Валидация signature для нового формата Telegram Web Apps");
             
             // Создаем строку для подписи (все параметры кроме signature и hash, отсортированные)
+            // ВАЖНО: данные должны быть в URL-decoded виде
             String dataCheckString = params.entrySet().stream()
                     .filter(entry -> !"signature".equals(entry.getKey()) && !"hash".equals(entry.getKey()))
                     .sorted(Map.Entry.comparingByKey())
-                    .map(entry -> entry.getKey() + "=" + entry.getValue())
+                    .map(entry -> {
+                        try {
+                            String decodedValue = java.net.URLDecoder.decode(entry.getValue(), StandardCharsets.UTF_8);
+                            return entry.getKey() + "=" + decodedValue;
+                        } catch (Exception e) {
+                            // Если декодирование не удалось, используем оригинальное значение
+                            return entry.getKey() + "=" + entry.getValue();
+                        }
+                    })
                     .collect(Collectors.joining("\n"));
             
             LOGGER.debug("🔍 Строка для подписи signature: {}", dataCheckString);
             
-            // Для нового формата попробуем несколько алгоритмов подписи
-            byte[] signatureBytes = null;
+            // Алгоритм согласно документации Telegram:
+            // 1. secret_key = HMAC-SHA256("WebAppData", bot_token)
+            // 2. signature = HMAC-SHA256(data_check_string, secret_key)
             
-            // Алгоритм 1: Двухэтапный (стандартный для WebApp)
-            try {
-                Mac hmacSha256 = Mac.getInstance(HMAC_SHA256);
-                SecretKeySpec webAppKeySpec = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
-                hmacSha256.init(webAppKeySpec);
-                byte[] secretKey = hmacSha256.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
-                
-                hmacSha256 = Mac.getInstance(HMAC_SHA256);
-                SecretKeySpec dataKeySpec = new SecretKeySpec(secretKey, HMAC_SHA256);
-                hmacSha256.init(dataKeySpec);
-                signatureBytes = hmacSha256.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
-            } catch (Exception e) {
-                LOGGER.debug("🔍 Ошибка алгоритма 1: {}", e.getMessage());
-            }
+            Mac hmacSha256 = Mac.getInstance(HMAC_SHA256);
             
-            // Signature в новом формате передается в Base64, а не hex
-            String calculatedSignature = java.util.Base64.getEncoder().encodeToString(signatureBytes);
+            // Шаг 1: Создаем секретный ключ
+            SecretKeySpec webAppKeySpec = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
+            hmacSha256.init(webAppKeySpec);
+            byte[] secretKey = hmacSha256.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
+            
+            LOGGER.debug("🔍 Секретный ключ создан (длина: {} байт)", secretKey.length);
+            
+            // Шаг 2: Подписываем данные секретным ключом
+            hmacSha256 = Mac.getInstance(HMAC_SHA256);
+            SecretKeySpec dataKeySpec = new SecretKeySpec(secretKey, HMAC_SHA256);
+            hmacSha256.init(dataKeySpec);
+            byte[] signatureBytes = hmacSha256.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            
+            // Signature в Web Apps формате использует URL-safe Base64
+            String calculatedSignature = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
             
             LOGGER.debug("🔍 Сравнение signature: ожидаемый={}, вычисленный={}", expectedSignature, calculatedSignature);
             
             boolean isValid = calculatedSignature.equals(expectedSignature);
             
             if (!isValid) {
-                // Пробуем альтернативный алгоритм - прямая подпись как в старом формате
-                LOGGER.debug("🔍 Пробуем альтернативный алгоритм для signature");
-                Mac simpleMac = Mac.getInstance(HMAC_SHA256);
-                SecretKeySpec simpleKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
-                simpleMac.init(simpleKeySpec);
-                byte[] simpleSignatureBytes = simpleMac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
-                String simpleCalculatedSignature = java.util.Base64.getEncoder().encodeToString(simpleSignatureBytes);
+                // Пробуем обычный Base64 (не URL-safe)
+                LOGGER.debug("🔍 Пробуем обычный Base64 (не URL-safe)");
+                String regularBase64Signature = java.util.Base64.getEncoder().encodeToString(signatureBytes);
+                LOGGER.debug("🔍 Обычный Base64 signature: {}", regularBase64Signature);
+                isValid = regularBase64Signature.equals(expectedSignature);
                 
-                LOGGER.debug("🔍 Альтернативная signature: {}", simpleCalculatedSignature);
-                isValid = simpleCalculatedSignature.equals(expectedSignature);
+                if (!isValid) {
+                    // Пробуем с padding для URL-safe
+                    LOGGER.debug("🔍 Пробуем URL-safe Base64 с padding");
+                    String urlSafeWithPadding = java.util.Base64.getUrlEncoder().encodeToString(signatureBytes);
+                    LOGGER.debug("🔍 URL-safe с padding signature: {}", urlSafeWithPadding);
+                    isValid = urlSafeWithPadding.equals(expectedSignature);
+                }
+            }
+            
+            if (isValid) {
+                LOGGER.debug("✅ Signature валидация успешна!");
+            } else {
+                LOGGER.warn("❌ Все варианты signature не совпали");
             }
             
             return isValid;
