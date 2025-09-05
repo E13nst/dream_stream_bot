@@ -23,6 +23,7 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramAuthenticationFilter.class);
     private static final String TELEGRAM_INIT_DATA_HEADER = "X-Telegram-Init-Data";
     private static final String TELEGRAM_BOT_NAME_HEADER = "X-Telegram-Bot-Name";
+    private static final String DEFAULT_BOT_NAME = "StickerGallery";
     
     private final TelegramInitDataValidator validator;
     private final TelegramAuthenticationProvider authenticationProvider;
@@ -41,13 +42,26 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
         String initData = request.getHeader(TELEGRAM_INIT_DATA_HEADER);
         String botName = request.getHeader(TELEGRAM_BOT_NAME_HEADER);
         
-        LOGGER.debug("🔍 TelegramAuthenticationFilter: Запрос к {} | InitData: {} | BotName: {}", 
+        // Устанавливаем значение по умолчанию для botName если оно не указано
+        boolean botNameWasEmpty = (botName == null || botName.trim().isEmpty());
+        if (botNameWasEmpty && initData != null && !initData.trim().isEmpty()) {
+            botName = DEFAULT_BOT_NAME;
+            LOGGER.info("📝 Заголовок X-Telegram-Bot-Name не указан в запросе к {}. Устанавливаем значение по умолчанию: {}", 
+                    request.getRequestURI(), DEFAULT_BOT_NAME);
+        }
+        
+        LOGGER.debug("🔍 TelegramAuthenticationFilter: Запрос к {} | InitData: {} | BotName: {} | DefaultUsed: {}", 
                 request.getRequestURI(), 
                 initData != null ? "present" : "null", 
-                botName != null ? botName : "null");
+                botName != null ? botName : "null",
+                botNameWasEmpty && botName != null);
         
         if (initData != null && !initData.trim().isEmpty() && botName != null && !botName.trim().isEmpty()) {
-            LOGGER.info("🔍 Обнаружены заголовки X-Telegram-Init-Data и X-Telegram-Bot-Name для бота: {}", botName);
+            if (botNameWasEmpty) {
+                LOGGER.info("🔍 Обнаружен заголовок X-Telegram-Init-Data. Используется бот по умолчанию: {}", botName);
+            } else {
+                LOGGER.info("🔍 Обнаружены заголовки X-Telegram-Init-Data и X-Telegram-Bot-Name для бота: {}", botName);
+            }
             LOGGER.debug("🔍 InitData (первые 50 символов): {}", 
                     initData.length() > 50 ? initData.substring(0, 50) + "..." : initData);
             
