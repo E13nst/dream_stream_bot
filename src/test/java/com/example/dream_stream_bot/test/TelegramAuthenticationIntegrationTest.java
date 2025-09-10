@@ -217,12 +217,17 @@ public class TelegramAuthenticationIntegrationTest {
                     .map(entry -> entry.getKey() + "=" + entry.getValue())
                     .collect(Collectors.joining("\n"));
             
-            // Вычисляем HMAC-SHA256 подпись
-            String secretKey = "WebAppData";
+            // Вычисляем HMAC-SHA256 подпись согласно документации Telegram
+            // Шаг 1: Создаем секретный ключ (secret_key = HMAC-SHA256(bot_token, "WebAppData"))
             Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            mac.init(secretKeySpec);
+            SecretKeySpec botTokenKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(botTokenKeySpec);
+            byte[] secretKey = mac.doFinal("WebAppData".getBytes(StandardCharsets.UTF_8));
             
+            // Шаг 2: Вычисляем hash (hash = HMAC-SHA256(data_check_string, secret_key))
+            mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "HmacSHA256");
+            mac.init(secretKeySpec);
             byte[] hashBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
             String hash = bytesToHex(hashBytes);
             
