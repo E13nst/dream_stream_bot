@@ -160,7 +160,7 @@ public class TelegramInitDataValidator {
      */
     private String buildDataCheckString(Map<String, String> params) {
         return params.entrySet().stream()
-                .filter(entry -> !"hash".equals(entry.getKey()) && !"signature".equals(entry.getKey()))
+                .filter(entry -> !"hash".equals(entry.getKey()))  // Исключаем только hash
                 .sorted(Map.Entry.comparingByKey())  // Лексикографическая сортировка
                 .map(entry -> entry.getKey() + "=" + entry.getValue())
                 .collect(Collectors.joining("\n"));
@@ -173,7 +173,7 @@ public class TelegramInitDataValidator {
         try {
             // Правильное создание dataCheckString с сортировкой
             String dataCheckString = params.entrySet().stream()
-                    .filter(entry -> !"hash".equals(entry.getKey()) && !"signature".equals(entry.getKey()))
+                    .filter(entry -> !"hash".equals(entry.getKey()))  // Исключаем только hash
                     .sorted(Map.Entry.comparingByKey())  // Лексикографическая сортировка
                     .map(entry -> {
                         try {
