@@ -184,7 +184,7 @@ public class TelegramInitDataValidator {
             LOGGER.debug("🔍 Токен бота (первые 10 символов): {}", botToken.substring(0, Math.min(10, botToken.length())));
             
             // Создаём массив пар ключ-значение, исключая параметр 'hash'
-            List<String> dataCheckEntries = new ArrayList<>();
+            java.util.List<String> dataCheckEntries = new java.util.ArrayList<>();
             for (Map.Entry<String, String> entry : params.entrySet()) {
                 if (!"hash".equals(entry.getKey())) {
                     String key = entry.getKey();
