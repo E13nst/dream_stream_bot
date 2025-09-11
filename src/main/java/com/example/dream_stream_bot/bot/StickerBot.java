@@ -556,6 +556,12 @@ public class StickerBot extends AbstractTelegramBot {
             // Добавляем hash к параметрам
             params.put("hash", hash);
             
+            // Генерируем signature для совместимости с реальным форматом
+            // signature = Base64(HMAC-SHA256(data_check_string, secret_key))
+            byte[] signatureBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
+            String signature = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
+            params.put("signature", signature);
+            
             // Формируем финальную строку initData
             String initData = params.entrySet().stream()
                     .map(entry -> entry.getKey() + "=" + entry.getValue())
