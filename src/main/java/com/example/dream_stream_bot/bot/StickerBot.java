@@ -496,7 +496,6 @@ public class StickerBot extends AbstractTelegramBot {
             SendMessage setSelectedMessage = SendMessage.builder()
                     .chatId(chatId)
                     .text(messageText)
-                    .parseMode("Markdown")
                     .build();
 
             sendWithLogging(setSelectedMessage);
