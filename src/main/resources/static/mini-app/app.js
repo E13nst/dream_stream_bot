@@ -99,117 +99,11 @@ if (!initDataCheck.valid) {
     console.warn('⚠️ Проблема с initData:', initDataCheck.reason);
 }
 
-// Функция для обновления отладочной информации с результатом запроса
-function updateDebugInfoWithResponse(status, statusText) {
-    const debugContent = document.getElementById('debugContent');
-    if (!debugContent) return;
-    
-    // Добавляем информацию о последнем запросе
-    const responseInfo = `
-<div class="debug-item" style="border-left-color: ${status === 200 ? '#4CAF50' : '#F44336'};">
-    <span class="debug-label">🌐 Последний запрос к API:</span>
-    <span class="debug-value">${status} ${statusText}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">🕐 Время запроса:</span>
-    <span class="debug-value">${new Date().toLocaleTimeString()}</span>
-</div>
-    `;
-    
-    // Добавляем в начало отладочной информации
-    debugContent.innerHTML = responseInfo + debugContent.innerHTML;
+// Функция для логирования отладочной информации с результатом запроса
+function logDebugInfoWithResponse(status, statusText) {
+    console.log('🌐 Последний запрос к API:', status, statusText);
+    console.log('🕐 Время запроса:', new Date().toLocaleTimeString());
 }
-
-// Функция для отображения отладочной информации
-function updateDebugInfo() {
-    const debugContent = document.getElementById('debugContent');
-    if (!debugContent) return;
-    
-    const now = new Date();
-    const authDate = initData ? new URLSearchParams(initData).get('auth_date') : null;
-    const authDateTime = authDate ? new Date(parseInt(authDate) * 1000) : null;
-    const signature = initData ? new URLSearchParams(initData).get('signature') : null;
-    const hash = initData ? new URLSearchParams(initData).get('hash') : null;
-    const queryId = initData ? new URLSearchParams(initData).get('query_id') : null;
-    
-    const debugInfo = `
-<div class="debug-item">
-    <span class="debug-label">🕐 Текущее время:</span>
-    <span class="debug-value">${now.toLocaleString()}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">📱 Telegram Platform:</span>
-    <span class="debug-value">${tg.platform || 'unknown'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">📋 Telegram Version:</span>
-    <span class="debug-value">${tg.version || 'unknown'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">🔐 InitData присутствует:</span>
-    <span class="debug-value">${initData ? '✅ Да' : '❌ Нет'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">📏 InitData длина:</span>
-    <span class="debug-value">${initData ? initData.length + ' символов' : 'N/A'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">🕒 Auth Date:</span>
-    <span class="debug-value">${authDateTime ? authDateTime.toLocaleString() : 'не найден'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">⏰ Возраст InitData:</span>
-    <span class="debug-value">${authDate ? Math.floor((now.getTime() - authDateTime.getTime()) / 1000) + ' секунд' : 'N/A'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">✍️ Signature:</span>
-    <span class="debug-value">${signature ? '✅ Присутствует (' + signature.length + ' символов)' : '❌ Отсутствует'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">#️⃣ Hash:</span>
-    <span class="debug-value">${hash ? '✅ Присутствует (' + hash.length + ' символов)' : '❌ Отсутствует'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">🆔 Query ID:</span>
-    <span class="debug-value">${queryId || 'не найден'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">👤 User ID:</span>
-    <span class="debug-value">${user?.id || 'не найден'}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">🌐 API Endpoint:</span>
-    <span class="debug-value">${window.location.origin}/auth/status</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">✅ InitData валидация:</span>
-    <span class="debug-value">${initDataCheck.valid ? '✅ Валидна' : '❌ ' + initDataCheck.reason}</span>
-</div>
-
-<div class="debug-item">
-    <span class="debug-label">🔤 InitData (первые 100 символов):</span>
-    <span class="debug-value">${initData ? initData.substring(0, 100) + '...' : 'отсутствует'}</span>
-</div>
-    `;
-    
-    debugContent.innerHTML = debugInfo;
-}
-
-// Обновляем отладочную информацию при загрузке
-updateDebugInfo();
 
 // Отображение информации о пользователе
 if (user) {
@@ -230,25 +124,6 @@ const AUTH_BASE = '/auth';
 
 // Функция для добавления заголовков аутентификации
 function getAuthHeaders() {
-    console.log('🔍 Подготовка заголовков аутентификации:');
-    
-    // Проверяем срок действия текущего initData
-    const check = checkInitDataExpiry(initData);
-    if (!check.valid) {
-        console.warn('⚠️ initData невалиден:', check.reason);
-        
-        // Попытка обновить initData
-        if (refreshInitData()) {
-            const newCheck = checkInitDataExpiry(initData);
-            if (!newCheck.valid) {
-                console.error('❌ Не удалось получить валидный initData после обновления');
-            }
-        }
-    }
-    
-    console.log('initData:', initData ? 'present (' + initData.length + ' chars)' : 'null');
-    console.log('User ID:', user?.id);
-    
     const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -271,49 +146,22 @@ function getAuthHeaders() {
 async function checkAuthStatus() {
     try {
         if (!initData || initData.trim() === '') {
-            console.warn('⚠️ initData отсутствует, пропускаем проверку аутентификации');
             document.getElementById('authStatus').innerHTML = `
                 <div class="auth-error">
                     ❌ Данные аутентификации отсутствуют.
                     <br>Убедитесь, что приложение запущено из Telegram.
-                    <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
                 </div>
             `;
             return false;
         }
         
-        // Проверяем срок действия initData
-        const check = checkInitDataExpiry(initData);
-        if (!check.valid) {
-            console.warn('⚠️ initData невалиден:', check.reason);
-            document.getElementById('authStatus').innerHTML = `
-                <div class="auth-error">
-                    ❌ Данные аутентификации устарели.
-                    <br>${check.reason}
-                    <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Обновить данные</button>
-                </div>
-            `;
-            
-            // Попытка автоматического обновления
-            if (refreshInitData()) {
-                console.log('✅ initData обновлен, повторяем проверку...');
-                return await checkAuthStatus();
-            }
-            return false;
-        }
-        
-        console.log('🔐 Проверяем статус аутентификации...');
-        console.log('📊 initData возраст:', check.age, 'сек из', check.maxAge, 'сек');
-        
-        const response = await fetch(`${AUTH_BASE}/status`, {
+        const response = await fetch('/auth/status', {
             method: 'GET',
             headers: getAuthHeaders()
         });
         
-        console.log('📊 Ответ сервера на проверку аутентификации:', response.status, response.statusText);
-        
-        // Обновляем отладочную информацию с результатом запроса
-        updateDebugInfoWithResponse(response.status, response.statusText);
+        // Логируем результат запроса
+        logDebugInfoWithResponse(response.status, response.statusText);
         
         if (response.ok) {
             const authData = await response.json();
@@ -324,8 +172,6 @@ async function checkAuthStatus() {
                     <div class="auth-success">
                         ✅ Аутентификация успешна
                         <br>Роль: ${authData.role || 'не определена'}
-                        <br>ID: ${authData.telegramId || 'не определен'}
-                        <br><small>Данные действительны ещё ${check.maxAge - check.age} сек</small>
                     </div>
                 `;
                 return true;
@@ -333,7 +179,6 @@ async function checkAuthStatus() {
                 document.getElementById('authStatus').innerHTML = `
                     <div class="auth-error">
                         ❌ Ошибка авторизации: ${authData.message || 'Неизвестная ошибка'}
-                        <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
                     </div>
                 `;
                 return false;
@@ -344,17 +189,14 @@ async function checkAuthStatus() {
             document.getElementById('authStatus').innerHTML = `
                 <div class="auth-error">
                     ❌ Ошибка сервера: ${response.status} ${response.statusText}
-                    <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
                 </div>
             `;
             return false;
         }
     } catch (error) {
-        console.error('❌ Ошибка при проверке аутентификации:', error);
         document.getElementById('authStatus').innerHTML = `
             <div class="auth-error">
                 ❌ Ошибка сети: ${error.message}
-                <br><button onclick="retryWithRefresh()" class="retry-btn">🔄 Попробовать снова</button>
             </div>
         `;
         return false;
@@ -364,30 +206,25 @@ async function checkAuthStatus() {
 // Загрузка стикеров
 async function loadStickers() {
     try {
-        // Безопасное обновление loading элемента
         const loading = document.getElementById('loading');
         if (loading) {
             loading.innerHTML = '<p>Загрузка стикеров...</p>';
         }
 
-        console.log('🎨 Загружаем стикеры без проверки авторизации...');
+        // Сначала проверяем авторизацию
+        const isAuthenticated = await checkAuthStatus();
+        if (!isAuthenticated) {
+            throw new Error('Пользователь не авторизован');
+        }
 
-        // Загружаем стикеры без авторизации (публичный доступ)
-        const response = await fetch(API_BASE, {
+        const response = await fetch('/api/stickersets', {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-                // Убираем заголовки авторизации для публичного доступа
-            }
+            headers: getAuthHeaders()
         });
 
         if (response.ok) {
             const stickers = await response.json();
             displayStickers(stickers);
-        } else if (response.status === 401) {
-            throw new Error('Требуется авторизация');
-        } else if (response.status === 403) {
-            throw new Error('Доступ запрещен');
         } else {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -405,7 +242,7 @@ async function loadStickers() {
 // Отображение стикеров
 function displayStickers(stickers) {
     const content = document.getElementById('content');
-
+    
     if (!stickers || stickers.length === 0) {
         content.innerHTML = `
             <div class="empty-state">
@@ -419,6 +256,8 @@ function displayStickers(stickers) {
         return;
     }
 
+    content.innerHTML = '';
+
     const stickersHtml = stickers.map(sticker => `
         <div class="sticker-card" data-title="${sticker.title.toLowerCase()}">
             <h3>${sticker.title}</h3>
@@ -426,29 +265,26 @@ function displayStickers(stickers) {
             <p>Пользователь: ${sticker.userId}</p>
             <p>Создан: ${new Date(sticker.createdAt).toLocaleDateString()}</p>
             <div class="sticker-actions">
-                <button class="btn btn-primary" onclick="openStickerSet('${sticker.name}')">
+                <button class="btn btn-primary" onclick="openStickerSet('${sticker.title}')">
                     Открыть
                 </button>
-                <button class="btn btn-secondary" onclick="shareStickerSet('${sticker.name}', '${sticker.title}')">
+                <button class="btn btn-secondary" onclick="shareStickerSet('${sticker.title}', '${sticker.title}')">
                     Поделиться
                 </button>
-                <button class="btn btn-danger" onclick="deleteStickerSet(${sticker.id}, '${sticker.title}')">
+                <button class="btn btn-danger" onclick="deleteStickerSet('${sticker.id}', '${sticker.title}')">
                     Удалить
                 </button>
             </div>
         </div>
     `).join('');
 
-    content.innerHTML = `
-        <div class="sticker-grid" id="stickerGrid">
-            ${stickersHtml}
-        </div>
-    `;
+    content.innerHTML = stickersHtml;
 }
 
 // Фильтрация стикеров
 function filterStickers() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput.value.toLowerCase();
     const stickerCards = document.querySelectorAll('.sticker-card');
 
     stickerCards.forEach(card => {
@@ -461,16 +297,14 @@ function filterStickers() {
     });
 }
 
-// Открытие набора стикеров в Telegram
+// Открытие набора стикеров
 function openStickerSet(stickerSetName) {
-    const url = `https://t.me/addstickers/${stickerSetName}`;
-    tg.openTelegramLink(url);
+    tg.openTelegramLink(`https://t.me/addstickers/${stickerSetName}`);
 }
 
 // Поделиться набором стикеров
 function shareStickerSet(stickerSetName, title) {
-    const shareText = `🎨 Посмотрите мой набор стикеров "${title}": https://t.me/addstickers/${stickerSetName}`;
-    tg.shareUrl(shareText, `https://t.me/addstickers/${stickerSetName}`);
+    tg.openTelegramLink(`https://t.me/addstickers/${stickerSetName}`);
 }
 
 // Удаление набора стикеров
@@ -480,41 +314,20 @@ async function deleteStickerSet(id, title) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/${id}`, {
+        const response = await fetch(`/api/stickersets/${id}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
 
         if (response.ok) {
-            tg.showAlert(`Набор стикеров "${title}" успешно удален`);
             loadStickers(); // Перезагружаем список
         } else {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
     } catch (error) {
-        console.error('Ошибка удаления:', error);
-        tg.showAlert(`Ошибка удаления: ${error.message}`);
+        console.error('Ошибка удаления стикера:', error);
+        alert(`Ошибка удаления стикера: ${error.message}`);
     }
-}
-
-// Функция для отображения отладочной информации
-function showDebugInfo() {
-    const debugInfo = document.getElementById('debugInfo');
-    const debugContent = document.getElementById('debugContent');
-    
-    const debugData = {
-        user: user,
-        userId: userId,
-        initData: initData,
-        initDataLength: initData ? initData.length : 0,
-        themeParams: tg.themeParams,
-        platform: tg.platform,
-        version: tg.version,
-        colorScheme: tg.colorScheme
-    };
-    
-    debugContent.textContent = JSON.stringify(debugData, null, 2);
-    debugInfo.style.display = 'block';
 }
 
 // Обработка кнопки "Назад"
@@ -525,29 +338,23 @@ tg.BackButton.onClick(() => {
 // Показываем кнопку "Назад"
 tg.BackButton.show();
 
-// Добавляем кнопку для отладочной информации (только в dev режиме)
-if (tg.initDataUnsafe?.query_id) {
-    const debugButton = document.createElement('button');
-    debugButton.textContent = '🐛 Debug';
-    debugButton.className = 'btn btn-secondary';
-    debugButton.style.position = 'fixed';
-    debugButton.style.bottom = '20px';
-    debugButton.style.right = '20px';
-    debugButton.style.zIndex = '1000';
-    debugButton.onclick = showDebugInfo;
-    document.body.appendChild(debugButton);
+// Отображение информации о пользователе
+if (user) {
+    document.getElementById('userInfo').innerHTML = `
+        <p>Привет, <strong>${user.first_name}${user.last_name ? ' ' + user.last_name : ''}</strong>!</p>
+        <p>ID: <strong>${user.id}</strong></p>
+        ${user.username ? `<p>Username: <strong>@${user.username}</strong></p>` : ''}
+    `;
+} else {
+    document.getElementById('userInfo').innerHTML = `
+        <p>Пользователь не определен</p>
+    `;
 }
 
 // Загружаем стикеры при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Telegram Web App инициализирован');
-    console.log('User:', user);
-    console.log('InitData length:', initData ? initData.length : 0);
-    loadStickers();
-});
+document.addEventListener('DOMContentLoaded', loadStickers);
 
 // Обработка ошибок
 window.addEventListener('error', (event) => {
     console.error('Ошибка:', event.error);
-    tg.showAlert('Произошла ошибка в приложении');
 });
