@@ -24,7 +24,7 @@ public class TelegramInitDataValidator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramInitDataValidator.class);
     private static final String HMAC_SHA256 = "HmacSHA256";
-    private static final long MAX_AUTH_AGE_SECONDS = 3600; // 1 час для тестирования
+    private static final long MAX_AUTH_AGE_SECONDS = 86400; // 24 часа как в JavaScript коде
 
     private final BotService botService;
 
@@ -123,7 +123,9 @@ public class TelegramInitDataValidator {
     }
 
     private Map<String, String> parseInitData(String initData) {
-        return Arrays.stream(initData.split("&"))
+        LOGGER.debug("🔍 Парсим initData: {}", initData);
+        
+        Map<String, String> params = Arrays.stream(initData.split("&"))
                 .map(param -> param.split("=", 2))
                 .filter(parts -> parts.length == 2)
                 .collect(Collectors.toMap(
@@ -131,7 +133,9 @@ public class TelegramInitDataValidator {
                         parts -> {
                             try {
                                 // URL-декодируем значение параметра
-                                return java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+                                String decodedValue = java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+                                LOGGER.debug("🔍 Параметр {}: '{}' -> '{}'", parts[0], parts[1], decodedValue);
+                                return decodedValue;
                             } catch (Exception e) {
                                 LOGGER.warn("⚠️ Ошибка URL-декодирования параметра {}: {}", parts[0], e.getMessage());
                                 return parts[1]; // Возвращаем исходное значение если декодирование не удалось
@@ -140,6 +144,9 @@ public class TelegramInitDataValidator {
                         (existing, replacement) -> existing,
                         TreeMap::new
                 ));
+        
+        LOGGER.debug("🔍 Результат парсинга: {}", params);
+        return params;
     }
 
     private boolean validateAuthDate(String authDateStr) {
@@ -167,48 +174,58 @@ public class TelegramInitDataValidator {
     }
 
     /**
-     * Исправленная версия validateHash
+     * Исправленная версия validateHash по алгоритму JavaScript
      */
     private boolean validateHash(Map<String, String> params, String expectedHash, String botToken) {
         try {
-            // Правильное создание dataCheckString с сортировкой
-            String dataCheckString = params.entrySet().stream()
-                    .filter(entry -> !"hash".equals(entry.getKey()))  // Исключаем только hash
-                    .sorted(Map.Entry.comparingByKey())  // Лексикографическая сортировка
-                    .map(entry -> {
-                        try {
-                            // URL decode значений :cite[1]:cite[6]
-                            String decodedValue = java.net.URLDecoder.decode(entry.getValue(), StandardCharsets.UTF_8);
-                            return entry.getKey() + "=" + decodedValue;
-                        } catch (Exception e) {
-                            return entry.getKey() + "=" + entry.getValue();
-                        }
-                    })
-                    .collect(Collectors.joining("\n"));
-
-            // Правильный алгоритм HMAC согласно документации :cite[2]
-            // 1. secret_key = HMAC-SHA256(bot_token, "WebAppData")
+            LOGGER.debug("🔍 Начинаем валидацию hash по алгоритму JavaScript");
+            LOGGER.debug("🔍 Полученные параметры: {}", params);
+            LOGGER.debug("🔍 Ожидаемый hash: {}", expectedHash);
+            LOGGER.debug("🔍 Токен бота (первые 10 символов): {}", botToken.substring(0, Math.min(10, botToken.length())));
+            
+            // Создаём массив пар ключ-значение, исключая параметр 'hash'
+            List<String> dataCheckEntries = new ArrayList<>();
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if (!"hash".equals(entry.getKey())) {
+                    String key = entry.getKey();
+                    String value = entry.getValue();
+                    LOGGER.debug("🔍 Добавляем параметр: {}={}", key, value);
+                    dataCheckEntries.add(key + "=" + value);
+                }
+            }
+            
+            // Сортируем пары в алфавитном порядке по ключу
+            dataCheckEntries.sort(String::compareTo);
+            LOGGER.debug("🔍 Отсортированные параметры: {}", dataCheckEntries);
+            
+            // Формируем строку для проверки
+            String dataCheckString = String.join("\n", dataCheckEntries);
+            LOGGER.debug("🔍 Data check string: {}", dataCheckString.replace("\n", "\\n"));
+            
+            // Создаём секретный ключ: HMAC-SHA256 от botToken с ключом "WebAppData"
             Mac mac = Mac.getInstance(HMAC_SHA256);
-            SecretKeySpec botTokenKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
+            SecretKeySpec botTokenKeySpec = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
             mac.init(botTokenKeySpec);
-            byte[] secretKey = mac.doFinal("WebAppData".getBytes(StandardCharsets.UTF_8));
-
-            // 2. hash = HMAC-SHA256(data_check_string, secret_key)
+            byte[] secretKey = mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
+            LOGGER.debug("🔍 Секретный ключ создан (длина: {} байт)", secretKey.length);
+            
+            // Вычисляем HMAC-SHA256 для dataCheckString с использованием секретного ключа
             mac = Mac.getInstance(HMAC_SHA256);
             SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, HMAC_SHA256);
             mac.init(secretKeySpec);
             byte[] hashBytes = mac.doFinal(dataCheckString.getBytes(StandardCharsets.UTF_8));
-
+            
             String calculatedHash = bytesToHex(hashBytes);
-
-            LOGGER.debug("Сравнение хешей: ожидаемый={}, вычисленный={}", expectedHash, calculatedHash);
-            LOGGER.debug("Полный токен бота: {}", botToken);
-            LOGGER.debug("Полная data check string: {}", dataCheckString.replace("\n", "\\n"));
-
-            return calculatedHash.equals(expectedHash);
+            LOGGER.debug("🔍 Вычисленный hash: {}", calculatedHash);
+            LOGGER.debug("🔍 Сравнение хешей: ожидаемый={}, вычисленный={}", expectedHash, calculatedHash);
+            
+            boolean isValid = calculatedHash.equals(expectedHash);
+            LOGGER.debug("🔍 Результат валидации hash: {}", isValid ? "✅ Валиден" : "❌ Невалиден");
+            
+            return isValid;
 
         } catch (Exception e) {
-            LOGGER.error("Ошибка валидации hash: {}", e.getMessage(), e);
+            LOGGER.error("❌ Ошибка валидации hash: {}", e.getMessage(), e);
             return false;
         }
     }
