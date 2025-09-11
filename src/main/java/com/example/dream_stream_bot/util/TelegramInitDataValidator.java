@@ -24,7 +24,7 @@ public class TelegramInitDataValidator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TelegramInitDataValidator.class);
     private static final String HMAC_SHA256 = "HmacSHA256";
-    private static final long MAX_AUTH_AGE_SECONDS = 600;
+    private static final long MAX_AUTH_AGE_SECONDS = 3600; // 1 час для тестирования
 
     private final BotService botService;
 
@@ -128,7 +128,15 @@ public class TelegramInitDataValidator {
                 .filter(parts -> parts.length == 2)
                 .collect(Collectors.toMap(
                         parts -> parts[0],
-                        parts -> parts[1],
+                        parts -> {
+                            try {
+                                // URL-декодируем значение параметра
+                                return java.net.URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+                            } catch (Exception e) {
+                                LOGGER.warn("⚠️ Ошибка URL-декодирования параметра {}: {}", parts[0], e.getMessage());
+                                return parts[1]; // Возвращаем исходное значение если декодирование не удалось
+                            }
+                        },
                         (existing, replacement) -> existing,
                         TreeMap::new
                 ));
