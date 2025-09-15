@@ -345,27 +345,149 @@ function displayStickers(stickers) {
 
     content.innerHTML = '';
 
-    const stickersHtml = stickers.map(sticker => `
+    const stickersHtml = stickers.map(sticker => {
+        // Извлекаем первые 4 стикера для превью
+        const previewStickers = getStickerPreviews(sticker);
+        const previewHtml = generatePreviewHtml(previewStickers);
+        
+        return `
         <div class="sticker-card" data-title="${sticker.title.toLowerCase()}">
-            <h3>${sticker.title}</h3>
-            <p>ID: ${sticker.id}</p>
-            <p>Пользователь: ${sticker.userId}</p>
-            <p>Создан: ${new Date(sticker.createdAt).toLocaleDateString()}</p>
+            <div class="sticker-header">
+                <h3>${sticker.title}</h3>
+                <span class="sticker-count">${getStickerCount(sticker)} стикеров</span>
+            </div>
+            
+            <!-- Превью стикеров -->
+            <div class="sticker-preview-grid">
+                ${previewHtml}
+            </div>
+            
+            <div class="sticker-info">
+                <p class="sticker-date">Создан: ${new Date(sticker.createdAt).toLocaleDateString()}</p>
+            </div>
+            
             <div class="sticker-actions">
-                <button class="btn btn-primary" onclick="openStickerSet('${sticker.title}')">
-                    Открыть
+                <button class="btn btn-primary" onclick="viewStickerSet('${sticker.id}', '${sticker.name}')">
+                    📱 Просмотр
                 </button>
-                <button class="btn btn-secondary" onclick="shareStickerSet('${sticker.title}', '${sticker.title}')">
-                    Поделиться
+                <button class="btn btn-secondary" onclick="shareStickerSet('${sticker.name}', '${sticker.title}')">
+                    📤 Поделиться
                 </button>
                 <button class="btn btn-danger" onclick="deleteStickerSet('${sticker.id}', '${sticker.title}')">
-                    Удалить
+                    🗑️ Удалить
                 </button>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     content.innerHTML = stickersHtml;
+    
+    // Инициализируем lazy loading для новых превью
+    initializeLazyLoading();
+}
+
+// Функции для работы с превью стикеров
+function getStickerPreviews(stickerSet) {
+    // Проверяем наличие telegramStickerSetInfo и stickers
+    if (!stickerSet.telegramStickerSetInfo || !stickerSet.telegramStickerSetInfo.stickers) {
+        return [];
+    }
+    
+    // Берем первые 4 стикера
+    return stickerSet.telegramStickerSetInfo.stickers.slice(0, 4);
+}
+
+function getStickerCount(stickerSet) {
+    if (!stickerSet.telegramStickerSetInfo || !stickerSet.telegramStickerSetInfo.stickers) {
+        return 0;
+    }
+    return stickerSet.telegramStickerSetInfo.stickers.length;
+}
+
+function generatePreviewHtml(previewStickers) {
+    if (previewStickers.length === 0) {
+        return `
+            <div class="preview-placeholder">
+                <div class="placeholder-item">🎨</div>
+                <div class="placeholder-item">🖼️</div>
+                <div class="placeholder-item">✨</div>
+                <div class="placeholder-item">🎭</div>
+            </div>
+        `;
+    }
+    
+    let html = '';
+    // Всегда показываем 4 ячейки (заполняем пустыми если меньше стикеров)
+    for (let i = 0; i < 4; i++) {
+        if (i < previewStickers.length) {
+            const sticker = previewStickers[i];
+            // Используем thumbnail для превью (меньший размер)
+            const fileId = sticker.thumbnail ? sticker.thumbnail.file_id : sticker.file_id;
+            const emoji = sticker.emoji || '🎨';
+            const isAnimated = sticker.is_animated;
+            
+            html += `
+                <div class="preview-item" data-file-id="${fileId}">
+                    <div class="preview-placeholder">${emoji}</div>
+                    <img class="preview-image lazy" 
+                         data-src="/stickers/${fileId}" 
+                         alt="${emoji}"
+                         title="${emoji}${isAnimated ? ' (анимированный)' : ''}"
+                         onerror="this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
+                         onload="this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
+                    ${isAnimated ? '<div class="animated-badge">GIF</div>' : ''}
+                </div>
+            `;
+        } else {
+            // Пустая ячейка
+            html += `
+                <div class="preview-item empty">
+                    <div class="preview-placeholder">➕</div>
+                </div>
+            `;
+        }
+    }
+    
+    return html;
+}
+
+// Lazy loading для превью изображений
+function initializeLazyLoading() {
+    const lazyImages = document.querySelectorAll('.preview-image.lazy');
+    
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy');
+                    observer.unobserve(img);
+                    
+                    console.log('🖼️ Загружаем превью стикера:', img.dataset.src);
+                }
+            });
+        }, {
+            rootMargin: '50px 0px' // Начинаем загрузку за 50px до появления
+        });
+        
+        lazyImages.forEach(img => imageObserver.observe(img));
+    } else {
+        // Fallback для старых браузеров
+        lazyImages.forEach(img => {
+            img.src = img.dataset.src;
+            img.classList.remove('lazy');
+        });
+    }
+}
+
+// Просмотр детального стикерсета
+function viewStickerSet(stickerSetId, stickerSetName) {
+    console.log('🔍 Просмотр стикерсета:', stickerSetId, stickerSetName);
+    // TODO: Реализовать страницу детального просмотра
+    // Пока открываем в Telegram
+    tg.openTelegramLink(`https://t.me/addstickers/${stickerSetName}`);
 }
 
 // Фильтрация стикеров
