@@ -1,14 +1,20 @@
 package com.example.dream_stream_bot.service.telegram;
 
+import com.example.dream_stream_bot.dto.PageRequest;
+import com.example.dream_stream_bot.dto.PageResponse;
+import com.example.dream_stream_bot.dto.StickerSetDto;
 import com.example.dream_stream_bot.model.telegram.StickerSet;
 import com.example.dream_stream_bot.model.telegram.StickerSetRepository;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class StickerSetService {
@@ -16,11 +22,13 @@ public class StickerSetService {
     private static final Logger LOGGER = LoggerFactory.getLogger(StickerSetService.class);
     private final StickerSetRepository stickerSetRepository;
     private final UserService userService;
+    private final TelegramBotApiService telegramBotApiService;
     
     @Autowired
-    public StickerSetService(StickerSetRepository stickerSetRepository, UserService userService) {
+    public StickerSetService(StickerSetRepository stickerSetRepository, UserService userService, TelegramBotApiService telegramBotApiService) {
         this.stickerSetRepository = stickerSetRepository;
         this.userService = userService;
+        this.telegramBotApiService = telegramBotApiService;
     }
     
     public StickerSet createStickerSet(Long userId, String title, String name) {
@@ -78,5 +86,103 @@ public class StickerSetService {
     
     public void deleteById(Long id) {
         stickerSetRepository.deleteById(id);
+    }
+    
+    /**
+     * Получить все стикерсеты с пагинацией и обогащением данных Bot API
+     */
+    public PageResponse<StickerSetDto> findAllWithPagination(PageRequest pageRequest) {
+        LOGGER.debug("📋 Получение всех стикерсетов с пагинацией: page={}, size={}", 
+                pageRequest.getPage(), pageRequest.getSize());
+        
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findAll(pageRequest.toPageable());
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiData(stickerSetsPage.getContent());
+        
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
+    
+    /**
+     * Получить стикерсеты пользователя с пагинацией и обогащением данных Bot API
+     */
+    public PageResponse<StickerSetDto> findByUserIdWithPagination(Long userId, PageRequest pageRequest) {
+        LOGGER.debug("👤 Получение стикерсетов пользователя {} с пагинацией: page={}, size={}", 
+                userId, pageRequest.getPage(), pageRequest.getSize());
+        
+        Page<StickerSet> stickerSetsPage = stickerSetRepository.findByUserId(userId, pageRequest.toPageable());
+        List<StickerSetDto> enrichedDtos = enrichWithBotApiData(stickerSetsPage.getContent());
+        
+        return PageResponse.of(stickerSetsPage, enrichedDtos);
+    }
+    
+    /**
+     * Получить стикерсет по ID с обогащением данных Bot API
+     */
+    public StickerSetDto findByIdWithBotApiData(Long id) {
+        LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API", id);
+        
+        StickerSet stickerSet = stickerSetRepository.findById(id).orElse(null);
+        if (stickerSet == null) {
+            return null;
+        }
+        
+        return enrichSingleStickerSet(stickerSet);
+    }
+    
+    /**
+     * Получить стикерсет по имени с обогащением данных Bot API
+     */
+    public StickerSetDto findByNameWithBotApiData(String name) {
+        LOGGER.debug("🔍 Получение стикерсета по имени '{}' с данными Bot API", name);
+        
+        StickerSet stickerSet = stickerSetRepository.findByName(name).orElse(null);
+        if (stickerSet == null) {
+            return null;
+        }
+        
+        return enrichSingleStickerSet(stickerSet);
+    }
+    
+    /**
+     * Обогащает список стикерсетов данными из Bot API (параллельно)
+     */
+    private List<StickerSetDto> enrichWithBotApiData(List<StickerSet> stickerSets) {
+        if (stickerSets.isEmpty()) {
+            return List.of();
+        }
+        
+        LOGGER.debug("🚀 Обогащение {} стикерсетов данными Bot API (параллельно)", stickerSets.size());
+        
+        // Создаем список CompletableFuture для параллельной обработки
+        List<CompletableFuture<StickerSetDto>> futures = stickerSets.stream()
+                .map(stickerSet -> CompletableFuture.supplyAsync(() -> enrichSingleStickerSet(stickerSet)))
+                .collect(Collectors.toList());
+        
+        // Ждем завершения всех запросов
+        List<StickerSetDto> result = futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.toList());
+        
+        LOGGER.debug("✅ Обогащение завершено для {} стикерсетов", result.size());
+        return result;
+    }
+    
+    /**
+     * Обогащает один стикерсет данными из Bot API
+     */
+    private StickerSetDto enrichSingleStickerSet(StickerSet stickerSet) {
+        StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
+        
+        try {
+            String botApiData = telegramBotApiService.getStickerSetInfo(stickerSet.getName());
+            dto.setTelegramStickerSetInfo(botApiData);
+            LOGGER.debug("✅ Стикерсет '{}' обогащен данными Bot API", stickerSet.getName());
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при получении данных Bot API для стикерсета '{}': {}", 
+                    stickerSet.getName(), e.getMessage());
+            // Если Bot API недоступен, возвращаем ошибку
+            throw new RuntimeException("Ошибка получения данных Telegram Bot API для стикерсета: " + stickerSet.getName(), e);
+        }
+        
+        return dto;
     }
 } 

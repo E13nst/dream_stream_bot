@@ -1,6 +1,8 @@
 package com.example.dream_stream_bot.dto;
 
 import jakarta.validation.constraints.*;
+import com.fasterxml.jackson.annotation.JsonRawValue;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
 public class StickerSetDto {
@@ -22,6 +24,11 @@ public class StickerSetDto {
     private String name;
     
     private LocalDateTime createdAt;
+    
+    @JsonRawValue
+    @Schema(description = "Полная информация о стикерсете из Telegram Bot API (JSON)", 
+            example = "{\"name\":\"my_stickers_by_StickerGalleryBot\",\"title\":\"Мои стикеры\",\"sticker_type\":\"regular\",\"is_animated\":false,\"is_video\":false,\"stickers\":[...]}")
+    private String telegramStickerSetInfo;
     
     // Конструкторы
     public StickerSetDto() {}
@@ -73,6 +80,14 @@ public class StickerSetDto {
     
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    public String getTelegramStickerSetInfo() {
+        return telegramStickerSetInfo;
+    }
+    
+    public void setTelegramStickerSetInfo(String telegramStickerSetInfo) {
+        this.telegramStickerSetInfo = telegramStickerSetInfo;
     }
     
     // Конструктор для создания DTO из Entity

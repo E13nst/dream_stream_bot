@@ -1,6 +1,8 @@
 package com.example.dream_stream_bot.controller;
 
 import com.example.dream_stream_bot.dto.StickerSetDto;
+import com.example.dream_stream_bot.dto.PageRequest;
+import com.example.dream_stream_bot.dto.PageResponse;
 import com.example.dream_stream_bot.model.telegram.StickerSet;
 import com.example.dream_stream_bot.service.telegram.StickerSetService;
 import org.slf4j.Logger;
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Pattern;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -41,49 +46,71 @@ public class StickerSetController {
     }
     
     /**
-     * Получить все стикерсеты
+     * Получить все стикерсеты с пагинацией
      */
     @GetMapping
     @Operation(
-        summary = "Получить все стикерсеты",
-        description = "Возвращает список всех стикерсетов в системе. Требует авторизации через Telegram Web App."
+        summary = "Получить все стикерсеты с пагинацией",
+        description = "Возвращает список всех стикерсетов в системе с пагинацией и обогащением данных из Telegram Bot API. Требует авторизации через Telegram Web App."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Список стикерсетов успешно получен",
-            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+            content = @Content(schema = @Schema(implementation = PageResponse.class),
                 examples = @ExampleObject(value = """
-                    [
-                        {
-                            "id": 1,
-                            "userId": 123456789,
-                            "title": "Мои стикеры",
-                            "name": "my_stickers_by_StickerGalleryBot",
-                            "createdAt": "2025-09-15T10:30:00"
-                        },
-                        {
-                            "id": 2,
-                            "userId": 987654321,
-                            "title": "Котики",
-                            "name": "cats_stickers_by_StickerGalleryBot",
-                            "createdAt": "2025-09-15T11:45:00"
-                        }
-                    ]
+                    {
+                        "content": [
+                            {
+                                "id": 1,
+                                "userId": 123456789,
+                                "title": "Мои стикеры",
+                                "name": "my_stickers_by_StickerGalleryBot",
+                                "createdAt": "2025-09-15T10:30:00",
+                                "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}"
+                            }
+                        ],
+                        "page": 0,
+                        "size": 20,
+                        "totalElements": 156,
+                        "totalPages": 8,
+                        "first": true,
+                        "last": false,
+                        "hasNext": true,
+                        "hasPrevious": false
+                    }
                     """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры пагинации"),
         @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или проблемы с Telegram Bot API")
     })
-    public ResponseEntity<List<StickerSetDto>> getAllStickerSets() {
+    public ResponseEntity<PageResponse<StickerSetDto>> getAllStickerSets(
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction) {
         try {
-            LOGGER.info("📋 Получение всех стикерсетов");
-            List<StickerSet> stickerSets = stickerSetService.findAll();
-            List<StickerSetDto> dtos = stickerSets.stream()
-                    .map(StickerSetDto::fromEntity)
-                    .collect(Collectors.toList());
+            LOGGER.info("📋 Получение всех стикерсетов с пагинацией: page={}, size={}, sort={}, direction={}", 
+                    page, size, sort, direction);
             
-            LOGGER.info("✅ Найдено {} стикерсетов", dtos.size());
-            return ResponseEntity.ok(dtos);
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+            
+            PageResponse<StickerSetDto> result = stickerSetService.findAllWithPagination(pageRequest);
+            
+            LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
+                    result.getContent().size(), result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            LOGGER.error("❌ Ошибка при получении всех стикерсетов: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении всех стикерсетов", e);
+            LOGGER.error("❌ Неожиданная ошибка при получении всех стикерсетов", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -117,70 +144,93 @@ public class StickerSetController {
             @Parameter(description = "Уникальный идентификатор стикерсета", required = true, example = "1")
             @PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
         try {
-            LOGGER.info("🔍 Поиск стикерсета по ID: {}", id);
-            StickerSet stickerSet = stickerSetService.findById(id);
+            LOGGER.info("🔍 Поиск стикерсета по ID: {} с данными Bot API", id);
+            StickerSetDto dto = stickerSetService.findByIdWithBotApiData(id);
             
-            if (stickerSet == null) {
+            if (dto == null) {
                 LOGGER.warn("⚠️ Стикерсет с ID {} не найден", id);
                 return ResponseEntity.notFound().build();
             }
             
-            StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
             LOGGER.info("✅ Стикерсет найден: {}", dto.getTitle());
             return ResponseEntity.ok(dto);
+        } catch (RuntimeException e) {
+            LOGGER.error("❌ Ошибка при поиске стикерсета с ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсета с ID: {}", id, e);
+            LOGGER.error("❌ Неожиданная ошибка при поиске стикерсета с ID: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     
     /**
-     * Получить стикерсеты по ID пользователя
+     * Получить стикерсеты пользователя с пагинацией
      */
     @GetMapping("/user/{userId}")
     @Operation(
-        summary = "Получить стикерсеты пользователя",
-        description = "Возвращает все стикерсеты, созданные конкретным пользователем."
+        summary = "Получить стикерсеты пользователя с пагинацией",
+        description = "Возвращает все стикерсеты, созданные конкретным пользователем, с пагинацией и обогащением данных из Telegram Bot API."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Список стикерсетов пользователя получен",
-            content = @Content(schema = @Schema(implementation = StickerSetDto.class),
+            content = @Content(schema = @Schema(implementation = PageResponse.class),
                 examples = @ExampleObject(value = """
-                    [
-                        {
-                            "id": 1,
-                            "userId": 123456789,
-                            "title": "Мои стикеры",
-                            "name": "my_stickers_by_StickerGalleryBot",
-                            "createdAt": "2025-09-15T10:30:00"
-                        },
-                        {
-                            "id": 3,
-                            "userId": 123456789,
-                            "title": "Котики",
-                            "name": "cats_by_StickerGalleryBot",
-                            "createdAt": "2025-09-15T12:15:00"
-                        }
-                    ]
+                    {
+                        "content": [
+                            {
+                                "id": 1,
+                                "userId": 123456789,
+                                "title": "Мои стикеры",
+                                "name": "my_stickers_by_StickerGalleryBot",
+                                "createdAt": "2025-09-15T10:30:00",
+                                "telegramStickerSetInfo": "{\\"name\\":\\"my_stickers_by_StickerGalleryBot\\",\\"title\\":\\"Мои стикеры\\",\\"sticker_type\\":\\"regular\\",\\"is_animated\\":false,\\"stickers\\":[...]}"
+                            }
+                        ],
+                        "page": 0,
+                        "size": 20,
+                        "totalElements": 5,
+                        "totalPages": 1,
+                        "first": true,
+                        "last": true,
+                        "hasNext": false,
+                        "hasPrevious": false
+                    }
                     """))),
-        @ApiResponse(responseCode = "400", description = "Некорректный ID пользователя (должен быть положительным числом)"),
+        @ApiResponse(responseCode = "400", description = "Некорректные параметры"),
         @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера или проблемы с Telegram Bot API")
     })
-    public ResponseEntity<List<StickerSetDto>> getStickerSetsByUserId(
+    public ResponseEntity<PageResponse<StickerSetDto>> getStickerSetsByUserId(
             @Parameter(description = "Telegram ID пользователя", required = true, example = "123456789")
-            @PathVariable @Positive(message = "ID пользователя должен быть положительным числом") Long userId) {
+            @PathVariable @Positive(message = "ID пользователя должен быть положительным числом") Long userId,
+            @Parameter(description = "Номер страницы (начиная с 0)", example = "0")
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Количество элементов на странице (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @Parameter(description = "Поле для сортировки", example = "createdAt")
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @Parameter(description = "Направление сортировки", example = "DESC")
+            @RequestParam(defaultValue = "DESC") @Pattern(regexp = "ASC|DESC") String direction) {
         try {
-            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {}", userId);
-            List<StickerSet> stickerSets = stickerSetService.findByUserId(userId);
-            List<StickerSetDto> dtos = stickerSets.stream()
-                    .map(StickerSetDto::fromEntity)
-                    .collect(Collectors.toList());
+            LOGGER.info("🔍 Поиск стикерсетов для пользователя: {} с пагинацией: page={}, size={}, sort={}, direction={}", 
+                    userId, page, size, sort, direction);
             
-            LOGGER.info("✅ Найдено {} стикерсетов для пользователя {}", dtos.size(), userId);
-            return ResponseEntity.ok(dtos);
+            PageRequest pageRequest = new PageRequest();
+            pageRequest.setPage(page);
+            pageRequest.setSize(size);
+            pageRequest.setSort(sort);
+            pageRequest.setDirection(direction);
+            
+            PageResponse<StickerSetDto> result = stickerSetService.findByUserIdWithPagination(userId, pageRequest);
+            
+            LOGGER.debug("✅ Найдено {} стикерсетов для пользователя {} на странице {} из {}", 
+                    result.getContent().size(), userId, result.getPage() + 1, result.getTotalPages());
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            LOGGER.error("❌ Ошибка при поиске стикерсетов для пользователя {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсетов для пользователя: {}", userId, e);
+            LOGGER.error("❌ Неожиданная ошибка при поиске стикерсетов для пользователя: {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -214,19 +264,21 @@ public class StickerSetController {
             @Parameter(description = "Уникальное имя стикерсета для Telegram API", required = true, example = "my_stickers_by_StickerGalleryBot")
             @RequestParam @NotBlank(message = "Название не может быть пустым") String name) {
         try {
-            LOGGER.info("🔍 Поиск стикерсета по названию: {}", name);
-            StickerSet stickerSet = stickerSetService.findByName(name);
+            LOGGER.info("🔍 Поиск стикерсета по названию: {} с данными Bot API", name);
+            StickerSetDto dto = stickerSetService.findByNameWithBotApiData(name);
             
-            if (stickerSet == null) {
+            if (dto == null) {
                 LOGGER.warn("⚠️ Стикерсет с названием '{}' не найден", name);
                 return ResponseEntity.notFound().build();
             }
             
-            StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
             LOGGER.info("✅ Стикерсет найден: {}", dto.getTitle());
             return ResponseEntity.ok(dto);
+        } catch (RuntimeException e) {
+            LOGGER.error("❌ Ошибка при поиске стикерсета с названием {}: {}", name, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсета с названием: {}", name, e);
+            LOGGER.error("❌ Неожиданная ошибка при поиске стикерсета с названием: {}", name, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -48,4 +48,13 @@ public class BotService {
     public void deleteById(Long id) {
         botRepository.deleteById(id);
     }
+    
+    /**
+     * Поиск бота по имени
+     */
+    public Optional<BotEntity> findByName(String name) {
+        return botRepository.findAll().stream()
+                .filter(bot -> name.equals(bot.getName()))
+                .findFirst();
+    }
 } 
