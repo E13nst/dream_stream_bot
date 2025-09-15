@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot.dto;
 
 import com.example.dream_stream_bot.model.user.UserEntity;
+import jakarta.validation.constraints.*;
 import java.time.OffsetDateTime;
 
 /**
@@ -9,13 +10,32 @@ import java.time.OffsetDateTime;
 public class UserDto {
     
     private Long id;
+    
+    @NotNull(message = "Telegram ID не может быть null")
+    @Positive(message = "Telegram ID должен быть положительным числом")
     private Long telegramId;
+    
+    @Size(max = 255, message = "Username не может быть длиннее 255 символов")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Username может содержать только буквы, цифры и подчеркивания")
     private String username;
+    
+    @Size(max = 255, message = "Имя не может быть длиннее 255 символов")
     private String firstName;
+    
+    @Size(max = 255, message = "Фамилия не может быть длиннее 255 символов")
     private String lastName;
+    
+    @Size(max = 512, message = "URL аватара не может быть длиннее 512 символов")
+    @Pattern(regexp = "^(https?://.*)?$", message = "URL аватара должен начинаться с http:// или https://")
     private String avatarUrl;
+    
+    @NotNull(message = "Баланс арт-кредитов не может быть null")
+    @Min(value = 0, message = "Баланс арт-кредитов не может быть отрицательным")
     private Long artBalance;
+    
+    @Pattern(regexp = "^(USER|ADMIN)$", message = "Роль должна быть USER или ADMIN")
     private String role;
+    
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     

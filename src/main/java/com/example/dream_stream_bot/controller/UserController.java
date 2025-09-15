@@ -18,6 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 
 import java.util.List;
 import java.util.Optional;
@@ -196,6 +198,44 @@ public class UserController {
     }
     
     /**
+     * Создать нового пользователя
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Создать нового пользователя",
+        description = "Создает нового пользователя в системе (только для ADMIN)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Пользователь создан",
+            content = @Content(schema = @Schema(implementation = UserDto.class))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserDto userDto) {
+        try {
+            LOGGER.info("🆕 Создание нового пользователя: {}", userDto.getUsername());
+            
+            // Проверяем, что пользователь с таким telegramId не существует
+            if (userService.existsByTelegramId(userDto.getTelegramId())) {
+                LOGGER.warn("⚠️ Пользователь с telegram_id {} уже существует", userDto.getTelegramId());
+                return ResponseEntity.badRequest().build();
+            }
+            
+            UserEntity userEntity = userDto.toEntity();
+            UserEntity savedUser = userService.save(userEntity);
+            UserDto savedUserDto = UserDto.fromEntity(savedUser);
+            
+            LOGGER.info("✅ Пользователь создан: {} (ID: {})", savedUserDto.getUsername(), savedUserDto.getId());
+            return ResponseEntity.status(201).body(savedUserDto);
+        } catch (Exception e) {
+            LOGGER.error("❌ Ошибка при создании пользователя: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
      * Обновить баланс пользователя
      */
     @PatchMapping("/{id}/balance")
@@ -214,7 +254,7 @@ public class UserController {
             @Parameter(description = "ID пользователя", required = true, example = "1")
             @PathVariable Long id,
             @Parameter(description = "Новый баланс", required = true, example = "100")
-            @RequestBody Long newBalance) {
+            @Valid @RequestBody @Min(value = 0, message = "Баланс не может быть отрицательным") Long newBalance) {
         try {
             LOGGER.info("💰 Обновление баланса пользователя {}: {}", id, newBalance);
             UserEntity updatedUser = userService.updateArtBalance(id, newBalance);
