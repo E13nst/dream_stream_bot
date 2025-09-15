@@ -159,8 +159,6 @@ public class StickerFileController {
             
             CacheStatsResponse stats = new CacheStatsResponse(cacheSize, redisAvailable);
             
-            LOGGER.debug("📊 Статистика кэша: размер={}, Redis доступен={}", cacheSize, redisAvailable);
-            
             return ResponseEntity.ok(stats);
             
         } catch (Exception e) {

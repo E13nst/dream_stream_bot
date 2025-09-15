@@ -140,8 +140,6 @@ public class TelegramFileService {
     private byte[] downloadFileData(String filePath, String token) {
         String fileUrl = TELEGRAM_FILE_URL + token + "/" + filePath;
         
-        LOGGER.debug("📥 Скачиваем файл: {}", fileUrl.replace(token, "***"));
-        
         ResponseEntity<byte[]> response = restTemplate.getForEntity(fileUrl, byte[].class);
         
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
@@ -149,7 +147,6 @@ public class TelegramFileService {
         }
         
         byte[] fileData = response.getBody();
-        LOGGER.debug("✅ Файл скачан: {} байт", fileData.length);
         
         return fileData;
     }

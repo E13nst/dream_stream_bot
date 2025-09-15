@@ -417,24 +417,16 @@ function displayStickers(response) {
 
     content.innerHTML = stickersHtml;
     
-    // Инициализируем lazy loading для новых превью
-    initializeLazyLoading();
-    
-    // Дополнительно: принудительная загрузка через 1 секунду (fallback)
-    setTimeout(() => {
-        console.log('🔄 Fallback: принудительная загрузка изображений через 1 сек');
-        forceLoadAllImages();
-    }, 1000);
+           // Инициализируем lazy loading для новых превью
+           initializeLazyLoading();
 }
 
 // Принудительная загрузка всех изображений (fallback)
 function forceLoadAllImages() {
     const lazyImages = document.querySelectorAll('.preview-image.lazy');
-    console.log('🔄 Принудительная загрузка:', lazyImages.length, 'изображений');
     
     lazyImages.forEach(img => {
         if (img.dataset.src && !img.src) {
-            console.log('🖼️ Принудительно загружаем:', img.dataset.src);
             img.src = img.dataset.src;
             img.classList.remove('lazy');
         }
@@ -499,7 +491,7 @@ function generatePreviewHtml(previewStickers) {
                          data-src="/stickers/${fileId}" 
                          alt="${emoji}"
                          title="${emoji}${isAnimated ? ' (анимированный)' : ''}"
-                         onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
+                         onerror="this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
                          onload="console.log('✅ Изображение загружено:', this.src); this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
                     ${isAnimated ? '<div class="animated-badge">GIF</div>' : ''}
                 </div>
@@ -521,32 +513,25 @@ function generatePreviewHtml(previewStickers) {
 function initializeLazyLoading() {
     const lazyImages = document.querySelectorAll('.preview-image.lazy');
     
-    console.log('🖼️ Найдено изображений для lazy loading:', lazyImages.length);
-    
     if ('IntersectionObserver' in window) {
         const imageObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const img = entry.target;
-                    console.log('🖼️ Загружаем превью стикера:', img.dataset.src);
+                    console.log('🖼️ Загружаем изображение:', img.dataset.src);
                     img.src = img.dataset.src;
                     img.classList.remove('lazy');
                     observer.unobserve(img);
                 }
             });
         }, {
-            rootMargin: '100px 0px' // Начинаем загрузку за 100px до появления
+            rootMargin: '200px 0px'
         });
         
-        lazyImages.forEach(img => {
-            console.log('👀 Наблюдаем за изображением:', img.dataset.src);
-            imageObserver.observe(img);
-        });
+        lazyImages.forEach(img => imageObserver.observe(img));
     } else {
         // Fallback для старых браузеров - загружаем сразу
-        console.log('⚠️ IntersectionObserver не поддерживается, загружаем все изображения сразу');
         lazyImages.forEach(img => {
-            console.log('🖼️ Загружаем изображение сразу:', img.dataset.src);
             img.src = img.dataset.src;
             img.classList.remove('lazy');
         });
