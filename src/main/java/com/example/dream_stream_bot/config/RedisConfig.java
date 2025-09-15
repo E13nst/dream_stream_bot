@@ -1,0 +1,70 @@
+package com.example.dream_stream_bot.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+/**
+ * Конфигурация Redis для кэширования стикеров
+ */
+@Configuration
+public class RedisConfig {
+
+    @Value("${spring.data.redis.host:redis-e13nst.amvera.io}")
+    private String redisHost;
+
+    @Value("${spring.data.redis.port:6379}")
+    private int redisPort;
+
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
+
+    @Value("${spring.data.redis.database:0}")
+    private int redisDatabase;
+
+    /**
+     * Настройка подключения к Redis
+     */
+    @Bean
+    public LettuceConnectionFactory redisConnectionFactory() {
+        RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
+        configuration.setHostName(redisHost);
+        configuration.setPort(redisPort);
+        configuration.setDatabase(redisDatabase);
+        
+        if (redisPassword != null && !redisPassword.trim().isEmpty()) {
+            configuration.setPassword(redisPassword);
+        }
+        
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration);
+        // Настройка таймаутов для graceful degradation
+        factory.setValidateConnection(false);
+        return factory;
+    }
+
+    /**
+     * Настройка Redis Template для работы со стикерами
+     */
+    @Bean(name = "stickerRedisTemplate")
+    public RedisTemplate<String, Object> stickerRedisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        
+        // Сериализация ключей как строки
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        
+        // Сериализация значений как JSON
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        
+        template.afterPropertiesSet();
+        return template;
+    }
+}
