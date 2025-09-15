@@ -20,6 +20,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.Optional;
@@ -204,16 +213,46 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Создать нового пользователя",
-        description = "Создает нового пользователя в системе (только для ADMIN)"
+        description = "Создает нового пользователя в системе. Доступно только администраторам. Все поля обязательны для заполнения."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Пользователь создан",
-            content = @Content(schema = @Schema(implementation = UserDto.class))),
-        @ApiResponse(responseCode = "400", description = "Некорректные данные"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
+        @ApiResponse(responseCode = "201", description = "Пользователь успешно создан",
+            content = @Content(schema = @Schema(implementation = UserDto.class),
+                examples = @ExampleObject(value = """
+                    {
+                        "id": 5,
+                        "telegramId": 999999999,
+                        "username": "newuser123",
+                        "firstName": "New",
+                        "lastName": "User",
+                        "avatarUrl": "https://example.com/avatar.jpg",
+                        "artBalance": 100,
+                        "role": "USER",
+                        "createdAt": "2025-09-15T14:30:00",
+                        "updatedAt": "2025-09-15T14:30:00"
+                    }
+                    """))),
+        @ApiResponse(responseCode = "400", description = "Некорректные данные - ошибки валидации",
+            content = @Content(examples = @ExampleObject(value = """
+                {
+                    "validationErrors": {
+                        "telegramId": "Telegram ID должен быть положительным числом",
+                        "username": "Username может содержать только буквы, цифры и подчеркивания",
+                        "avatarUrl": "URL аватара должен начинаться с http:// или https://",
+                        "artBalance": "Баланс арт-кредитов не может быть отрицательным",
+                        "role": "Роль должна быть USER или ADMIN"
+                    },
+                    "error": "Ошибка валидации",
+                    "message": "Некорректные данные в запросе"
+                }
+                """))),
+        @ApiResponse(responseCode = "401", description = "Не авторизован - требуется Telegram Web App авторизация"),
+        @ApiResponse(responseCode = "403", description = "Доступ запрещен - требуется роль ADMIN"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
-    public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserDto userDto) {
+    public ResponseEntity<UserDto> createUser(
+            @Parameter(description = "Данные для создания пользователя", required = true)
+            @Valid @RequestBody UserDto userDto) {
         try {
             LOGGER.info("🆕 Создание нового пользователя: {}", userDto.getUsername());
             
