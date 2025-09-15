@@ -310,9 +310,12 @@ async function loadStickers() {
         });
 
         if (response.ok) {
-            const stickers = await response.json();
-            displayStickers(stickers);
+            const data = await response.json();
+            console.log('📡 API ответ:', data);
+            displayStickers(data);
         } else {
+            const errorText = await response.text();
+            console.error('❌ Ошибка API:', response.status, response.statusText, errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
     } catch (error) {
@@ -327,8 +330,19 @@ async function loadStickers() {
 }
 
 // Отображение стикеров
-function displayStickers(stickers) {
+function displayStickers(response) {
     const content = document.getElementById('content');
+    
+    // Обрабатываем пагинированный ответ
+    let stickers = [];
+    if (response && response.content && Array.isArray(response.content)) {
+        stickers = response.content;
+    } else if (Array.isArray(response)) {
+        // Fallback для прямого массива
+        stickers = response;
+    }
+    
+    console.log('📋 Полученные стикерсеты:', stickers);
     
     if (!stickers || stickers.length === 0) {
         content.innerHTML = `
@@ -389,20 +403,31 @@ function displayStickers(stickers) {
 
 // Функции для работы с превью стикеров
 function getStickerPreviews(stickerSet) {
-    // Проверяем наличие telegramStickerSetInfo и stickers
-    if (!stickerSet.telegramStickerSetInfo || !stickerSet.telegramStickerSetInfo.stickers) {
+    try {
+        // Проверяем наличие telegramStickerSetInfo и stickers
+        if (!stickerSet || !stickerSet.telegramStickerSetInfo || !stickerSet.telegramStickerSetInfo.stickers) {
+            console.log('⚠️ Нет данных stickers для стикерсета:', stickerSet?.title || 'неизвестно');
+            return [];
+        }
+        
+        // Берем первые 4 стикера
+        return stickerSet.telegramStickerSetInfo.stickers.slice(0, 4);
+    } catch (error) {
+        console.error('❌ Ошибка при получении превью для стикерсета:', stickerSet?.title, error);
         return [];
     }
-    
-    // Берем первые 4 стикера
-    return stickerSet.telegramStickerSetInfo.stickers.slice(0, 4);
 }
 
 function getStickerCount(stickerSet) {
-    if (!stickerSet.telegramStickerSetInfo || !stickerSet.telegramStickerSetInfo.stickers) {
+    try {
+        if (!stickerSet || !stickerSet.telegramStickerSetInfo || !stickerSet.telegramStickerSetInfo.stickers) {
+            return 0;
+        }
+        return stickerSet.telegramStickerSetInfo.stickers.length;
+    } catch (error) {
+        console.error('❌ Ошибка при подсчете стикеров для стикерсета:', stickerSet?.title, error);
         return 0;
     }
-    return stickerSet.telegramStickerSetInfo.stickers.length;
 }
 
 function generatePreviewHtml(previewStickers) {
