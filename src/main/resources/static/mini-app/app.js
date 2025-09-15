@@ -231,17 +231,23 @@ function getAuthHeaders() {
 
 // Проверка статуса аутентификации
 async function checkAuthStatus() {
+    // Проверяем, запущены ли мы в Telegram Web App
+    const isInTelegramApp = window.Telegram && window.Telegram.WebApp && initData && initData.trim() !== '';
+    
+    if (!isInTelegramApp) {
+        // В обычном браузере
+        console.log('🌐 Режим браузера: авторизация не требуется');
+        document.getElementById('authStatus').innerHTML = `
+            <div class="auth-success">
+                🌐 Режим браузера
+                <br>Публичный доступ к API
+            </div>
+        `;
+        return true; // Считаем авторизованным для публичного API
+    }
+    
+    // В Telegram Web App - проверяем авторизацию
     try {
-        if (!initData || initData.trim() === '') {
-            document.getElementById('authStatus').innerHTML = `
-                <div class="auth-error">
-                    ❌ Данные аутентификации отсутствуют.
-                    <br>Убедитесь, что приложение запущено из Telegram.
-                </div>
-            `;
-            return false;
-        }
-        
         const response = await fetch('/auth/status', {
             method: 'GET',
             headers: getAuthHeaders()
@@ -298,15 +304,29 @@ async function loadStickers() {
             loading.innerHTML = '<p>Загрузка стикеров...</p>';
         }
 
-        // Сначала проверяем авторизацию
-        const isAuthenticated = await checkAuthStatus();
-        if (!isAuthenticated) {
-            throw new Error('Пользователь не авторизован');
+        // Проверяем, запущены ли мы в Telegram Web App
+        const isInTelegramApp = window.Telegram && window.Telegram.WebApp && initData;
+        
+        let headers = {};
+        
+        if (isInTelegramApp) {
+            // В Telegram Web App - проверяем авторизацию
+            const isAuthenticated = await checkAuthStatus();
+            if (!isAuthenticated) {
+                throw new Error('Пользователь не авторизован в Telegram Web App');
+            }
+            headers = getAuthHeaders();
+        } else {
+            // В обычном браузере - используем публичный доступ
+            console.log('🌐 Работаем в обычном браузере без Telegram авторизации');
+            headers = {
+                'Content-Type': 'application/json'
+            };
         }
 
         const response = await fetch('/api/stickersets', {
             method: 'GET',
-            headers: getAuthHeaders()
+            headers: headers
         });
 
         if (response.ok) {
