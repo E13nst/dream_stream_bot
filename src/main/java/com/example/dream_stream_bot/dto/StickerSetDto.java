@@ -1,13 +1,26 @@
 package com.example.dream_stream_bot.dto;
 
+import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 
 public class StickerSetDto {
     
     private Long id;
+    
+    @NotNull(message = "ID пользователя не может быть null")
+    @Positive(message = "ID пользователя должен быть положительным числом")
     private Long userId;
+    
+    @NotBlank(message = "Название стикерсета не может быть пустым")
+    @Size(max = 64, message = "Название стикерсета не может быть длиннее 64 символов")
+    @Pattern(regexp = "^[\\p{L}\\p{N}\\s\\-_.,!?()]+$", message = "Название может содержать только буквы, цифры, пробелы и символы: -_.,!?()")
     private String title;
+    
+    @NotBlank(message = "Имя стикерсета не может быть пустым")
+    @Size(min = 1, max = 64, message = "Имя стикерсета должно быть от 1 до 64 символов")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Имя стикерсета может содержать только латинские буквы, цифры и подчеркивания")
     private String name;
+    
     private LocalDateTime createdAt;
     
     // Конструкторы

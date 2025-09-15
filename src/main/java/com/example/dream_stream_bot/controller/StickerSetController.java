@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -50,7 +53,7 @@ public class StickerSetController {
      * Получить стикерсет по ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<StickerSetDto> getStickerSetById(@PathVariable Long id) {
+    public ResponseEntity<StickerSetDto> getStickerSetById(@PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
         try {
             LOGGER.info("🔍 Поиск стикерсета по ID: {}", id);
             StickerSet stickerSet = stickerSetService.findById(id);
@@ -73,7 +76,7 @@ public class StickerSetController {
      * Получить стикерсеты по ID пользователя
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<StickerSetDto>> getStickerSetsByUserId(@PathVariable Long userId) {
+    public ResponseEntity<List<StickerSetDto>> getStickerSetsByUserId(@PathVariable @Positive(message = "ID пользователя должен быть положительным числом") Long userId) {
         try {
             LOGGER.info("🔍 Поиск стикерсетов для пользователя: {}", userId);
             List<StickerSet> stickerSets = stickerSetService.findByUserId(userId);
@@ -93,7 +96,7 @@ public class StickerSetController {
      * Получить стикерсет по названию
      */
     @GetMapping("/search")
-    public ResponseEntity<StickerSetDto> getStickerSetByName(@RequestParam String name) {
+    public ResponseEntity<StickerSetDto> getStickerSetByName(@RequestParam @NotBlank(message = "Название не может быть пустым") String name) {
         try {
             LOGGER.info("🔍 Поиск стикерсета по названию: {}", name);
             StickerSet stickerSet = stickerSetService.findByName(name);
@@ -116,14 +119,9 @@ public class StickerSetController {
      * Создать новый стикерсет
      */
     @PostMapping
-    public ResponseEntity<StickerSetDto> createStickerSet(@RequestBody StickerSetDto stickerSetDto) {
+    public ResponseEntity<StickerSetDto> createStickerSet(@Valid @RequestBody StickerSetDto stickerSetDto) {
         try {
             LOGGER.info("➕ Создание нового стикерсета: {}", stickerSetDto.getTitle());
-            
-            if (stickerSetDto.getUserId() == null || stickerSetDto.getTitle() == null || stickerSetDto.getName() == null) {
-                LOGGER.warn("⚠️ Неполные данные для создания стикерсета");
-                return ResponseEntity.badRequest().build();
-            }
             
             StickerSet newStickerSet = stickerSetService.createStickerSet(
                 stickerSetDto.getUserId(),
@@ -144,7 +142,7 @@ public class StickerSetController {
      * Обновить существующий стикерсет
      */
     @PutMapping("/{id}")
-    public ResponseEntity<StickerSetDto> updateStickerSet(@PathVariable Long id, @RequestBody StickerSetDto stickerSetDto) {
+    public ResponseEntity<StickerSetDto> updateStickerSet(@PathVariable @Positive(message = "ID должен быть положительным числом") Long id, @Valid @RequestBody StickerSetDto stickerSetDto) {
         try {
             LOGGER.info("✏️ Обновление стикерсета с ID: {}", id);
             
@@ -177,7 +175,7 @@ public class StickerSetController {
      * Удалить стикерсет
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteStickerSet(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteStickerSet(@PathVariable @Positive(message = "ID должен быть положительным числом") Long id) {
         try {
             LOGGER.info("🗑️ Удаление стикерсета с ID: {}", id);
             
