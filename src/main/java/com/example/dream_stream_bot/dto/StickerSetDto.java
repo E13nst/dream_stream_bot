@@ -26,8 +26,9 @@ public class StickerSetDto {
     private LocalDateTime createdAt;
     
     @JsonRawValue
-    @Schema(description = "Полная информация о стикерсете из Telegram Bot API (JSON)", 
-            example = "{\"name\":\"my_stickers_by_StickerGalleryBot\",\"title\":\"Мои стикеры\",\"sticker_type\":\"regular\",\"is_animated\":false,\"is_video\":false,\"stickers\":[...]}")
+    @Schema(description = "Полная информация о стикерсете из Telegram Bot API (JSON). Может быть null, если данные недоступны.", 
+            example = "{\"name\":\"my_stickers_by_StickerGalleryBot\",\"title\":\"Мои стикеры\",\"sticker_type\":\"regular\",\"is_animated\":false,\"is_video\":false,\"stickers\":[...]}", 
+            nullable = true)
     private String telegramStickerSetInfo;
     
     // Конструкторы

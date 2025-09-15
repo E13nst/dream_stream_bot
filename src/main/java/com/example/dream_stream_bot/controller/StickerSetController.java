@@ -106,11 +106,8 @@ public class StickerSetController {
             LOGGER.debug("✅ Найдено {} стикерсетов на странице {} из {}", 
                     result.getContent().size(), result.getPage() + 1, result.getTotalPages());
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            LOGGER.error("❌ Ошибка при получении всех стикерсетов: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Неожиданная ошибка при получении всех стикерсетов", e);
+            LOGGER.error("❌ Ошибка при получении всех стикерсетов: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -154,11 +151,8 @@ public class StickerSetController {
             
             LOGGER.info("✅ Стикерсет найден: {}", dto.getTitle());
             return ResponseEntity.ok(dto);
-        } catch (RuntimeException e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсета с ID {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Неожиданная ошибка при поиске стикерсета с ID: {}", id, e);
+            LOGGER.error("❌ Ошибка при поиске стикерсета с ID: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -226,11 +220,8 @@ public class StickerSetController {
             LOGGER.debug("✅ Найдено {} стикерсетов для пользователя {} на странице {} из {}", 
                     result.getContent().size(), userId, result.getPage() + 1, result.getTotalPages());
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсетов для пользователя {}: {}", userId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Неожиданная ошибка при поиске стикерсетов для пользователя: {}", userId, e);
+            LOGGER.error("❌ Ошибка при поиске стикерсетов для пользователя: {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -274,11 +265,8 @@ public class StickerSetController {
             
             LOGGER.info("✅ Стикерсет найден: {}", dto.getTitle());
             return ResponseEntity.ok(dto);
-        } catch (RuntimeException e) {
-            LOGGER.error("❌ Ошибка при поиске стикерсета с названием {}: {}", name, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         } catch (Exception e) {
-            LOGGER.error("❌ Неожиданная ошибка при поиске стикерсета с названием: {}", name, e);
+            LOGGER.error("❌ Ошибка при поиске стикерсета с названием: {}", name, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

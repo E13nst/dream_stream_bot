@@ -116,6 +116,7 @@ public class StickerSetService {
     
     /**
      * Получить стикерсет по ID с обогащением данных Bot API
+     * Если Bot API недоступен, возвращает стикерсет без обогащения
      */
     public StickerSetDto findByIdWithBotApiData(Long id) {
         LOGGER.debug("🔍 Получение стикерсета по ID {} с данными Bot API", id);
@@ -125,11 +126,12 @@ public class StickerSetService {
             return null;
         }
         
-        return enrichSingleStickerSet(stickerSet);
+        return enrichSingleStickerSetSafely(stickerSet);
     }
     
     /**
      * Получить стикерсет по имени с обогащением данных Bot API
+     * Если Bot API недоступен, возвращает стикерсет без обогащения
      */
     public StickerSetDto findByNameWithBotApiData(String name) {
         LOGGER.debug("🔍 Получение стикерсета по имени '{}' с данными Bot API", name);
@@ -139,7 +141,7 @@ public class StickerSetService {
             return null;
         }
         
-        return enrichSingleStickerSet(stickerSet);
+        return enrichSingleStickerSetSafely(stickerSet);
     }
     
     /**
@@ -154,7 +156,7 @@ public class StickerSetService {
         
         // Создаем список CompletableFuture для параллельной обработки
         List<CompletableFuture<StickerSetDto>> futures = stickerSets.stream()
-                .map(stickerSet -> CompletableFuture.supplyAsync(() -> enrichSingleStickerSet(stickerSet)))
+                .map(stickerSet -> CompletableFuture.supplyAsync(() -> enrichSingleStickerSetSafely(stickerSet)))
                 .collect(Collectors.toList());
         
         // Ждем завершения всех запросов
@@ -167,9 +169,10 @@ public class StickerSetService {
     }
     
     /**
-     * Обогащает один стикерсет данными из Bot API
+     * Обогащает один стикерсет данными из Bot API (безопасно)
+     * Если данные Bot API недоступны, возвращает DTO без обогащения, но не выбрасывает исключение
      */
-    private StickerSetDto enrichSingleStickerSet(StickerSet stickerSet) {
+    private StickerSetDto enrichSingleStickerSetSafely(StickerSet stickerSet) {
         StickerSetDto dto = StickerSetDto.fromEntity(stickerSet);
         
         try {
@@ -177,10 +180,10 @@ public class StickerSetService {
             dto.setTelegramStickerSetInfo(botApiData);
             LOGGER.debug("✅ Стикерсет '{}' обогащен данными Bot API", stickerSet.getName());
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении данных Bot API для стикерсета '{}': {}", 
+            LOGGER.warn("⚠️ Не удалось получить данные Bot API для стикерсета '{}': {} - пропускаем обогащение", 
                     stickerSet.getName(), e.getMessage());
-            // Если Bot API недоступен, возвращаем ошибку
-            throw new RuntimeException("Ошибка получения данных Telegram Bot API для стикерсета: " + stickerSet.getName(), e);
+            // Оставляем telegramStickerSetInfo = null, продолжаем обработку
+            dto.setTelegramStickerSetInfo(null);
         }
         
         return dto;
