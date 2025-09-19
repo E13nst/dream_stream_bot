@@ -450,6 +450,41 @@ function forceLoadAllImages() {
     });
 }
 
+// Функция для инициализации lazy loading изображений
+function initializeLazyLoading() {
+    // Проверяем поддержку IntersectionObserver
+    if ('IntersectionObserver' in window) {
+        const lazyImageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    if (img.dataset.src && !img.src) {
+                        console.log('🖼️ Загружаем изображение:', img.dataset.src);
+                        img.src = img.dataset.src;
+                        img.classList.remove('lazy');
+                        observer.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            // Загружаем изображения заранее (за 200px до появления в области видимости)
+            rootMargin: '200px 0px'
+        });
+
+        // Наблюдаем за всеми изображениями с классом lazy
+        const lazyImages = document.querySelectorAll('.preview-image.lazy');
+        lazyImages.forEach(img => {
+            lazyImageObserver.observe(img);
+        });
+        
+        console.log(`🔄 Инициализирован lazy loading для ${lazyImages.length} изображений`);
+    } else {
+        // Fallback для старых браузеров - загружаем все изображения сразу
+        console.log('⚠️ IntersectionObserver не поддерживается, загружаем все изображения');
+        forceLoadAllImages();
+    }
+}
+
 // Функции для работы с превью стикеров
 function getStickerPreviews(stickerSet) {
     try {
@@ -614,13 +649,19 @@ async function deleteStickerSet(id, title) {
     }
 }
 
-// Обработка кнопки "Назад"
-tg.BackButton.onClick(() => {
-    tg.close();
-});
-
-// Показываем кнопку "Назад"
-tg.BackButton.show();
+// Обработка кнопки "Назад" (только для поддерживаемых версий)
+if (tg.BackButton && typeof tg.BackButton.onClick === 'function') {
+    tg.BackButton.onClick(() => {
+        tg.close();
+    });
+    
+    // Показываем кнопку "Назад"
+    if (typeof tg.BackButton.show === 'function') {
+        tg.BackButton.show();
+    }
+} else {
+    console.log('BackButton не поддерживается в этой версии Telegram Web App');
+}
 
 // Отображение информации о пользователе
 if (user) {
