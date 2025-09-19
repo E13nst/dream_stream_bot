@@ -6,6 +6,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.SslOptions;
+import io.lettuce.core.protocol.ProtocolVersion;
+import java.time.Duration;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -42,7 +47,18 @@ public class RedisConfig {
             configuration.setPassword(redisPassword);
         }
         
-        LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration);
+        // Настройка SSL для Lettuce
+        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .clientOptions(ClientOptions.builder()
+                        .protocolVersion(ProtocolVersion.RESP3)
+                        .sslOptions(SslOptions.builder()
+                                .jdkSslProvider()
+                                .build())
+                        .build())
+                .commandTimeout(Duration.ofSeconds(10))
+                .build();
+        
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration, clientConfig);
         // Настройка таймаутов для graceful degradation
         factory.setValidateConnection(false);
         return factory;
@@ -68,3 +84,4 @@ public class RedisConfig {
         return template;
     }
 }
+, 
