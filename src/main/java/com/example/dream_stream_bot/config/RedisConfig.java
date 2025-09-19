@@ -47,14 +47,8 @@ public class RedisConfig {
             configuration.setPassword(redisPassword);
         }
         
-        // Настройка SSL для Lettuce
+        // Настройка подключения к Redis (без SSL для начала)
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .clientOptions(ClientOptions.builder()
-                        .protocolVersion(ProtocolVersion.RESP3)
-                        .sslOptions(SslOptions.builder()
-                                .jdkSslProvider()
-                                .build())
-                        .build())
                 .commandTimeout(Duration.ofSeconds(10))
                 .build();
         

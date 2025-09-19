@@ -139,12 +139,17 @@ public class StickerCacheService {
      * @return количество закэшированных стикеров
      */
     public long getCacheSize() {
+        if (!isRedisAvailable()) {
+            LOGGER.debug("⚠️ Redis недоступен, размер кэша неизвестен");
+            return -1;
+        }
+        
         try {
             var keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
             return keys != null ? keys.size() : 0;
             
         } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при получении размера кэша: {}", e.getMessage(), e);
+            LOGGER.error("❌ Ошибка при получении размера кэша: {}", e.getMessage());
             return -1;
         }
     }
