@@ -419,6 +419,23 @@ function displayStickers(response) {
     
            // Инициализируем lazy loading для новых превью
            initializeLazyLoading();
+           
+           // Добавляем кнопку для принудительной загрузки (отладка)
+           const debugButton = document.createElement('button');
+           debugButton.textContent = '🔄 Принудительная загрузка всех изображений';
+           debugButton.style.cssText = 'margin: 10px; padding: 8px; background: #007aff; color: white; border: none; border-radius: 4px; cursor: pointer;';
+           debugButton.onclick = () => {
+               console.log('🔄 Принудительная загрузка всех изображений...');
+               const lazyImages = document.querySelectorAll('.preview-image.lazy');
+               lazyImages.forEach(img => {
+                   if (img.dataset.src && !img.src) {
+                       console.log('🔄 Загружаем:', img.dataset.src);
+                       img.src = img.dataset.src;
+                       img.classList.remove('lazy');
+                   }
+               });
+           };
+           content.appendChild(debugButton);
 }
 
 // Принудительная загрузка всех изображений (fallback)
@@ -491,8 +508,8 @@ function generatePreviewHtml(previewStickers) {
                          data-src="/stickers/${fileId}" 
                          alt="${emoji}"
                          title="${emoji}${isAnimated ? ' (анимированный)' : ''}"
-                         onerror="this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
-                         onload="console.log('✅ Изображение загружено:', this.src); this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
+                         onerror="console.error('❌ Ошибка загрузки изображения:', this.src, 'Status:', this.naturalWidth, 'x', this.naturalHeight); this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
+                         onload="console.log('✅ Изображение загружено:', this.src, 'Size:', this.naturalWidth, 'x', this.naturalHeight, 'Type:', this.complete); this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
                     ${isAnimated ? '<div class="animated-badge">GIF</div>' : ''}
                     <div class="debug-url">${window.location.origin}/stickers/${fileId}</div>
                 </div>
@@ -520,6 +537,7 @@ function initializeLazyLoading() {
                 if (entry.isIntersecting) {
                     const img = entry.target;
                     console.log('🖼️ Загружаем изображение:', img.dataset.src);
+                    console.log('🖼️ Полный URL:', window.location.origin + img.dataset.src);
                     img.src = img.dataset.src;
                     img.classList.remove('lazy');
                     observer.unobserve(img);
