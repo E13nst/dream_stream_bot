@@ -301,7 +301,7 @@ async function loadStickers() {
     try {
         const loading = document.getElementById('loading');
         if (loading) {
-            loading.innerHTML = '<p>Загрузка стикеров...</p>';
+        loading.innerHTML = '<p>Загрузка стикеров...</p>';
         }
 
         // Проверяем, запущены ли мы в Telegram Web App
@@ -363,7 +363,7 @@ function displayStickers(response) {
     }
     
     console.log('📋 Полученные стикерсеты:', stickers);
-    
+
     if (!stickers || stickers.length === 0) {
         content.innerHTML = `
             <div class="empty-state">
@@ -387,7 +387,7 @@ function displayStickers(response) {
         return `
         <div class="sticker-card" data-title="${sticker.title.toLowerCase()}">
             <div class="sticker-header">
-                <h3>${sticker.title}</h3>
+            <h3>${sticker.title}</h3>
                 <span class="sticker-count">${getStickerCount(sticker)} стикеров</span>
             </div>
             
@@ -417,8 +417,8 @@ function displayStickers(response) {
 
     content.innerHTML = stickersHtml;
     
-           // Инициализируем lazy loading для новых превью
-           initializeLazyLoading();
+    // Инициализируем lazy loading для новых превью ПОСЛЕ добавления HTML в DOM
+    initializeLazyLoading();
            
            // Добавляем кнопку для принудительной загрузки (отладка)
            const debugButton = document.createElement('button');
@@ -450,31 +450,50 @@ function forceLoadAllImages() {
     });
 }
 
+// Глобальный observer для lazy loading
+let lazyImageObserver = null;
+
 // Функция для инициализации lazy loading изображений
 function initializeLazyLoading() {
     // Проверяем поддержку IntersectionObserver
     if ('IntersectionObserver' in window) {
-        const lazyImageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    if (img.dataset.src && !img.src) {
-                        console.log('🖼️ Загружаем изображение:', img.dataset.src);
-                        img.src = img.dataset.src;
-                        img.classList.remove('lazy');
-                        observer.unobserve(img);
+        // Создаём observer только один раз
+        if (!lazyImageObserver) {
+            lazyImageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src && !img.src) {
+                            console.log('🖼️ Загружаем изображение:', img.dataset.src);
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy');
+                            observer.unobserve(img);
+                        }
                     }
-                }
+                });
+            }, {
+                // Загружаем изображения заранее (за 50px до появления в области видимости)
+                rootMargin: '50px 0px'
             });
-        }, {
-            // Загружаем изображения заранее (за 200px до появления в области видимости)
-            rootMargin: '200px 0px'
-        });
+        }
 
-        // Наблюдаем за всеми изображениями с классом lazy
+        // Находим только новые изображения, которые ещё не отслеживаются
         const lazyImages = document.querySelectorAll('.preview-image.lazy');
+        console.log(`🔍 Найдено ${lazyImages.length} изображений для lazy loading`);
+        
         lazyImages.forEach(img => {
             lazyImageObserver.observe(img);
+            console.log('👁️ Добавлено в observer:', img.dataset.src);
+            
+            // Проверяем, видно ли изображение сразу (fallback)
+            const rect = img.getBoundingClientRect();
+            const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+            if (isVisible && img.dataset.src && !img.src) {
+                console.log('⚡ Изображение видно сразу, загружаем немедленно:', img.dataset.src);
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                lazyImageObserver.unobserve(img);
+            }
         });
         
         console.log(`🔄 Инициализирован lazy loading для ${lazyImages.length} изображений`);
@@ -522,8 +541,8 @@ function generatePreviewHtml(previewStickers) {
                 <div class="placeholder-item">🖼️</div>
                 <div class="placeholder-item">✨</div>
                 <div class="placeholder-item">🎭</div>
-            </div>
-        `;
+        </div>
+    `;
     }
     
     let html = '';
@@ -651,13 +670,13 @@ async function deleteStickerSet(id, title) {
 
 // Обработка кнопки "Назад" (только для поддерживаемых версий)
 if (tg.BackButton && typeof tg.BackButton.onClick === 'function') {
-    tg.BackButton.onClick(() => {
-        tg.close();
-    });
-    
-    // Показываем кнопку "Назад"
+tg.BackButton.onClick(() => {
+    tg.close();
+});
+
+// Показываем кнопку "Назад"
     if (typeof tg.BackButton.show === 'function') {
-        tg.BackButton.show();
+tg.BackButton.show();
     }
 } else {
     console.log('BackButton не поддерживается в этой версии Telegram Web App');
