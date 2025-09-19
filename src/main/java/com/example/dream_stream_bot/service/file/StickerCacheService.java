@@ -52,11 +52,11 @@ public class StickerCacheService {
                     return null;
                 }
                 
-                LOGGER.debug("✅ Стикер '{}' найден в кэше (размер: {} байт)", fileId, stickerCache.getFileSize());
+                LOGGER.info("🎯 Стикер '{}' найден в кэше (размер: {} байт)", fileId, stickerCache.getFileSize());
                 return stickerCache;
             }
             
-            LOGGER.debug("❌ Стикер '{}' не найден в кэше", fileId);
+            LOGGER.info("❌ Стикер '{}' не найден в кэше", fileId);
             return null;
             
         } catch (Exception e) {
@@ -143,17 +143,27 @@ public class StickerCacheService {
      * @return количество закэшированных стикеров
      */
     public long getCacheSize() {
+        LOGGER.debug("🔢 Запрос размера кэша");
+        
         if (!isRedisAvailable()) {
             LOGGER.debug("⚠️ Redis недоступен, размер кэша неизвестен");
             return -1;
         }
         
         try {
-            var keys = redisTemplate.keys(CACHE_KEY_PREFIX + "*");
-            return keys != null ? keys.size() : 0;
+            String pattern = CACHE_KEY_PREFIX + "*";
+            LOGGER.debug("🔍 Ищем ключи по паттерну: {}", pattern);
+            var keys = redisTemplate.keys(pattern);
+            long size = keys != null ? keys.size() : 0;
+            LOGGER.info("📊 Размер кэша: {} ключей", size);
+            if (keys != null && !keys.isEmpty()) {
+                LOGGER.info("🔑 Найденные ключи: {}", keys);
+            }
+            return size;
             
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при получении размера кэша: {}", e.getMessage());
+            LOGGER.debug("❌ Полная ошибка getCacheSize:", e);
             return -1;
         }
     }
