@@ -1,8 +1,8 @@
 package com.example.dream_stream_bot.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -19,6 +19,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * Конфигурация Redis для кэширования стикеров
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.data.redis.enabled", havingValue = "true", matchIfMissing = false)
 public class RedisConfig {
 
     @Value("${spring.data.redis.host:redis-e13nst.amvera.io}")
@@ -47,8 +48,13 @@ public class RedisConfig {
             configuration.setPassword(redisPassword);
         }
         
-        // Настройка подключения к Redis (без SSL для начала)
+        // Настройка SSL для Lettuce (как показал Python тест)
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .clientOptions(ClientOptions.builder()
+                        .sslOptions(SslOptions.builder()
+                                .jdkSslProvider()
+                                .build())
+                        .build())
                 .commandTimeout(Duration.ofSeconds(10))
                 .build();
         
