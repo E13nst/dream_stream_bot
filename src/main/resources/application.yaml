@@ -41,6 +41,13 @@ spring:
           time_zone: UTC
         connection:
           provider_disables_autocommit: true
+  data:
+    redis:
+      host: ${REDIS_HOST:redis-e13nst.amvera.io}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 10s
 
 # Swagger/OpenAPI конфигурация
 springdoc:

@@ -25,7 +25,6 @@ import java.time.Duration;
  * Конфигурация Redis для кэширования стикеров
  */
 @Configuration
-@ConditionalOnProperty(name = "spring.data.redis.enabled", havingValue = "true", matchIfMissing = false)
 public class RedisConfig {
 
     @Value("${spring.data.redis.host:redis-e13nst.amvera.io}")
@@ -62,6 +61,7 @@ public class RedisConfig {
                                 .build())
                         .build())
                 .commandTimeout(Duration.ofSeconds(10))
+                .useSsl()  // Включаем SSL
                 .build();
         
         LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration, clientConfig);
