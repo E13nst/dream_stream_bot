@@ -61,3 +61,6 @@ doc.txt
 
 # Скрипты тестирования
 /scripts/
+
+# Python Sticker Processor Service (deployed separately)
+/sticker-processor-service/
