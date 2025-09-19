@@ -184,7 +184,9 @@ public class StickerCacheService {
      */
     public boolean isRedisAvailable() {
         try {
-            redisTemplate.opsForValue().get("ping");
+            // Простая проверка - пытаемся выполнить операцию
+            redisTemplate.hasKey("test_key");
+            LOGGER.debug("✅ Redis доступен");
             return true;
         } catch (Exception e) {
             LOGGER.error("❌ Redis недоступен: {}", e.getMessage());

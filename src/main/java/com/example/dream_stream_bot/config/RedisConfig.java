@@ -27,6 +27,8 @@ import java.time.Duration;
 @Configuration
 public class RedisConfig {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisConfig.class);
+
     @Value("${spring.data.redis.host:redis-e13nst.amvera.io}")
     private String redisHost;
 
@@ -44,6 +46,8 @@ public class RedisConfig {
      */
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
+        LOGGER.info("🔧 Настройка Redis подключения: host={}, port={}, database={}", redisHost, redisPort, redisDatabase);
+        
         RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
         configuration.setHostName(redisHost);
         configuration.setPort(redisPort);
@@ -51,22 +55,25 @@ public class RedisConfig {
         
         if (redisPassword != null && !redisPassword.trim().isEmpty()) {
             configuration.setPassword(redisPassword);
+            LOGGER.info("🔐 Redis пароль установлен");
+        } else {
+            LOGGER.info("🔓 Redis пароль не установлен");
         }
         
         // Настройка SSL для Lettuce (как показал Python тест)
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .clientOptions(ClientOptions.builder()
-                        .sslOptions(SslOptions.builder()
-                                .jdkSslProvider()
-                                .build())
-                        .build())
                 .commandTimeout(Duration.ofSeconds(10))
                 .useSsl()  // Включаем SSL
                 .build();
         
+        LOGGER.info("🔒 SSL включен для Redis подключения");
+        
         LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration, clientConfig);
         // Настройка таймаутов для graceful degradation
         factory.setValidateConnection(false);
+        
+        LOGGER.info("🏭 LettuceConnectionFactory создан с SSL");
+        
         return factory;
     }
 
