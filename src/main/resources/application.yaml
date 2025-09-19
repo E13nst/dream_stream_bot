@@ -43,14 +43,13 @@ spring:
           provider_disables_autocommit: true
   data:
     redis:
-      host: ${REDIS_HOST:redis-e13nst.db-msk0.amvera.tech}
+      host: ${REDIS_HOST:amvera-e13nst-run-redis}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       database: ${REDIS_DATABASE:0}
       timeout: 10s
       ssl:
-        enabled: true
-        bundle: NONE
+        enabled: ${REDIS_SSL_ENABLED:false}
 
 # Swagger/OpenAPI конфигурация
 springdoc:

@@ -30,7 +30,7 @@ public class RedisConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisConfig.class);
 
-    @Value("${spring.data.redis.host:redis-e13nst.db-msk0.amvera.tech}")
+    @Value("${spring.data.redis.host:amvera-e13nst-run-redis}")
     private String redisHost;
 
     @Value("${spring.data.redis.port:6379}")
@@ -41,6 +41,9 @@ public class RedisConfig {
 
     @Value("${spring.data.redis.database:0}")
     private int redisDatabase;
+
+    @Value("${spring.data.redis.ssl.enabled:false}")
+    private boolean sslEnabled;
 
     /**
      * Настройка подключения к Redis с отключением проверки SSL сертификатов
@@ -65,23 +68,34 @@ public class RedisConfig {
             LOGGER.info("🔓 Redis пароль не установлен");
         }
         
-        // Настройка SSL с отключением проверки сертификатов
-        SslOptions sslOptions = SslOptions.builder()
-                .jdkSslProvider()
-                .build();
+        LettuceClientConfiguration clientConfig;
         
-        ClientOptions clientOptions = ClientOptions.builder()
-                .sslOptions(sslOptions)
-                .build();
-        
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(10))
-                .clientOptions(clientOptions)
-                .useSsl()
-                .disablePeerVerification()  // Отключаем проверку сертификатов
-                .build();
-        
-        LOGGER.info("🔒 SSL включен с отключенной проверкой сертификатов");
+        if (sslEnabled) {
+            // Настройка SSL с отключением проверки сертификатов
+            SslOptions sslOptions = SslOptions.builder()
+                    .jdkSslProvider()
+                    .build();
+            
+            ClientOptions clientOptions = ClientOptions.builder()
+                    .sslOptions(sslOptions)
+                    .build();
+            
+            clientConfig = LettuceClientConfiguration.builder()
+                    .commandTimeout(Duration.ofSeconds(10))
+                    .clientOptions(clientOptions)
+                    .useSsl()
+                    .disablePeerVerification()  // Отключаем проверку сертификатов
+                    .build();
+            
+            LOGGER.info("🔒 SSL включен с отключенной проверкой сертификатов");
+        } else {
+            // Простое подключение без SSL
+            clientConfig = LettuceClientConfiguration.builder()
+                    .commandTimeout(Duration.ofSeconds(10))
+                    .build();
+            
+            LOGGER.info("🔓 SSL отключен, используем обычное подключение");
+        }
         
         LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration, clientConfig);
         factory.setValidateConnection(false);
