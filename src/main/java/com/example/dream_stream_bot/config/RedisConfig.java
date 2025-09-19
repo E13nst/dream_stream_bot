@@ -30,7 +30,7 @@ public class RedisConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisConfig.class);
 
-    @Value("${spring.data.redis.host:redis-e13nst.amvera.io}")
+    @Value("${spring.data.redis.host:redis-e13nst.db-msk0.amvera.tech}")
     private String redisHost;
 
     @Value("${spring.data.redis.port:6379}")
@@ -50,6 +50,8 @@ public class RedisConfig {
     public LettuceConnectionFactory redisConnectionFactory() {
         LOGGER.info("🔧 Настройка Redis с отключением проверки SSL сертификатов");
         LOGGER.info("📍 Подключение: {}:{}, database: {}", redisHost, redisPort, redisDatabase);
+        LOGGER.info("🌍 Переменные окружения: REDIS_HOST={}, REDIS_PORT={}, REDIS_DATABASE={}", 
+                   System.getenv("REDIS_HOST"), System.getenv("REDIS_PORT"), System.getenv("REDIS_DATABASE"));
         
         RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
         configuration.setHostName(redisHost);
