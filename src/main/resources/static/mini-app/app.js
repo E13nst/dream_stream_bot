@@ -494,6 +494,7 @@ function generatePreviewHtml(previewStickers) {
                          onerror="this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
                          onload="console.log('✅ Изображение загружено:', this.src); this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
                     ${isAnimated ? '<div class="animated-badge">GIF</div>' : ''}
+                    <div class="debug-url">${window.location.origin}/stickers/${fileId}</div>
                 </div>
             `;
         } else {
