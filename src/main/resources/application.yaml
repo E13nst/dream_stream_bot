@@ -48,6 +48,9 @@ spring:
       password: ${REDIS_PASSWORD:}
       database: ${REDIS_DATABASE:0}
       timeout: 10s
+      ssl:
+        enabled: true
+        bundle: NONE
 
 # Swagger/OpenAPI конфигурация
 springdoc:

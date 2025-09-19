@@ -34,6 +34,8 @@ public class StickerCacheService {
      * @return StickerCacheDto или null если не найден
      */
     public StickerCacheDto get(String fileId) {
+        LOGGER.info("🔍 Попытка получить стикер '{}' из кэша", fileId);
+        
         if (!isRedisAvailable()) {
             LOGGER.debug("⚠️ Redis недоступен, пропускаем кэш для '{}'", fileId);
             return null;
@@ -73,6 +75,8 @@ public class StickerCacheService {
             LOGGER.warn("⚠️ Попытка сохранить null стикер в кэш");
             return;
         }
+        
+        LOGGER.info("💾 Попытка сохранить стикер '{}' в кэш", stickerCache.getFileId());
         
         if (!isRedisAvailable()) {
             LOGGER.debug("⚠️ Redis недоступен, пропускаем сохранение в кэш для '{}'", stickerCache.getFileId());
@@ -184,12 +188,14 @@ public class StickerCacheService {
      */
     public boolean isRedisAvailable() {
         try {
+            LOGGER.debug("🔍 Проверяем доступность Redis...");
             // Простая проверка - пытаемся выполнить операцию
-            redisTemplate.hasKey("test_key");
-            LOGGER.debug("✅ Redis доступен");
+            Boolean result = redisTemplate.hasKey("test_key");
+            LOGGER.info("✅ Redis доступен! Результат проверки: {}", result);
             return true;
         } catch (Exception e) {
             LOGGER.error("❌ Redis недоступен: {}", e.getMessage());
+            LOGGER.debug("❌ Полная ошибка Redis:", e);
             return false;
         }
     }

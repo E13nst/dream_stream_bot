@@ -20,6 +20,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceClientConfigurat
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
 import java.time.Duration;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Конфигурация Redis для кэширования стикеров
@@ -42,11 +43,13 @@ public class RedisConfig {
     private int redisDatabase;
 
     /**
-     * Настройка подключения к Redis
+     * Настройка подключения к Redis с отключением проверки SSL сертификатов
+     * для работы с истекшими и самоподписанными сертификатами
      */
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
-        LOGGER.info("🔧 Настройка Redis подключения: host={}, port={}, database={}", redisHost, redisPort, redisDatabase);
+        LOGGER.info("🔧 Настройка Redis с отключением проверки SSL сертификатов");
+        LOGGER.info("📍 Подключение: {}:{}, database: {}", redisHost, redisPort, redisDatabase);
         
         RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
         configuration.setHostName(redisHost);
@@ -60,20 +63,28 @@ public class RedisConfig {
             LOGGER.info("🔓 Redis пароль не установлен");
         }
         
-        // Настройка SSL для Lettuce (как показал Python тест)
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .commandTimeout(Duration.ofSeconds(10))
-                .useSsl()  // Включаем SSL
+        // Настройка SSL с отключением проверки сертификатов
+        SslOptions sslOptions = SslOptions.builder()
+                .jdkSslProvider()
                 .build();
         
-        LOGGER.info("🔒 SSL включен для Redis подключения");
+        ClientOptions clientOptions = ClientOptions.builder()
+                .sslOptions(sslOptions)
+                .build();
+        
+        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .commandTimeout(Duration.ofSeconds(10))
+                .clientOptions(clientOptions)
+                .useSsl()
+                .disablePeerVerification()  // Отключаем проверку сертификатов
+                .build();
+        
+        LOGGER.info("🔒 SSL включен с отключенной проверкой сертификатов");
         
         LettuceConnectionFactory factory = new LettuceConnectionFactory(configuration, clientConfig);
-        // Настройка таймаутов для graceful degradation
         factory.setValidateConnection(false);
         
-        LOGGER.info("🏭 LettuceConnectionFactory создан с SSL");
-        
+        LOGGER.info("🏭 LettuceConnectionFactory создан");
         return factory;
     }
 
@@ -82,6 +93,8 @@ public class RedisConfig {
      */
     @Bean(name = "stickerRedisTemplate")
     public RedisTemplate<String, Object> stickerRedisTemplate(RedisConnectionFactory connectionFactory) {
+        LOGGER.info("🔧 Создаем stickerRedisTemplate");
+        
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         
@@ -89,11 +102,18 @@ public class RedisConfig {
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
         
+        // Настройка Jackson для поддержки Java 8 date/time
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        
         // Сериализация значений как JSON
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
         
         template.afterPropertiesSet();
+        
+        LOGGER.info("✅ stickerRedisTemplate создан успешно");
         return template;
     }
 }
