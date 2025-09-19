@@ -15,7 +15,9 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import com.example.dream_stream_bot.dto.StickerCacheDto;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
@@ -118,14 +120,19 @@ public class RedisConfig {
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
         
-        // Настройка Jackson для поддержки Java 8 date/time
+        // Настройка Jackson для поддержки Java 8 date/time и типов
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
         objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
-        // Сериализация значений как JSON
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
+        // Простое решение - используем Jackson2JsonRedisSerializer для конкретного типа
+        Jackson2JsonRedisSerializer<StickerCacheDto> serializer = 
+                new Jackson2JsonRedisSerializer<>(StickerCacheDto.class);
+        serializer.setObjectMapper(objectMapper);
+        
+        // Сериализация значений как JSON для конкретного типа
+        template.setValueSerializer(serializer);
+        template.setHashValueSerializer(serializer);
         
         template.afterPropertiesSet();
         

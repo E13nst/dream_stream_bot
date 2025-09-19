@@ -43,7 +43,10 @@ public class StickerCacheService {
         
         try {
             String key = buildCacheKey(fileId);
+            LOGGER.info("🔑 Ищем в Redis по ключу: {}", key);
+            
             Object cached = redisTemplate.opsForValue().get(key);
+            LOGGER.info("📦 Результат из Redis: {}", cached != null ? cached.getClass().getSimpleName() : "null");
             
             if (cached instanceof StickerCacheDto stickerCache) {
                 if (stickerCache.isExpired()) {
@@ -60,7 +63,8 @@ public class StickerCacheService {
             return null;
             
         } catch (Exception e) {
-            LOGGER.warn("❌ Ошибка при получении стикера '{}' из кэша: {}", fileId, e.getMessage());
+            LOGGER.error("❌ Ошибка при получении стикера '{}' из кэша: {}", fileId, e.getMessage());
+            LOGGER.debug("❌ Полная ошибка get():", e);
             return null;
         }
     }
@@ -85,9 +89,13 @@ public class StickerCacheService {
         
         try {
             String key = buildCacheKey(stickerCache.getFileId());
+            LOGGER.info("🔑 Сохраняем в Redis по ключу: {}", key);
+            LOGGER.info("📦 Сохраняем объект: {} (размер: {} байт)", 
+                       stickerCache.getClass().getSimpleName(), stickerCache.getFileSize());
             
             // Сохраняем с TTL
             redisTemplate.opsForValue().set(key, stickerCache, CACHE_TTL_DAYS, TimeUnit.DAYS);
+            LOGGER.info("✅ Объект сохранен в Redis с TTL {} дней", CACHE_TTL_DAYS);
             
             LOGGER.debug("💾 Стикер '{}' сохранен в кэш (размер: {} байт, TTL: {} дней)", 
                     stickerCache.getFileId(), stickerCache.getFileSize(), CACHE_TTL_DAYS);

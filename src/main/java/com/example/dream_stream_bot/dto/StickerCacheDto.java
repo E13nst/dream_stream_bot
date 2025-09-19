@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -88,6 +89,7 @@ public class StickerCacheDto {
     /**
      * Возвращает данные файла как byte array
      */
+    @JsonIgnore
     public byte[] getFileBytes() {
         if (fileData == null) {
             return new byte[0];
@@ -98,6 +100,7 @@ public class StickerCacheDto {
     /**
      * Проверяет, не устарел ли кэш (старше 7 дней)
      */
+    @JsonIgnore
     public boolean isExpired() {
         if (lastUpdated == null) {
             return true;
