@@ -363,6 +363,9 @@ function displayStickers(response) {
     }
     
     console.log('📋 Полученные стикерсеты:', stickers);
+    
+    // Сохраняем данные стикерсетов в глобальном состоянии для детального просмотра
+    window.currentStickerSets = stickers;
 
     if (!stickers || stickers.length === 0) {
         content.innerHTML = `
@@ -513,7 +516,7 @@ function getStickerPreviews(stickerSet) {
             return [];
         }
         
-        // Берем первые 4 стикера
+        // Берем первые 4 стикера для высококачественных превью
         return stickerSet.telegramStickerSetInfo.stickers.slice(0, 4);
     } catch (error) {
         console.error('❌ Ошибка при получении превью для стикерсета:', stickerSet?.title, error);
@@ -550,24 +553,40 @@ function generatePreviewHtml(previewStickers) {
     for (let i = 0; i < 4; i++) {
         if (i < previewStickers.length) {
             const sticker = previewStickers[i];
-            // Используем thumbnail для превью (меньший размер)
-            const fileId = sticker.thumbnail ? sticker.thumbnail.file_id : sticker.file_id;
+            // Используем полный file_id для высококачественных превью
+            const fileId = sticker.file_id;
             const emoji = sticker.emoji || '🎨';
             const isAnimated = sticker.is_animated;
             
-            html += `
-                <div class="preview-item" data-file-id="${fileId}">
-                    <div class="preview-placeholder">${emoji}</div>
-                    <img class="preview-image lazy" 
-                         data-src="/stickers/${fileId}" 
-                         alt="${emoji}"
-                         title="${emoji}${isAnimated ? ' (анимированный)' : ''}"
-                         onerror="console.error('❌ Ошибка загрузки изображения:', this.src, 'Status:', this.naturalWidth, 'x', this.naturalHeight); this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
-                         onload="console.log('✅ Изображение загружено:', this.src, 'Size:', this.naturalWidth, 'x', this.naturalHeight, 'Type:', this.complete); this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
-                    ${isAnimated ? '<div class="animated-badge">GIF</div>' : ''}
-                    <div class="debug-url">${window.location.origin}/stickers/${fileId}</div>
-                </div>
-            `;
+            if (isAnimated) {
+                // Для анимированных стикеров используем Lottie
+                html += `
+                    <div class="preview-item" data-file-id="${fileId}">
+                        <div class="preview-placeholder">${emoji}</div>
+                        <div class="preview-lottie lazy" 
+                             data-src="/api/stickers/${fileId}"
+                             data-emoji="${emoji}"
+                             title="${emoji} (анимированный)">
+                        </div>
+                        <div class="animated-badge">LOTTIE</div>
+                        <div class="debug-url">${window.location.origin}/api/stickers/${fileId}</div>
+                    </div>
+                `;
+            } else {
+                // Для обычных стикеров используем img
+                html += `
+                    <div class="preview-item" data-file-id="${fileId}">
+                        <div class="preview-placeholder">${emoji}</div>
+                        <img class="preview-image lazy" 
+                             data-src="/api/stickers/${fileId}" 
+                             alt="${emoji}"
+                             title="${emoji}"
+                             onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.parentElement.querySelector('.preview-placeholder').style.display='flex'"
+                             onload="console.log('✅ Изображение загружено:', this.src); this.style.display='block'; this.parentElement.querySelector('.preview-placeholder').style.display='none'">
+                        <div class="debug-url">${window.location.origin}/api/stickers/${fileId}</div>
+                    </div>
+                `;
+            }
         } else {
             // Пустая ячейка
             html += `
@@ -581,42 +600,222 @@ function generatePreviewHtml(previewStickers) {
     return html;
 }
 
-// Lazy loading для превью изображений
+// Загрузка всех изображений и Lottie анимаций сразу (без lazy loading)
 function initializeLazyLoading() {
-    const lazyImages = document.querySelectorAll('.preview-image.lazy');
+    console.log('🚀 Загружаем все изображения и анимации сразу...');
     
-    if ('IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    console.log('🖼️ Загружаем изображение:', img.dataset.src);
-                    console.log('🖼️ Полный URL:', window.location.origin + img.dataset.src);
-                    img.src = img.dataset.src;
-                    img.classList.remove('lazy');
-                    observer.unobserve(img);
-                }
-            });
-        }, {
-            rootMargin: '200px 0px'
+    const lazyImages = document.querySelectorAll('.preview-image.lazy, .sticker-image.lazy');
+    const lazyLotties = document.querySelectorAll('.preview-lottie.lazy, .sticker-lottie.lazy');
+    
+    console.log(`🖼️ Найдено ${lazyImages.length} изображений для загрузки`);
+    console.log(`🎬 Найдено ${lazyLotties.length} Lottie анимаций для загрузки`);
+    
+    // Загружаем все изображения сразу
+    lazyImages.forEach((img, index) => {
+        console.log(`🖼️ Загружаем изображение ${index + 1}/${lazyImages.length}:`, img.dataset.src);
+        img.src = img.dataset.src;
+        img.classList.remove('lazy');
+    });
+    
+    // Загружаем все Lottie анимации сразу
+    lazyLotties.forEach((lottie, index) => {
+        console.log(`🎬 Загружаем Lottie анимацию ${index + 1}/${lazyLotties.length}:`, lottie.dataset.src);
+        loadLottieAnimation(lottie);
+        lottie.classList.remove('lazy');
+    });
+}
+
+// Функция для загрузки Lottie анимации
+async function loadLottieAnimation(element) {
+    try {
+        const url = element.dataset.src;
+        console.log('🎬 Загружаем Lottie данные с:', url);
+        console.log('🎬 Элемент:', element);
+        console.log('🎬 Lottie библиотека доступна:', typeof lottie !== 'undefined');
+        
+        if (typeof lottie === 'undefined') {
+            throw new Error('Lottie библиотека не загружена');
+        }
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const animationData = await response.json();
+        console.log('✅ Lottie данные загружены:', animationData);
+        
+        // Создаем Lottie анимацию
+        const animation = lottie.loadAnimation({
+            container: element,
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            animationData: animationData
         });
         
-        lazyImages.forEach(img => imageObserver.observe(img));
-    } else {
-        // Fallback для старых браузеров - загружаем сразу
-        lazyImages.forEach(img => {
-            img.src = img.dataset.src;
-            img.classList.remove('lazy');
-        });
+        // Скрываем placeholder и показываем анимацию
+        const placeholder = element.parentElement.querySelector('.preview-placeholder');
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
+        element.style.display = 'block';
+        
+        console.log('🎬 Lottie анимация запущена');
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки Lottie анимации:', error);
+        // Показываем placeholder при ошибке
+        const placeholder = element.parentElement.querySelector('.preview-placeholder');
+        if (placeholder) {
+            placeholder.style.display = 'flex';
+        }
+        element.style.display = 'none';
     }
 }
 
 // Просмотр детального стикерсета
 function viewStickerSet(stickerSetId, stickerSetName) {
     console.log('🔍 Просмотр стикерсета:', stickerSetId, stickerSetName);
-    // TODO: Реализовать страницу детального просмотра
-    // Пока открываем в Telegram
-    tg.openTelegramLink(`https://t.me/addstickers/${stickerSetName}`);
+    
+    // Находим данные стикерсета
+    const stickerSet = findStickerSetById(stickerSetId);
+    if (!stickerSet) {
+        console.error('❌ Стикерсет не найден:', stickerSetId);
+        return;
+    }
+    
+    // Отображаем детальную страницу
+    displayStickerSetDetail(stickerSet);
+}
+
+// Поиск стикерсета по ID
+function findStickerSetById(stickerSetId) {
+    // Получаем все стикерсеты из текущего состояния
+    const content = document.getElementById('content');
+    const stickerCards = content.querySelectorAll('.sticker-card');
+    
+    for (let card of stickerCards) {
+        const buttons = card.querySelectorAll('button[onclick*="viewStickerSet"]');
+        for (let button of buttons) {
+            const onclick = button.getAttribute('onclick');
+            const match = onclick.match(/viewStickerSet\('([^']+)',/);
+            if (match && match[1] === stickerSetId.toString()) {
+                // Находим данные стикерсета из глобального состояния
+                return window.currentStickerSets?.find(s => s.id.toString() === stickerSetId);
+            }
+        }
+    }
+    return null;
+}
+
+// Отображение детальной страницы стикерсета
+function displayStickerSetDetail(stickerSet) {
+    const content = document.getElementById('content');
+    
+    // Получаем все стикеры из набора
+    const allStickers = stickerSet.telegramStickerSetInfo?.stickers || [];
+    
+    // Создаем HTML для детального просмотра
+    const detailHtml = `
+        <div class="sticker-set-detail">
+            <div class="detail-header">
+                <button class="btn btn-secondary back-btn" onclick="loadStickers()">
+                    ← Назад к списку
+                </button>
+                <h2>${stickerSet.title}</h2>
+                <p class="sticker-count">${allStickers.length} стикеров</p>
+            </div>
+            
+            <div class="sticker-grid">
+                ${generateStickerGridHtml(allStickers)}
+            </div>
+            
+            <div class="detail-actions">
+                <button class="btn btn-primary" onclick="shareStickerSet('${stickerSet.name}', '${stickerSet.title}')">
+                    📤 Поделиться
+                </button>
+                <button class="btn btn-danger" onclick="deleteStickerSet('${stickerSet.id}', '${stickerSet.title}')">
+                    🗑️ Удалить
+                </button>
+                <button class="btn btn-secondary" onclick="forceLoadAllLottieAnimations()">
+                    🎬 Загрузить все анимации
+                </button>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = detailHtml;
+    
+    // Инициализируем lazy loading для новых изображений
+    initializeLazyLoading();
+}
+
+// Генерация сетки стикеров для детального просмотра
+function generateStickerGridHtml(stickers) {
+    if (!stickers || stickers.length === 0) {
+        return '<div class="empty-state"><p>Стикеры не найдены</p></div>';
+    }
+    
+    let html = '';
+    stickers.forEach((sticker, index) => {
+        const fileId = sticker.file_id;
+        const emoji = sticker.emoji || '🎨';
+        const isAnimated = sticker.is_animated;
+        
+        // Отладочная информация
+        console.log(`🎨 Стикер ${index + 1}:`, {
+            fileId: fileId.substring(0, 20) + '...',
+            emoji,
+            isAnimated,
+            stickerType: isAnimated ? 'Lottie' : 'WebP',
+            fullSticker: sticker
+        });
+        
+        if (isAnimated) {
+            // Для анимированных стикеров используем Lottie
+            html += `
+                <div class="sticker-grid-item" data-file-id="${fileId}">
+                    <div class="sticker-placeholder">${emoji}</div>
+                    <div class="sticker-lottie lazy" 
+                         data-src="/api/stickers/${fileId}"
+                         data-emoji="${emoji}"
+                         title="${emoji} (анимированный)">
+                    </div>
+                    <div class="animated-badge">LOTTIE</div>
+                </div>
+            `;
+        } else {
+            // Для обычных стикеров используем img
+            html += `
+                <div class="sticker-grid-item" data-file-id="${fileId}">
+                    <div class="sticker-placeholder">${emoji}</div>
+                    <img class="sticker-image lazy" 
+                         data-src="/api/stickers/${fileId}" 
+                         alt="${emoji}"
+                         title="${emoji}"
+                         onerror="console.error('❌ Ошибка загрузки изображения:', this.src); this.style.display='none'; this.parentElement.querySelector('.sticker-placeholder').style.display='flex'"
+                         onload="console.log('✅ Изображение загружено:', this.src); this.style.display='block'; this.parentElement.querySelector('.sticker-placeholder').style.display='none'">
+                </div>
+            `;
+        }
+    });
+    
+    return html;
+}
+
+// Принудительная загрузка всех Lottie анимаций (для отладки)
+function forceLoadAllLottieAnimations() {
+    console.log('🎬 Принудительная загрузка всех Lottie анимаций...');
+    
+    const lazyLotties = document.querySelectorAll('.sticker-lottie.lazy');
+    console.log(`🎬 Найдено ${lazyLotties.length} Lottie элементов для загрузки`);
+    
+    lazyLotties.forEach((lottie, index) => {
+        console.log(`🎬 Загружаем Lottie ${index + 1}/${lazyLotties.length}:`, lottie.dataset.src);
+        loadLottieAnimation(lottie);
+        lottie.classList.remove('lazy');
+    });
 }
 
 // Фильтрация стикеров

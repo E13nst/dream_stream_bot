@@ -404,13 +404,131 @@ body {
     border-radius: 6px;
 }
 
+.preview-lottie {
+    width: 100%;
+    height: 100%;
+    display: none; /* Скрываем до загрузки */
+    border-radius: 6px;
+    background: transparent;
+}
+
 .preview-image.lazy {
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.preview-lottie.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
 }
 
 .preview-image:not(.lazy) {
     opacity: 1;
+}
+
+.preview-lottie:not(.lazy) {
+    opacity: 1;
+}
+
+/* Стили для детального просмотра стикерсета */
+.sticker-set-detail {
+    padding: 20px;
+}
+
+.detail-header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.detail-header h2 {
+    margin: 10px 0;
+    color: var(--tg-theme-text-color);
+}
+
+.detail-header .sticker-count {
+    color: var(--tg-theme-hint-color);
+    font-size: 14px;
+}
+
+.back-btn {
+    margin-bottom: 15px;
+}
+
+.sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.sticker-grid-item {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--tg-theme-secondary-bg-color);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sticker-grid-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sticker-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 32px;
+    color: var(--tg-theme-hint-color);
+    background: var(--tg-theme-secondary-bg-color);
+}
+
+.sticker-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    border-radius: 10px;
+}
+
+.sticker-lottie {
+    width: 100%;
+    height: 100%;
+    display: none;
+    border-radius: 10px;
+    background: transparent;
+}
+
+.sticker-image.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.sticker-lottie.lazy {
+    opacity: 1; /* Убираем эффект fade-in */
+}
+
+.sticker-image:not(.lazy) {
+    opacity: 1;
+}
+
+.sticker-lottie:not(.lazy) {
+    opacity: 1;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.detail-actions .btn {
+    min-width: 120px;
 }
 
 .animated-badge {
