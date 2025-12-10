@@ -67,12 +67,6 @@ public class SecurityConfig {
                 .requestMatchers("/css/**").permitAll()
                 .requestMatchers("/js/**").permitAll()
                 .requestMatchers("/images/**").permitAll()
-                .requestMatchers("/mini-app/**").permitAll()
-                .requestMatchers("/mini-app/index.html").permitAll()
-                .requestMatchers("/mini-app/app.js").permitAll()
-                .requestMatchers("/mini-app/style.css").permitAll()
-                .requestMatchers("/mini-app/test.html").permitAll()
-                
                 // Swagger UI и OpenAPI
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/swagger-ui.html").permitAll()
@@ -85,9 +79,6 @@ public class SecurityConfig {
                 
                 // Auth эндпоинты (фильтр применяется, но аутентификация не требуется)
                 .requestMatchers("/auth/**").permitAll()
-                
-                // API стикерсетов - публичный доступ для тестирования
-                .requestMatchers("/api/stickersets/**").permitAll()
                 
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")

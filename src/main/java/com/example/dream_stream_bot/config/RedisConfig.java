@@ -17,7 +17,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import com.example.dream_stream_bot.dto.StickerCacheDto;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
@@ -106,37 +105,4 @@ public class RedisConfig {
         return factory;
     }
 
-    /**
-     * Настройка Redis Template для работы со стикерами
-     */
-    @Bean(name = "stickerRedisTemplate")
-    public RedisTemplate<String, Object> stickerRedisTemplate(RedisConnectionFactory connectionFactory) {
-        LOGGER.info("🔧 Создаем stickerRedisTemplate");
-        
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-        
-        // Сериализация ключей как строки
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
-        
-        // Настройка Jackson для поддержки Java 8 date/time и типов
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
-        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        
-        // Простое решение - используем Jackson2JsonRedisSerializer для конкретного типа
-        Jackson2JsonRedisSerializer<StickerCacheDto> serializer = 
-                new Jackson2JsonRedisSerializer<>(StickerCacheDto.class);
-        serializer.setObjectMapper(objectMapper);
-        
-        // Сериализация значений как JSON для конкретного типа
-        template.setValueSerializer(serializer);
-        template.setHashValueSerializer(serializer);
-        
-        template.afterPropertiesSet();
-        
-        LOGGER.info("✅ stickerRedisTemplate создан успешно");
-        return template;
-    }
 }

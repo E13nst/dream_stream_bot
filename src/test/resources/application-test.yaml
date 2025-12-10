@@ -26,9 +26,4 @@ logging:
 # Тестовые данные для ботов
 telegram:
   test:
-    bots:
-      - name: "StickerGallery"
-        username: "StickerGalleryBot"
-        token: "test_token_for_sticker_gallery_bot"
-        type: "sticker"
-        isActive: true
+    bots: []

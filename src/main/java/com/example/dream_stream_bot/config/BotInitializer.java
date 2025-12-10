@@ -7,8 +7,6 @@ import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
-import com.example.dream_stream_bot.service.telegram.StickerSetService;
-import com.example.dream_stream_bot.service.telegram.StickerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,19 +28,14 @@ public class BotInitializer {
     private final BotService botService;
     private final MessageHandlerService messageHandlerService;
     private final UserStateService userStateService;
-    private final StickerSetService stickerSetService;
-    private final StickerService stickerService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Autowired
     public BotInitializer(BotService botService, MessageHandlerService messageHandlerService,
-                         UserStateService userStateService, StickerSetService stickerSetService,
-                         StickerService stickerService) {
+                         UserStateService userStateService) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userStateService = userStateService;
-        this.stickerSetService = stickerSetService;
-        this.stickerService = stickerService;
     }
 
     @Bean
@@ -70,8 +63,6 @@ public class BotInitializer {
         log.info("  - BotService: {}", botService != null ? "✅" : "❌");
         log.info("  - MessageHandlerService: {}", messageHandlerService != null ? "✅" : "❌");
         log.info("  - UserStateService: {}", userStateService != null ? "✅" : "❌");
-        log.info("  - StickerSetService: {}", stickerSetService != null ? "✅" : "❌");
-        log.info("  - StickerService: {}", stickerService != null ? "✅" : "❌");
         
         try {
             List<BotEntity> bots = botService.getAllBots();
@@ -87,7 +78,7 @@ public class BotInitializer {
 
                 if (Boolean.TRUE.equals(bot.getIsActive())) {
                     try {
-                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, stickerSetService, stickerService);
+                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService);
                         telegramBotsApi.registerBot(telegramBot);
                         botRegistry.put(bot.getUsername(), telegramBot);
                         log.info("✅ Bot '{}' registered successfully (type: {})", bot.getUsername(), bot.getType());

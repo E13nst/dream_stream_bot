@@ -41,7 +41,6 @@ public class OpenApiConfig {
                                 
                                 ## Эндпоинты
                                 - `/auth/**` - публичные эндпоинты аутентификации
-                                - `/api/stickersets/**` - работа со стикерами (требует USER/ADMIN)
                                 - `/api/users/**` - управление пользователями (требует USER/ADMIN)
                                 - `/api/bots/**` - управление ботами (требует ADMIN)
                                 """)

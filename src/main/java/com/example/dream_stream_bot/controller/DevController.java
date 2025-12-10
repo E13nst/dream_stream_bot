@@ -163,15 +163,13 @@ public class DevController {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🎨 Галерея стикеров</h1>
+                        <h1>🧪 Тестовая страница</h1>
                         <p>Тестовая версия мини-приложения</p>
                     </div>
                     <div class="status" id="status">Проверка инициализации...</div>
                     <div class="status" id="authStatus">Проверка авторизации...</div>
-                    <div class="status" id="apiStatus">Проверка API...</div>
                     <div style="text-align: center; margin-top: 20px;">
                         <button class="btn" onclick="testAuth()">Тест авторизации</button>
-                        <button class="btn" onclick="testAPI()">Тест API</button>
                     </div>
                 </div>
                 <script>
@@ -193,21 +191,6 @@ public class DevController {
                             document.getElementById('authStatus').innerHTML = 'Результат: ' + (data.authenticated ? '✅ Да' : '❌ Нет');
                         } catch (error) {
                             document.getElementById('authStatus').innerHTML = '❌ Ошибка: ' + error.message;
-                        }
-                    }
-                    async function testAPI() {
-                        try {
-                            const response = await fetch('/api/stickersets', {
-                                headers: { 'X-Telegram-Init-Data': tg.initData, 'X-Telegram-Bot-Name': 'StickerGallery' }
-                            });
-                            if (response.ok) {
-                                const data = await response.json();
-                                document.getElementById('apiStatus').innerHTML = '✅ API работает, стикерсетов: ' + data.length;
-                            } else {
-                                document.getElementById('apiStatus').innerHTML = '❌ Ошибка API: ' + response.status;
-                            }
-                        } catch (error) {
-                            document.getElementById('apiStatus').innerHTML = '❌ Ошибка: ' + error.message;
                         }
                     }
                 </script>

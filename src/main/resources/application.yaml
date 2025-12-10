@@ -64,13 +64,6 @@ springdoc:
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
 
-# Конфигурация прокси для внешнего сервиса стикеров
-sticker:
-  processor:
-    url: ${STICKER_PROCESSOR_URL:https://sticker-processor-e13nst.amvera.io}
-    timeout:
-      connect: 5000
-      read: 10000
 
 # Подробное логирование для диагностики
 logging:
