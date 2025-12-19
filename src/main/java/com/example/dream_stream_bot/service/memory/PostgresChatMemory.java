@@ -25,7 +25,16 @@ public class PostgresChatMemory implements ChatMemory {
             entity.setConversationId(conversationId);
             entity.setMessageIndex(startIndex + i);
             entity.setRole(msg.getMessageType().name().toLowerCase());
-            entity.setContent(msg.getContent());
+            // В Spring AI 1.0.0 используем getText() для получения содержимого
+            String content = "";
+            if (msg instanceof UserMessage) {
+                content = ((UserMessage) msg).getText();
+            } else if (msg instanceof AssistantMessage) {
+                content = ((AssistantMessage) msg).getText();
+            } else if (msg instanceof SystemMessage) {
+                content = ((SystemMessage) msg).getText();
+            }
+            entity.setContent(content);
             repository.save(entity);
         }
     }

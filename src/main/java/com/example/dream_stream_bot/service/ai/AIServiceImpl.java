@@ -8,13 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_CONVERSATION_ID_KEY;
-import static org.springframework.ai.chat.client.advisor.AbstractChatMemoryAdvisor.CHAT_MEMORY_RETRIEVE_SIZE_KEY;
-
 @Service
 public class AIServiceImpl implements AIService {
 
     private static final Logger logger = LoggerFactory.getLogger(AIServiceImpl.class);
+    
+    // Константы для ChatMemory Advisor (Spring AI 1.0.0)
+    private static final String CHAT_MEMORY_CONVERSATION_ID_KEY = "chat-memory-conversation-id";
+    private static final String CHAT_MEMORY_RETRIEVE_SIZE_KEY = "chat-memory-retrieve-size";
 
     @Value("${bot.memory-window-size:100}")
     private int memoryWindowSize;

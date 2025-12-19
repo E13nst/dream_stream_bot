@@ -6,6 +6,8 @@ plugins {
     id 'org.springframework.boot' version '3.3.3'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
+    id 'org.flywaydb.flyway' version '10.8.1'
+    id 'io.qameta.allure' version '2.11.2'
 }
 
 group = 'com.example'
@@ -25,14 +27,21 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0-M2"
+        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0"
         mavenBom "io.qameta.allure:allure-bom:2.25.0"
     }
 }
 
 dependencies {
+    // Spring AI BOM для управления версиями
+    implementation platform('org.springframework.ai:spring-ai-bom:1.0.0')
+    
     implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M2'
+    // OpenAI Spring Boot Starter (версия из BOM 1.0.0)
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    // Chat Client и Memory для Spring AI 1.0.0
+    implementation 'org.springframework.ai:spring-ai-autoconfigure-model-chat-client'
+    implementation 'org.springframework.ai:spring-ai-autoconfigure-model-chat-memory'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

@@ -11,7 +11,11 @@ spring:
         options:
           model: ${OPENAI_MODEL:gpt-4o}
           temperature: 0.7
-          max-tokens: 1000
+          # Ограничение длины ответа (опционально)
+          # Для новых моделей (gpt-4o, gpt-4o-mini) используйте переменную OPENAI_MAX_TOKENS
+          # и установите max-completion-tokens вручную в этом файле, если нужно
+          # Для старых моделей (gpt-3.5-turbo, gpt-4) используйте max-tokens
+          # Если параметр не задан, ограничение не применяется (работает для всех моделей)
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
     username: ${DB_USERNAME}
