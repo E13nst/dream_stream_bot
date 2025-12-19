@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @Component
 public class PostgresChatMemory implements ChatMemory {
     @Autowired
-    private ChatMemoryRepository repository;
+    private PostgresChatMemoryRepository repository;
 
     @Override
     public void add(String conversationId, List<Message> messages) {
