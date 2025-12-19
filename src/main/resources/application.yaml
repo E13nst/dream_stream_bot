@@ -32,6 +32,14 @@ spring:
       leak-detection-threshold: 30000
       connection-test-query: SELECT 1
       auto-commit: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+    migrate-on-start: true
   jpa:
     hibernate:
       ddl-auto: validate
