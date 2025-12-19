@@ -40,10 +40,9 @@ public class PostgresChatMemory implements ChatMemory {
     }
 
     @Override
-    public List<Message> get(String conversationId, int lastN) {
+    public List<Message> get(String conversationId) {
         List<ChatMemoryEntity> entities = repository.findByConversationIdOrderByMessageIndexAsc(conversationId);
         return entities.stream()
-            .skip(Math.max(0, entities.size() - lastN))
             .map(e -> {
                 String role = e.getRole().toLowerCase();
                 switch (role) {

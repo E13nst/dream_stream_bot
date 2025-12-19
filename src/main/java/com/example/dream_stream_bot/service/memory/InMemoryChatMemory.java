@@ -21,16 +21,10 @@ public class InMemoryChatMemory implements ChatMemory {
         conversations.computeIfAbsent(conversationId, k -> new ArrayList<>()).addAll(messages);
     }
 
-    // Возвращает последние N сообщений из указанного разговора
+    // Возвращает все сообщения из указанного разговора
     @Override
-    public List<Message> get(String conversationId, int lastN) {
-        List<Message> conversation = conversations.getOrDefault(conversationId, Collections.emptyList());
-        int size = conversation.size();
-        if (size <= lastN) {
-            return new ArrayList<>(conversation);
-        } else {
-            return new ArrayList<>(conversation.subList(size - lastN, size));
-        }
+    public List<Message> get(String conversationId) {
+        return new ArrayList<>(conversations.getOrDefault(conversationId, Collections.emptyList()));
     }
 
     // Очищает историю сообщений для указанного разговора

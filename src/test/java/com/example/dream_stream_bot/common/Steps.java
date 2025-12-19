@@ -2,7 +2,6 @@ package com.example.dream_stream_bot.common;
 
 //import com.example.dream_stream_bot.config.BotConfig;
 //import com.example.dream_stream_bot.config.BotConfig;
-import io.qameta.allure.Step;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
