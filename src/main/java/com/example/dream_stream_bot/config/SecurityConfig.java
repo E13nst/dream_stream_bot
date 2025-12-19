@@ -83,8 +83,8 @@ public class SecurityConfig {
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
                 
-                // API только для ADMIN
-                .requestMatchers("/api/bots/**").hasRole("ADMIN")
+                // API ботов - доступно без авторизации
+                .requestMatchers("/api/bots/**").permitAll()
                 
                 // Все остальные запросы разрешены (временно для отладки)
                 .anyRequest().permitAll()

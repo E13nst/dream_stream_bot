@@ -157,16 +157,17 @@ public class BotEntityDto {
     }
     
     // Конструктор для создания DTO из Entity
+    // Token не возвращается в API ответах для безопасности
     public static BotEntityDto fromEntity(com.example.dream_stream_bot.model.telegram.BotEntity entity) {
         if (entity == null) {
             return null;
         }
         
-        return new BotEntityDto(
+        BotEntityDto dto = new BotEntityDto(
             entity.getId(),
             entity.getName(),
             entity.getUsername(),
-            entity.getToken(),
+            null, // Token скрыт для безопасности
             entity.getPrompt(),
             entity.getWebhookUrl(),
             entity.getType(),
@@ -178,6 +179,7 @@ public class BotEntityDto {
             entity.getMemWindow(),
             entity.getMiniapp()
         );
+        return dto;
     }
     
     // Методы для работы со списками

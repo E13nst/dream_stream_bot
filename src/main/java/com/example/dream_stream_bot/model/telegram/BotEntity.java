@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -66,5 +67,13 @@ public class BotEntity {
     }
     public String getBotName() {
         return name;
+    }
+    
+    /**
+     * Автоматическое обновление updatedAt перед сохранением
+     */
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 } 
