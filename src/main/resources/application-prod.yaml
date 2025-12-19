@@ -7,6 +7,10 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      # Таймауты для запросов к OpenAI API (в миллисекундах)
+      client:
+        request-timeout: ${OPENAI_REQUEST_TIMEOUT:60000}  # 60 секунд для запросов
+        connect-timeout: ${OPENAI_CONNECT_TIMEOUT:10000}  # 10 секунд для подключения
       chat:
         options:
           model: ${OPENAI_MODEL:gpt-4o}

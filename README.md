@@ -63,6 +63,8 @@ git push origin main
 | `TELEGRAM_BOT_NAME` | ✅ | Имя бота |
 | `OPENAI_API_KEY` | ✅ | API ключ OpenAI |
 | `OPENAI_MODEL` | ❌ | Модель OpenAI (по умолчанию: `gpt-4o`) |
+| `OPENAI_REQUEST_TIMEOUT` | ❌ | Таймаут запросов к OpenAI в мс (по умолчанию: 60000) |
+| `OPENAI_CONNECT_TIMEOUT` | ❌ | Таймаут подключения к OpenAI в мс (по умолчанию: 10000) |
 | `BOT_WEBHOOK_URL` | ✅ | URL для webhook (только для продакшена) |
 | `SERVER_PORT` | ❌ | Порт сервера (по умолчанию: 8080) |
 
