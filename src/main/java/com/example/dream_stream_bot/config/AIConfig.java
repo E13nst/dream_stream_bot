@@ -15,10 +15,9 @@ public class AIConfig {
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder chatClientBuilder, PostgresChatMemory postgresChatMemory) {
-        // В Spring AI 1.0.0 используем builder для создания PromptChatMemoryAdvisor
-        PromptChatMemoryAdvisor advisor = PromptChatMemoryAdvisor.builder(postgresChatMemory).build();
+        // Не используем defaultAdvisors, так как advisor создается для каждого запроса с правильным conversation_id
+        // Это позволяет правильно разделять контексты разных ботов и чатов
         return chatClientBuilder
-                .defaultAdvisors(advisor)
                 .build();
     }
 } 

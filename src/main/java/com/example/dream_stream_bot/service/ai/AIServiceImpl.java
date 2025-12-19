@@ -3,6 +3,7 @@ package com.example.dream_stream_bot.service.ai;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,12 +38,21 @@ public class AIServiceImpl implements AIService {
             conversationId, truncateText(message, 100));
         logger.debug("\uD83E\uDD16 AI Request | Using conversation_id key: '{}' | Value: '{}'", 
             CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId);
+        
+        // Создаем advisor для каждого запроса с правильным conversation_id
+        PromptChatMemoryAdvisor advisor = PromptChatMemoryAdvisor.builder(chatMemory)
+                .conversationId(conversationId)
+                .build();
+        
+        logger.debug("\uD83E\uDD16 AI Request | Created advisor with conversation_id: '{}'", conversationId);
+        
         String response = chatClient.prompt()
+                .advisors(advisor)
                 .advisors(a -> {
-                    a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId);
+                    // Передаем retrieve_size через параметры
                     a.param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memWindow != null ? memWindow : 100);
-                    logger.debug("\uD83E\uDD16 AI Request | Advisor params set | conversation_id: '{}' | retrieve_size: {}", 
-                        conversationId, memWindow != null ? memWindow : 100);
+                    logger.debug("\uD83E\uDD16 AI Request | Advisor params set | retrieve_size: {}", 
+                        memWindow != null ? memWindow : 100);
                 })
                 .system(prompt)
                 .user(message)
