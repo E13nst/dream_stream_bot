@@ -9,7 +9,7 @@ spring:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
-          model: gpt-4o
+          model: ${OPENAI_MODEL:gpt-4o}
           temperature: 0.9
       proxy:
         host: ${OPENAI_PROXY_HOST:}

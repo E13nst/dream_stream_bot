@@ -20,6 +20,7 @@ TELEGRAM_BOT_NAME=your_bot_name_here
 
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o  # Опционально: модель OpenAI (по умолчанию: gpt-4o)
 ```
 
 3. **Запустите приложение:**
@@ -38,6 +39,7 @@ set -a; source .env.app; set +a; ./gradlew bootRun --args='--spring.profiles.act
    | `TELEGRAM_API_TOKEN` | Токен вашего Telegram бота | `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz` |
    | `TELEGRAM_BOT_NAME` | Имя вашего бота | `my_dream_bot` |
    | `OPENAI_API_KEY` | API ключ OpenAI | `sk-...` |
+   | `OPENAI_MODEL` | Модель OpenAI (опционально) | `gpt-4o` (по умолчанию) |
    | `BOT_WEBHOOK_URL` | URL для webhook (ваш домен) | `https://your-app.amvera.io/webhook` |
 
 2. **Получите ваш домен:**
@@ -60,6 +62,7 @@ git push origin main
 | `TELEGRAM_API_TOKEN` | ✅ | Токен бота от @BotFather |
 | `TELEGRAM_BOT_NAME` | ✅ | Имя бота |
 | `OPENAI_API_KEY` | ✅ | API ключ OpenAI |
+| `OPENAI_MODEL` | ❌ | Модель OpenAI (по умолчанию: `gpt-4o`) |
 | `BOT_WEBHOOK_URL` | ✅ | URL для webhook (только для продакшена) |
 | `SERVER_PORT` | ❌ | Порт сервера (по умолчанию: 8080) |
 
