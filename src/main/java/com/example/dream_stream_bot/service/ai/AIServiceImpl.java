@@ -14,7 +14,9 @@ public class AIServiceImpl implements AIService {
     private static final Logger logger = LoggerFactory.getLogger(AIServiceImpl.class);
     
     // Константы для ChatMemory Advisor (Spring AI 1.0.0)
-    private static final String CHAT_MEMORY_CONVERSATION_ID_KEY = "chat-memory-conversation-id";
+    // В Spring AI 1.0.0 используется "conversation-id" как ключ параметра для PromptChatMemoryAdvisor
+    // Это правильное имя параметра согласно документации Spring AI
+    private static final String CHAT_MEMORY_CONVERSATION_ID_KEY = "conversation-id";
     private static final String CHAT_MEMORY_RETRIEVE_SIZE_KEY = "chat-memory-retrieve-size";
 
     @Value("${bot.memory-window-size:100}")
@@ -33,10 +35,15 @@ public class AIServiceImpl implements AIService {
     public String completion(String conversationId, String message, String prompt, Integer memWindow) {
         logger.info("\uD83E\uDD16 AI Request | Conversation: {} | Message: '{}'", 
             conversationId, truncateText(message, 100));
+        logger.debug("\uD83E\uDD16 AI Request | Using conversation_id key: '{}' | Value: '{}'", 
+            CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId);
         String response = chatClient.prompt()
-                .advisors(a -> a
-                        .param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId)
-                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memWindow != null ? memWindow : 100))
+                .advisors(a -> {
+                    a.param(CHAT_MEMORY_CONVERSATION_ID_KEY, conversationId);
+                    a.param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, memWindow != null ? memWindow : 100);
+                    logger.debug("\uD83E\uDD16 AI Request | Advisor params set | conversation_id: '{}' | retrieve_size: {}", 
+                        conversationId, memWindow != null ? memWindow : 100);
+                })
                 .system(prompt)
                 .user(message)
                 .call()

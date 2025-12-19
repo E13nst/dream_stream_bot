@@ -1,5 +1,7 @@
 package com.example.dream_stream_bot.service.memory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -13,11 +15,15 @@ import java.util.stream.Collectors;
 
 @Component
 public class PostgresChatMemory implements ChatMemory {
+    private static final Logger logger = LoggerFactory.getLogger(PostgresChatMemory.class);
+    
     @Autowired
     private PostgresChatMemoryRepository repository;
 
     @Override
     public void add(String conversationId, List<Message> messages) {
+        logger.info("💾 PostgresChatMemory.add() | ConversationId: {} | Messages count: {}", 
+            conversationId, messages != null ? messages.size() : 0);
         int startIndex = repository.countByConversationId(conversationId);
         for (int i = 0; i < messages.size(); i++) {
             Message msg = messages.get(i);
@@ -41,7 +47,10 @@ public class PostgresChatMemory implements ChatMemory {
 
     @Override
     public List<Message> get(String conversationId) {
+        logger.info("💾 PostgresChatMemory.get() | ConversationId: {}", conversationId);
         List<ChatMemoryEntity> entities = repository.findByConversationIdOrderByMessageIndexAsc(conversationId);
+        logger.info("💾 PostgresChatMemory.get() | ConversationId: {} | Retrieved {} messages", 
+            conversationId, entities.size());
         return entities.stream()
             .map(e -> {
                 String role = e.getRole().toLowerCase();
@@ -57,6 +66,7 @@ public class PostgresChatMemory implements ChatMemory {
 
     @Override
     public void clear(String conversationId) {
+        logger.info("💾 PostgresChatMemory.clear() | ConversationId: {}", conversationId);
         repository.deleteByConversationId(conversationId);
     }
 } 
