@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="usersTable">
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Telegram ID</th>
+                <th>Username</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Balance</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${users}">
+                <td th:text="${user.id}">1</td>
+                <td th:text="${user.telegramId}">100</td>
+                <td th:text="${user.username}">user</td>
+                <td th:text="${(user.firstName != null ? user.firstName : '') + ' ' + (user.lastName != null ? user.lastName : '')}">Name</td>
+                <td>
+                    <span class="badge" th:classappend="${user.role.name() == 'ADMIN'} ? ' bg-danger' : ' bg-secondary'"
+                          th:text="${user.role.name()}">USER</span>
+                </td>
+                <td th:text="${user.artBalance}">0</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
