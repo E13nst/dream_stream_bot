@@ -3,46 +3,53 @@
 <body>
 <div th:fragment="botsTable">
     <div class="card">
-    <div class="table-responsive">
-        <table class="table table-sm table-hover align-middle mb-0">
-            <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Username</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:classappend="${selectedId != null && selectedId == bot.id} ? 'table-primary'" th:each="bot : ${bots}">
-                <td th:text="${bot.id}">1</td>
-                <td th:text="${bot.name}">Bot</td>
-                <td th:text="${bot.username}">bot_username</td>
-                <td th:text="${bot.type}">assistant</td>
-                <td>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped table-hover align-middle mb-0 admin-data-table">
+                <thead>
+                <tr>
+                    <th class="admin-num" scope="col">ID</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Username</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Status</th>
+                    <th class="admin-table-actions" scope="col">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${bots == null or #lists.isEmpty(bots)}">
+                    <td class="admin-empty-state" colspan="6">
+                        <strong>Ботов пока нет</strong>
+                        Создайте первого бота кнопкой «Create Bot», чтобы он появился в таблице.
+                    </td>
+                </tr>
+                <tr th:classappend="${selectedId != null && selectedId == bot.id} ? 'table-primary'" th:each="bot : ${bots}">
+                    <td class="admin-num" th:text="${bot.id}">1</td>
+                    <td th:text="${bot.name}">Bot</td>
+                    <td th:text="${bot.username}">bot_username</td>
+                    <td th:text="${bot.type}">assistant</td>
+                    <td>
                     <span class="badge" th:classappend="${bot.isActive} ? ' bg-success' : ' bg-secondary'"
                           th:text="${bot.isActive} ? 'ACTIVE' : 'INACTIVE'">ACTIVE</span>
-                </td>
-                <td>
-                    <a class="btn btn-sm btn-outline-secondary"
-                       th:href="@{'/admin/bots?selectedId=' + ${bot.id}}">
-                        Open
-                    </a>
-                    <form class="d-inline" method="post" th:action="@{'/admin/bots/' + ${bot.id} + '/toggle'}">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <button class="btn btn-sm btn-outline-primary" type="submit" th:text="${bot.isActive} ? 'Deactivate' : 'Activate'">Toggle</button>
-                    </form>
-                    <form class="d-inline" method="post" th:action="@{'/admin/bots/' + ${bot.id} + '/delete'}">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this bot?')" type="submit">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+                    </td>
+                    <td class="admin-table-actions">
+                        <a class="btn btn-sm btn-outline-secondary"
+                           th:aria-label="|Open details for ${bot.name}|"
+                           th:href="@{'/admin/bots?selectedId=' + ${bot.id}}">
+                            Open
+                        </a>
+                        <form class="d-inline" method="post" th:action="@{'/admin/bots/' + ${bot.id} + '/toggle'}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <button class="btn btn-sm btn-outline-primary" th:aria-label="${bot.isActive} ? 'Deactivate this bot' : 'Activate this bot'" type="submit" th:text="${bot.isActive} ? 'Deactivate' : 'Activate'">Toggle</button>
+                        </form>
+                        <form class="d-inline" method="post" th:action="@{'/admin/bots/' + ${bot.id} + '/delete'}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this bot?')" th:aria-label="|Delete ${bot.name}|" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 </body>

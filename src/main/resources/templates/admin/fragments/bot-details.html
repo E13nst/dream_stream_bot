@@ -2,58 +2,60 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="botDetails">
-    <div class="card" th:if="${selectedBot != null}">
+    <div class="card border-0 shadow-none" th:if="${selectedBot != null}">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Bot Details</span>
+            <span class="fw-semibold">Bot Details</span>
             <span class="badge" th:classappend="${selectedBot.isActive} ? ' bg-success' : ' bg-secondary'"
                   th:text="${selectedBot.isActive} ? 'ACTIVE' : 'INACTIVE'">ACTIVE</span>
         </div>
         <div class="card-body">
-            <p class="small text-muted mb-2" th:text="'ID: ' + ${selectedBot.id}">ID: 1</p>
+            <p class="admin-num small text-muted mb-3" th:text="'ID: ' + ${selectedBot.id}">ID: 1</p>
+
+            <p class="admin-section-heading">Параметры</p>
             <div class="mb-3">
-                <label class="form-label">Token</label>
-                <input class="form-control form-control-sm" readonly th:value="${selectedBot.token}">
+                <label class="form-label" for="botDetailToken">Token</label>
+                <input class="form-control form-control-sm" id="botDetailToken" readonly th:value="${selectedBot.token}">
                 <div class="form-text">Token is shown for reference and is not changed from this form.</div>
             </div>
 
-            <form class="mb-3" method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/update'}">
+            <form class="mb-4" method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/update'}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <div class="mb-2">
-                    <label class="form-label">Name</label>
-                    <input class="form-control form-control-sm" name="name" required th:value="${selectedBot.name}">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailName">Name</label>
+                    <input class="form-control form-control-sm" id="botDetailName" name="name" required th:value="${selectedBot.name}">
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Username</label>
-                    <input class="form-control form-control-sm" name="username" required th:value="${selectedBot.username}">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailUsername">Username</label>
+                    <input class="form-control form-control-sm" id="botDetailUsername" name="username" required th:value="${selectedBot.username}">
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Type</label>
-                    <select class="form-select form-select-sm" name="type" required>
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailType">Type</label>
+                    <select class="form-select form-select-sm" id="botDetailType" name="type" required>
                         <option th:each="botType : ${botTypes}"
                                 th:selected="${botType.value == selectedBot.type}"
                                 th:text="${botType.value}"
                                 th:value="${botType.value}">assistant</option>
                     </select>
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Keywords (comma separated)</label>
-                    <input class="form-control form-control-sm" name="keywords" th:value="${selectedBotKeywords}">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailKeywords">Keywords (comma separated)</label>
+                    <input class="form-control form-control-sm" id="botDetailKeywords" name="keywords" th:value="${selectedBotKeywords}">
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Webhook URL</label>
-                    <input class="form-control form-control-sm" name="webhookUrl" th:value="${selectedBot.webhookUrl}">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailWebhook">Webhook URL</label>
+                    <input class="form-control form-control-sm" id="botDetailWebhook" name="webhookUrl" th:value="${selectedBot.webhookUrl}">
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Miniapp URL</label>
-                    <input class="form-control form-control-sm" name="miniapp" th:value="${selectedBot.miniapp}">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailMiniapp">Miniapp URL</label>
+                    <input class="form-control form-control-sm" id="botDetailMiniapp" name="miniapp" th:value="${selectedBot.miniapp}">
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Description</label>
-                    <input class="form-control form-control-sm" name="description" th:value="${selectedBot.description}">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailDescription">Description</label>
+                    <input class="form-control form-control-sm" id="botDetailDescription" name="description" th:value="${selectedBot.description}">
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Memory Window</label>
-                    <input class="form-control form-control-sm" min="1" name="memWindow" th:value="${selectedBot.memWindow}" type="number">
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailMemWindow">Memory Window</label>
+                    <input class="form-control form-control-sm admin-num" id="botDetailMemWindow" min="1" name="memWindow" th:value="${selectedBot.memWindow}" type="number">
                 </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" id="selectedBotActive" name="isActive" th:checked="${selectedBot.isActive}" type="checkbox" value="true">
@@ -62,18 +64,22 @@
                 <button class="btn btn-primary btn-sm" type="submit">Save Parameters</button>
             </form>
 
+            <p class="admin-section-heading">Промпт</p>
             <form method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/prompt'}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <div class="mb-2">
-                    <label class="form-label">Prompt</label>
-                    <textarea class="form-control form-control-sm" name="prompt" rows="8" th:text="${selectedBot.prompt}"></textarea>
+                <div class="mb-3">
+                    <label class="form-label" for="botDetailPrompt">Prompt</label>
+                    <textarea class="form-control form-control-sm" id="botDetailPrompt" name="prompt" rows="8" th:text="${selectedBot.prompt}"></textarea>
                 </div>
                 <button class="btn btn-outline-primary btn-sm" type="submit">Update Prompt</button>
             </form>
         </div>
     </div>
-    <div class="alert alert-secondary mb-0" th:if="${selectedBot == null}">
-        Select bot from table to view and edit parameters.
+    <div class="admin-empty-state card" th:if="${selectedBot == null}">
+        <div class="card-body">
+            <strong>Бот не выбран</strong>
+            Выберите строку в таблице и нажмите «Open», чтобы просмотреть и изменить параметры.
+        </div>
     </div>
 </div>
 </body>
