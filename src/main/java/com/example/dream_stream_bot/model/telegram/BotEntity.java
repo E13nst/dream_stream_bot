@@ -1,14 +1,22 @@
 package com.example.dream_stream_bot.model.telegram;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Data;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Entity
 @Table(name = "bot")
@@ -48,8 +56,9 @@ public class BotEntity {
     @Column(length = 256)
     private String description;
 
-    @Column(length = 256)
-    private String triggers;
+    @OneToMany(mappedBy = "bot", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("id ASC")
+    private List<BotKeywordEntity> keywords = new ArrayList<>();
 
     @Column(name = "mem_window")
     private Integer memWindow = 100;
@@ -61,14 +70,21 @@ public class BotEntity {
         if (name == null) return java.util.Collections.emptyList();
         return java.util.Arrays.stream(name.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
     }
-    public java.util.List<String> getBotTriggersList() {
-        if (triggers == null) return java.util.Collections.emptyList();
-        return java.util.Arrays.stream(triggers.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+
+    /**
+     * Ключевые слова-триггеры (подстрока в тексте, сравнение без учёта регистра в {@link com.example.dream_stream_bot.bot.AssistantBot}).
+     */
+    public List<String> getBotTriggersList() {
+        if (keywords == null || keywords.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return keywords.stream().map(BotKeywordEntity::getKeyword).toList();
     }
+
     public String getBotName() {
         return name;
     }
-    
+
     /**
      * Автоматическое обновление updatedAt перед сохранением
      */
@@ -76,4 +92,4 @@ public class BotEntity {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-} 
+}

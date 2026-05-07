@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.Valid;
+
+import java.util.List;
 
 /**
  * DTO для обновления существующего бота
@@ -27,8 +30,11 @@ public class UpdateBotRequest {
     @Size(max = 256, message = "Описание не должно превышать 256 символов")
     private String description;
     
-    @Size(max = 256, message = "Триггеры не должны превышать 256 символов")
-    private String triggers;
+    /**
+     * Если задано — полностью заменяет список ключевых слов бота.
+     */
+    @Valid
+    private List<@Size(max = 256, message = "Каждое ключевое слово не должно превышать 256 символов") String> keywords;
     
     @Size(max = 256, message = "Webhook URL не должен превышать 256 символов")
     @Pattern(regexp = "^$|^https?://.*", message = "Webhook URL должен быть валидным HTTP/HTTPS URL или пустым", flags = Pattern.Flag.CASE_INSENSITIVE)
@@ -90,12 +96,12 @@ public class UpdateBotRequest {
         this.description = description;
     }
     
-    public String getTriggers() {
-        return triggers;
+    public List<String> getKeywords() {
+        return keywords;
     }
-    
-    public void setTriggers(String triggers) {
-        this.triggers = triggers;
+
+    public void setKeywords(List<String> keywords) {
+        this.keywords = keywords;
     }
     
     public String getWebhookUrl() {

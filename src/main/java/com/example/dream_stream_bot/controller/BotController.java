@@ -1,5 +1,6 @@
 package com.example.dream_stream_bot.controller;
 
+import com.example.dream_stream_bot.dto.AddBotKeywordRequest;
 import com.example.dream_stream_bot.dto.BotEntityDto;
 import com.example.dream_stream_bot.dto.CreateBotRequest;
 import com.example.dream_stream_bot.dto.UpdateBotRequest;
@@ -296,12 +297,14 @@ public class BotController {
             newBot.setPrompt(request.getPrompt());
             newBot.setWebhookUrl(request.getWebhookUrl());
             newBot.setDescription(request.getDescription());
-            newBot.setTriggers(request.getTriggers());
             newBot.setMemWindow(request.getMemWindow() != null ? request.getMemWindow() : 100);
             newBot.setMiniapp(request.getMiniapp());
             newBot.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
             
             BotEntity savedBot = botService.save(newBot);
+            if (request.getKeywords() != null) {
+                savedBot = botService.replaceKeywords(savedBot.getId(), request.getKeywords());
+            }
             BotEntityDto createdDto = BotEntityDto.fromEntity(savedBot);
             
             LOGGER.info("✅ Бот создан с ID: {}", createdDto.getId());
@@ -372,9 +375,6 @@ public class BotController {
             if (request.getDescription() != null) {
                 existingBot.setDescription(request.getDescription());
             }
-            if (request.getTriggers() != null) {
-                existingBot.setTriggers(request.getTriggers());
-            }
             if (request.getMemWindow() != null) {
                 existingBot.setMemWindow(request.getMemWindow());
             }
@@ -386,8 +386,11 @@ public class BotController {
             }
             
             BotEntity updatedBot = botService.save(existingBot);
+            if (request.getKeywords() != null) {
+                updatedBot = botService.replaceKeywords(id, request.getKeywords());
+            }
             BotEntityDto updatedDto = BotEntityDto.fromEntity(updatedBot);
-            
+
             LOGGER.info("✅ Бот обновлен: {}", updatedDto.getName());
             return ResponseEntity.ok(updatedDto);
         } catch (Exception e) {
@@ -395,7 +398,54 @@ public class BotController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
+
+    /**
+     * Добавить ключевое слово-триггер бота.
+     */
+    @PostMapping("/{id}/keywords")
+    @Operation(
+            summary = "Добавить ключевое слово",
+            description = "Добавляет одно ключевое слово-триггер для бота. Дубликат (без учёта регистра) — 409."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ключевое слово добавлено",
+                    content = @Content(schema = @Schema(implementation = BotEntityDto.class))),
+            @ApiResponse(responseCode = "400", description = "Пустое или невалидное ключевое слово"),
+            @ApiResponse(responseCode = "404", description = "Бот не найден"),
+            @ApiResponse(responseCode = "409", description = "Такое ключевое слово уже есть"),
+            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<BotEntityDto> addBotKeyword(
+            @Parameter(description = "ID бота", required = true) @PathVariable Long id,
+            @Valid @RequestBody AddBotKeywordRequest request) {
+        LOGGER.info("➕ Добавление ключевого слова для бота id={}: {}", id, request.getKeyword());
+        BotEntity updated = botService.addKeyword(id, request.getKeyword());
+        return ResponseEntity.ok(BotEntityDto.fromEntity(updated));
+    }
+
+    /**
+     * Удалить ключевое слово-триггер бота (совпадение без учёта регистра).
+     */
+    @DeleteMapping("/{id}/keywords/{keyword}")
+    @Operation(
+            summary = "Удалить ключевое слово",
+            description = "Удаляет ключевое слово по значению. В пути передавайте keyword в URL-encoded виде."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Ключевое слово удалено",
+                    content = @Content(schema = @Schema(implementation = BotEntityDto.class))),
+            @ApiResponse(responseCode = "400", description = "Пустое ключевое слово"),
+            @ApiResponse(responseCode = "404", description = "Бот или ключевое слово не найдены"),
+            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    public ResponseEntity<BotEntityDto> removeBotKeyword(
+            @Parameter(description = "ID бота", required = true) @PathVariable Long id,
+            @Parameter(description = "Ключевое слово (URL-encoded)", required = true) @PathVariable String keyword) {
+        LOGGER.info("🗑 Удаление ключевого слова у бота id={}", id);
+        BotEntity updated = botService.removeKeyword(id, keyword);
+        return ResponseEntity.ok(BotEntityDto.fromEntity(updated));
+    }
+
     /**
      * Обновить только miniapp для бота по ID
      */
