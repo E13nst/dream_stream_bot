@@ -1,6 +1,12 @@
 server:
   port: 8080
 
+telegram:
+  delivery-mode: ${TELEGRAM_DELIVERY_MODE:long-polling}
+  webhook:
+    base-url: ${TELEGRAM_WEBHOOK_BASE_URL:}
+    secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:}
+
 spring:
   application:
     name: telegram-bot-dream-stream

@@ -53,6 +53,10 @@ management:
       enabled: true
 
 telegram:
+  delivery-mode: ${TELEGRAM_DELIVERY_MODE:webhook}
+  webhook:
+    base-url: ${TELEGRAM_WEBHOOK_BASE_URL:${BOT_WEBHOOK_URL:}}
+    secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:}
   bot:
     token: ${TELEGRAM_API_TOKEN}
     name: ${TELEGRAM_BOT_NAME}

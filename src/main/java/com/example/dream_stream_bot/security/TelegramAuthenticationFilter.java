@@ -4,6 +4,7 @@ import com.example.dream_stream_bot.util.TelegramInitDataValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -36,8 +37,8 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     }
     
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
-                                  FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
         
         String initData = request.getHeader(TELEGRAM_INIT_DATA_HEADER);
         String botName = request.getHeader(TELEGRAM_BOT_NAME_HEADER);
@@ -116,13 +117,14 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     }
     
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
         
         // Не фильтруем запросы к статическим ресурсам и некоторым системным эндпоинтам
         return path.startsWith("/actuator/") || 
                path.startsWith("/error") ||
                path.equals("/") ||
+               path.startsWith("/webhook/") ||
                path.startsWith("/static/") ||
                path.startsWith("/css/") ||
                path.startsWith("/js/") ||

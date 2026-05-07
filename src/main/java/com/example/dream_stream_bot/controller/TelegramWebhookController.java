@@ -1,32 +1,46 @@
 package com.example.dream_stream_bot.controller;
 
 import com.example.dream_stream_bot.bot.AbstractTelegramBot;
-import com.example.dream_stream_bot.model.telegram.BotEntity;
-import com.example.dream_stream_bot.service.telegram.BotService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/webhook")
 @Slf4j
 public class TelegramWebhookController {
-    private final BotService botService;
+    private static final String TELEGRAM_SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token";
+
     private final Map<String, AbstractTelegramBot> botRegistry;
 
+    @Value("${telegram.webhook.secret-token:}")
+    private String webhookSecretToken;
+
     @Autowired
-    public TelegramWebhookController(BotService botService, Map<String, AbstractTelegramBot> botRegistry) {
-        this.botService = botService;
+    public TelegramWebhookController(Map<String, AbstractTelegramBot> botRegistry) {
         this.botRegistry = botRegistry;
     }
 
     @PostMapping("/{botUsername}")
-    public ResponseEntity<String> handleWebhook(@PathVariable String botUsername, @RequestBody Update update) {
+    public ResponseEntity<String> handleWebhook(
+            @PathVariable String botUsername,
+            @RequestHeader(value = TELEGRAM_SECRET_HEADER, required = false) String secretHeader,
+            @RequestBody Update update
+    ) {
+        String expected = webhookSecretToken != null ? webhookSecretToken.trim() : "";
+        if (!expected.isBlank()) {
+            String got = secretHeader != null ? secretHeader.trim() : "";
+            if (!expected.equals(got)) {
+                log.warn("❌ Webhook rejected: invalid secret token for bot: {}", botUsername);
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+        }
+
         AbstractTelegramBot bot = botRegistry.get(botUsername);
         if (bot != null) {
             bot.onUpdateReceived(update);
