@@ -1,0 +1,97 @@
+server:
+  port: 8080
+
+telegram:
+  delivery-mode: ${TELEGRAM_DELIVERY_MODE:long-polling}
+  webhook:
+    base-url: ${TELEGRAM_WEBHOOK_BASE_URL:}
+    secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:}
+
+spring:
+  application:
+    name: telegram-bot-dream-stream
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      # Таймауты для запросов к OpenAI API (в миллисекундах)
+      client:
+        request-timeout: ${OPENAI_REQUEST_TIMEOUT:60000}  # 60 секунд для запросов
+        connect-timeout: ${OPENAI_CONNECT_TIMEOUT:10000}  # 10 секунд для подключения
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-4o}
+          temperature: 0.9
+      proxy:
+        host: ${OPENAI_PROXY_HOST:}
+        port: ${OPENAI_PROXY_PORT:}
+        username: ${OPENAI_PROXY_USERNAME:}
+        password: ${OPENAI_PROXY_PASSWORD:}
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mindbase}
+    username: ${DB_USERNAME:dalek}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 10000
+      maximum-pool-size: 5
+      minimum-idle: 2
+      leak-detection-threshold: 30000
+      connection-test-query: SELECT 1
+      auto-commit: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+    migrate-on-start: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+        jdbc:
+          batch_size: 20
+          time_zone: UTC
+        connection:
+          provider_disables_autocommit: true
+  data:
+    redis:
+      host: ${REDIS_HOST:amvera-e13nst-run-redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 10s
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+
+# Swagger/OpenAPI конфигурация
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    filter: true
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+
+
+# Подробное логирование для диагностики
+logging:
+  level:
+    org.springframework.jdbc: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+    com.zaxxer.hikari: INFO
+    org.springframework.orm.jpa: INFO
+    com.example.dream_stream_bot: DEBUG
+    org.springframework.boot.autoconfigure: INFO
+    org.springframework.security: DEBUG
+  

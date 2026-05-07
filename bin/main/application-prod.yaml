@@ -1,0 +1,77 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: telegram-bot-dream-stream
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      # Таймауты для запросов к OpenAI API (в миллисекундах)
+      client:
+        request-timeout: ${OPENAI_REQUEST_TIMEOUT:60000}  # 60 секунд для запросов
+        connect-timeout: ${OPENAI_CONNECT_TIMEOUT:10000}  # 10 секунд для подключения
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-4o}
+          temperature: 0.7
+          # Ограничение длины ответа (опционально)
+          # Для новых моделей (gpt-4o, gpt-4o-mini) используйте переменную OPENAI_MAX_TOKENS
+          # и установите max-completion-tokens вручную в этом файле, если нужно
+          # Для старых моделей (gpt-3.5-turbo, gpt-4) используйте max-tokens
+          # Если параметр не задан, ограничение не применяется (работает для всех моделей)
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+    migrate-on-start: true
+    out-of-order: false
+    ignore-missing-migrations: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    defaults:
+      enabled: true
+
+telegram:
+  delivery-mode: ${TELEGRAM_DELIVERY_MODE:webhook}
+  webhook:
+    base-url: ${TELEGRAM_WEBHOOK_BASE_URL:${BOT_WEBHOOK_URL:}}
+    secret-token: ${TELEGRAM_WEBHOOK_SECRET_TOKEN:}
+  bot:
+    token: ${TELEGRAM_API_TOKEN}
+    name: ${TELEGRAM_BOT_NAME}
+    webhook:
+      url: ${BOT_WEBHOOK_URL}
+
+logging:
+  level:
+    com.example.dream_stream_bot: INFO
+    org.springframework.web: INFO
+    org.telegram: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /data/app.log
+    max-size: 10MB
+    max-history: 7 
