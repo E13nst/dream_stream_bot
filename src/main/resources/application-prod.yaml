@@ -1,6 +1,18 @@
 server:
   port: ${SERVER_PORT:8080}
 
+admin:
+  auth:
+    username: ${ADMIN_AUTH_USERNAME:admin}
+    password: ${ADMIN_AUTH_PASSWORD:}
+    password-hash: ${ADMIN_AUTH_PASSWORD_HASH:}
+  bootstrap:
+    enabled: ${ADMIN_BOOTSTRAP_ENABLED:true}
+    telegram-id: ${ADMIN_BOOTSTRAP_TELEGRAM_ID:1}
+    username: ${ADMIN_BOOTSTRAP_USERNAME:admin}
+    first-name: ${ADMIN_BOOTSTRAP_FIRST_NAME:System}
+    last-name: ${ADMIN_BOOTSTRAP_LAST_NAME:Admin}
+
 spring:
   application:
     name: telegram-bot-dream-stream

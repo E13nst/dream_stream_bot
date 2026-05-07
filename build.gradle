@@ -47,6 +47,7 @@ dependencies {
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation('org.telegram:telegrambots:6.9.7.1') {
         // Avoid legacy javax JAXB module auto-registration in Boot 3/Jakarta runtime
         exclude group: 'com.fasterxml.jackson.module', module: 'jackson-module-jaxb-annotations'
@@ -70,6 +71,7 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0'
     testImplementation 'io.rest-assured:rest-assured:5.4.0'
     testImplementation 'io.rest-assured:json-schema-validator:5.4.0'

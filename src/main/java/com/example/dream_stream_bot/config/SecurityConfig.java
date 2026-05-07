@@ -3,12 +3,20 @@ package com.example.dream_stream_bot.config;
 import com.example.dream_stream_bot.security.TelegramAuthenticationFilter;
 import com.example.dream_stream_bot.security.TelegramAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -29,9 +37,36 @@ public class SecurityConfig {
         this.telegramAuthenticationFilter = telegramAuthenticationFilter;
         this.telegramAuthenticationProvider = telegramAuthenticationProvider;
     }
-    
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain adminFilterChain(HttpSecurity http,
+                                                DaoAuthenticationProvider adminAuthenticationProvider) throws Exception {
+        http
+            .securityMatcher("/admin/**", "/api/admin/**", "/login", "/logout")
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/admin/**", "/admin/bots/**"))
+            .authenticationProvider(adminAuthenticationProvider)
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/login").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .formLogin(form -> form
+                .loginPage("/login")
+                .defaultSuccessUrl("/admin", true)
+                .permitAll()
+            )
+            .logout(logout -> logout
+                .logoutSuccessUrl("/login?logout")
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
         http
             // Отключаем CSRF для API
             .csrf(csrf -> csrf.disable())
@@ -82,11 +117,11 @@ public class SecurityConfig {
                 
                 // API для авторизованных пользователей (USER или ADMIN)
                 .requestMatchers("/api/users/**").hasAnyRole("USER", "ADMIN")
+
+                // API ботов - доступ только ADMIN
+                .requestMatchers("/api/bots/**").hasRole("ADMIN")
                 
-                // API ботов - доступно без авторизации
-                .requestMatchers("/api/bots/**").permitAll()
-                
-                // Все остальные запросы разрешены (временно для отладки)
+                // Все остальные запросы разрешены
                 .anyRequest().permitAll()
             )
             
@@ -105,5 +140,38 @@ public class SecurityConfig {
             );
         
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(
+            @Value("${admin.auth.username:admin}") String adminUsername,
+            @Value("${admin.auth.password-hash:}") String passwordHash,
+            @Value("${admin.auth.password:admin12345}") String password) {
+        if ((passwordHash == null || passwordHash.isBlank()) && (password == null || password.isBlank())) {
+            throw new IllegalStateException("Configure admin.auth.password-hash or admin.auth.password");
+        }
+        String effectiveHash = (passwordHash != null && !passwordHash.isBlank())
+                ? passwordHash
+                : passwordEncoder().encode(password);
+
+        return new InMemoryUserDetailsManager(
+                User.withUsername(adminUsername)
+                        .password(effectiveHash)
+                        .roles("ADMIN")
+                        .build()
+        );
+    }
+
+    @Bean
+    public DaoAuthenticationProvider adminAuthenticationProvider(UserDetailsService userDetailsService) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 }
