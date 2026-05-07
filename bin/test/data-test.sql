@@ -3,6 +3,7 @@
 -- Очищаем таблицы
 DELETE FROM stickersets;
 DELETE FROM users;
+DELETE FROM bot_keyword;
 DELETE FROM bot;
 
 -- Вставляем тестового пользователя
