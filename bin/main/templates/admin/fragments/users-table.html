@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="usersTable">
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped table-hover align-middle mb-0 admin-data-table">
+                <thead>
+                <tr>
+                    <th class="admin-num" scope="col">ID</th>
+                    <th class="admin-num" scope="col">Telegram ID</th>
+                    <th scope="col">Username</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Role</th>
+                    <th class="admin-num" scope="col">Balance</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${users == null or #lists.isEmpty(users)}">
+                    <td class="admin-empty-state" colspan="6">
+                        <strong>Пользователей не найдено</strong>
+                        Измените запрос в поле поиска или дождитесь появления пользователей в системе.
+                    </td>
+                </tr>
+                <tr th:each="user : ${users}">
+                    <td class="admin-num" th:text="${user.id}">1</td>
+                    <td class="admin-num" th:text="${user.telegramId}">100</td>
+                    <td th:text="${user.username}">user</td>
+                    <td th:text="${(user.firstName != null ? user.firstName : '') + ' ' + (user.lastName != null ? user.lastName : '')}">Name</td>
+                    <td>
+                    <span class="badge" th:classappend="${user.role.name() == 'ADMIN'} ? ' bg-danger' : ' bg-secondary'"
+                          th:text="${user.role.name()}">USER</span>
+                    </td>
+                    <td class="admin-num" th:text="${user.artBalance}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
