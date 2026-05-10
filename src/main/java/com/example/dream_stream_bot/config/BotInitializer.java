@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.TelegramBotApiService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
+import com.example.dream_stream_bot.service.user.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,7 @@ public class BotInitializer {
     private final MessageHandlerService messageHandlerService;
     private final UserStateService userStateService;
     private final TelegramBotApiService telegramBotApiService;
+    private final UserService userService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Value("${telegram.delivery-mode:long-polling}")
@@ -42,11 +44,13 @@ public class BotInitializer {
     @Autowired
     public BotInitializer(BotService botService, MessageHandlerService messageHandlerService,
                          UserStateService userStateService,
-                         TelegramBotApiService telegramBotApiService) {
+                         TelegramBotApiService telegramBotApiService,
+                         UserService userService) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userStateService = userStateService;
         this.telegramBotApiService = telegramBotApiService;
+        this.userService = userService;
     }
 
     @Bean
@@ -108,7 +112,7 @@ public class BotInitializer {
                             log.info("📡 Bot '{}' current delivery: unknown(unavailable)", bot.getUsername());
                         }
 
-                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService);
+                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, userService);
                         botRegistry.put(bot.getUsername(), telegramBot);
 
                         if ("long-polling".equals(mode)) {

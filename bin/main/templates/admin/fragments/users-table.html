@@ -12,12 +12,11 @@
                     <th scope="col">Username</th>
                     <th scope="col">Name</th>
                     <th scope="col">Role</th>
-                    <th class="admin-num" scope="col">Balance</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:if="${users == null or #lists.isEmpty(users)}">
-                    <td class="admin-empty-state" colspan="6">
+                    <td class="admin-empty-state" colspan="5">
                         <strong>Пользователей не найдено</strong>
                         Измените запрос в поле поиска или дождитесь появления пользователей в системе.
                     </td>
@@ -31,7 +30,6 @@
                     <span class="badge" th:classappend="${user.role.name() == 'ADMIN'} ? ' bg-danger' : ' bg-secondary'"
                           th:text="${user.role.name()}">USER</span>
                     </td>
-                    <td class="admin-num" th:text="${user.artBalance}">0</td>
                 </tr>
                 </tbody>
             </table>
