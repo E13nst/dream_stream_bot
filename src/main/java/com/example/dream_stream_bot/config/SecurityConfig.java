@@ -153,7 +153,9 @@ public class SecurityConfig {
             @Value("${admin.auth.password-hash:}") String passwordHash,
             @Value("${admin.auth.password:admin12345}") String password) {
         if ((passwordHash == null || passwordHash.isBlank()) && (password == null || password.isBlank())) {
-            throw new IllegalStateException("Configure admin.auth.password-hash or admin.auth.password");
+            throw new IllegalStateException(
+                    "Admin credentials missing: set ADMIN_AUTH_PASSWORD or ADMIN_AUTH_PASSWORD_HASH "
+                            + "(prod checks this at startup via ProductionEnvironmentValidator).");
         }
         String effectiveHash = (passwordHash != null && !passwordHash.isBlank())
                 ? passwordHash

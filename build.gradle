@@ -78,6 +78,10 @@ dependencies {
     testRuntimeOnly 'com.h2database:h2'
 }
 
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
