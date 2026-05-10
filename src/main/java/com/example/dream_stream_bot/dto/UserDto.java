@@ -25,32 +25,21 @@ public class UserDto {
     @Size(max = 255, message = "Фамилия не может быть длиннее 255 символов")
     private String lastName;
     
-    @Size(max = 512, message = "URL аватара не может быть длиннее 512 символов")
-    @Pattern(regexp = "^(https?://.*)?$", message = "URL аватара должен начинаться с http:// или https://")
-    private String avatarUrl;
-    
-    @NotNull(message = "Баланс арт-кредитов не может быть null")
-    @Min(value = 0, message = "Баланс арт-кредитов не может быть отрицательным")
-    private Long artBalance;
-    
     @Pattern(regexp = "^(USER|ADMIN)$", message = "Роль должна быть USER или ADMIN")
     private String role;
     
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     
-    // Конструкторы
     public UserDto() {}
     
-    public UserDto(Long id, Long telegramId, String username, String firstName, String lastName, 
-                   String avatarUrl, Long artBalance, String role, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    public UserDto(Long id, Long telegramId, String username, String firstName, String lastName,
+                   String role, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         this.id = id;
         this.telegramId = telegramId;
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.avatarUrl = avatarUrl;
-        this.artBalance = artBalance;
         this.role = role;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -70,8 +59,6 @@ public class UserDto {
                 entity.getUsername(),
                 entity.getFirstName(),
                 entity.getLastName(),
-                entity.getAvatarUrl(),
-                entity.getArtBalance(),
                 entity.getRole().name(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
@@ -88,8 +75,6 @@ public class UserDto {
         entity.setUsername(this.username);
         entity.setFirstName(this.firstName);
         entity.setLastName(this.lastName);
-        entity.setAvatarUrl(this.avatarUrl);
-        entity.setArtBalance(this.artBalance);
         if (this.role != null) {
             entity.setRole(UserEntity.UserRole.valueOf(this.role));
         }
@@ -98,7 +83,6 @@ public class UserDto {
         return entity;
     }
     
-    // Геттеры и сеттеры
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
@@ -113,12 +97,6 @@ public class UserDto {
     
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-    
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
-    
-    public Long getArtBalance() { return artBalance; }
-    public void setArtBalance(Long artBalance) { this.artBalance = artBalance; }
     
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
@@ -138,7 +116,6 @@ public class UserDto {
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", role='" + role + '\'' +
-                ", artBalance=" + artBalance +
                 '}';
     }
 }

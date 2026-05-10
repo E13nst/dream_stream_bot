@@ -177,8 +177,7 @@ public class AuthController {
                             "username": "testuser",
                             "firstName": "Test",
                             "lastName": "User",
-                            "role": "USER",
-                            "artBalance": 0
+                            "role": "USER"
                         },
                         "botName": "StickerGallery",
                         "message": "User found for bot: StickerGallery"
@@ -270,8 +269,7 @@ public class AuthController {
                             "username": "testuser",
                             "firstName": "Test",
                             "lastName": "User",
-                            "role": "USER",
-                            "artBalance": 0
+                            "role": "USER"
                         },
                         "botName": "StickerGallery",
                         "message": "User registered successfully for bot: StickerGallery"
@@ -320,10 +318,9 @@ public class AuthController {
             String username = extractValue(initData, "username");
             String firstName = extractValue(initData, "first_name");
             String lastName = extractValue(initData, "last_name");
-            String photoUrl = extractValue(initData, "photo_url");
             
             // Создаем или находим пользователя
-            UserEntity user = userService.findOrCreateByTelegramId(telegramId, username, firstName, lastName, photoUrl);
+            UserEntity user = userService.findOrCreateByTelegramId(telegramId, username, firstName, lastName);
             UserDto userDto = UserDto.fromEntity(user);
             
             response.put("success", true);

@@ -38,10 +38,4 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      */
     @Query("SELECT u FROM UserEntity u WHERE u.role = :role")
     java.util.List<UserEntity> findByRole(@Param("role") UserEntity.UserRole role);
-    
-    /**
-     * Найти пользователей с балансом больше указанного
-     */
-    @Query("SELECT u FROM UserEntity u WHERE u.artBalance > :minBalance")
-    java.util.List<UserEntity> findByArtBalanceGreaterThan(@Param("minBalance") Long minBalance);
 }

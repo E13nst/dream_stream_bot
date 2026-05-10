@@ -29,11 +29,7 @@ public class AdminUserBootstrap {
             }
 
             UserEntity adminUser = userRepository.findByTelegramId(telegramId)
-                    .orElseGet(() -> {
-                        UserEntity created = new UserEntity(telegramId, username, firstName, lastName, null);
-                        created.setArtBalance(0L);
-                        return created;
-                    });
+                    .orElseGet(() -> new UserEntity(telegramId, username, firstName, lastName));
 
             adminUser.setUsername(username);
             adminUser.setFirstName(firstName);

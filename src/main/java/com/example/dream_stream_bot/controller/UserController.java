@@ -19,16 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.Optional;
@@ -72,8 +62,7 @@ public class UserController {
                             "username": "testuser",
                             "firstName": "Test",
                             "lastName": "User",
-                            "role": "USER",
-                            "artBalance": 0
+                            "role": "USER"
                         }
                     ]
                     """))),
@@ -110,8 +99,7 @@ public class UserController {
                         "username": "testuser",
                         "firstName": "Test",
                         "lastName": "User",
-                        "role": "USER",
-                        "artBalance": 0
+                        "role": "USER"
                     }
                     """))),
         @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
@@ -225,8 +213,6 @@ public class UserController {
                         "username": "newuser123",
                         "firstName": "New",
                         "lastName": "User",
-                        "avatarUrl": "https://example.com/avatar.jpg",
-                        "artBalance": 100,
                         "role": "USER",
                         "createdAt": "2025-09-15T14:30:00",
                         "updatedAt": "2025-09-15T14:30:00"
@@ -238,8 +224,6 @@ public class UserController {
                     "validationErrors": {
                         "telegramId": "Telegram ID должен быть положительным числом",
                         "username": "Username может содержать только буквы, цифры и подчеркивания",
-                        "avatarUrl": "URL аватара должен начинаться с http:// или https://",
-                        "artBalance": "Баланс арт-кредитов не может быть отрицательным",
                         "role": "Роль должна быть USER или ADMIN"
                     },
                     "error": "Ошибка валидации",
@@ -270,76 +254,6 @@ public class UserController {
             return ResponseEntity.status(201).body(savedUserDto);
         } catch (Exception e) {
             LOGGER.error("❌ Ошибка при создании пользователя: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
-     * Обновить баланс пользователя
-     */
-    @PatchMapping("/{id}/balance")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-        summary = "Обновить баланс пользователя",
-        description = "Обновляет баланс арт-кредитов пользователя (только для ADMIN)"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Баланс обновлен"),
-        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<UserDto> updateUserBalance(
-            @Parameter(description = "ID пользователя", required = true, example = "1")
-            @PathVariable Long id,
-            @Parameter(description = "Новый баланс", required = true, example = "100")
-            @Valid @RequestBody @Min(value = 0, message = "Баланс не может быть отрицательным") Long newBalance) {
-        try {
-            LOGGER.info("💰 Обновление баланса пользователя {}: {}", id, newBalance);
-            UserEntity updatedUser = userService.updateArtBalance(id, newBalance);
-            UserDto userDto = UserDto.fromEntity(updatedUser);
-            LOGGER.info("✅ Баланс обновлен для пользователя: {}", userDto.getUsername());
-            return ResponseEntity.ok(userDto);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("⚠️ Пользователь с ID {} не найден", id);
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при обновлении баланса пользователя {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    /**
-     * Добавить к балансу пользователя
-     */
-    @PostMapping("/{id}/balance/add")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-        summary = "Добавить к балансу пользователя",
-        description = "Добавляет указанное количество арт-кредитов к балансу пользователя (только для ADMIN)"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Баланс обновлен"),
-        @ApiResponse(responseCode = "404", description = "Пользователь не найден"),
-        @ApiResponse(responseCode = "403", description = "Доступ запрещен"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<UserDto> addToUserBalance(
-            @Parameter(description = "ID пользователя", required = true, example = "1")
-            @PathVariable Long id,
-            @Parameter(description = "Количество для добавления", required = true, example = "50")
-            @RequestBody Long amount) {
-        try {
-            LOGGER.info("💰 Добавление к балансу пользователя {}: {}", id, amount);
-            UserEntity updatedUser = userService.addToArtBalance(id, amount);
-            UserDto userDto = UserDto.fromEntity(updatedUser);
-            LOGGER.info("✅ Баланс обновлен для пользователя: {}", userDto.getUsername());
-            return ResponseEntity.ok(userDto);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("⚠️ Пользователь с ID {} не найден", id);
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при добавлении к балансу пользователя {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

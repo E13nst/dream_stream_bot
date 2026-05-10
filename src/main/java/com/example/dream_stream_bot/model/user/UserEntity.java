@@ -26,12 +26,6 @@ public class UserEntity {
     @Column(name = "last_name", length = 255)
     private String lastName;
     
-    @Column(name = "avatar_url", length = 512)
-    private String avatarUrl;
-    
-    @Column(name = "art_balance", nullable = false)
-    private Long artBalance = 0L;
-    
     @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 16, nullable = false)
     private UserRole role = UserRole.USER;
@@ -42,22 +36,19 @@ public class UserEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
     
-    // Конструкторы
     public UserEntity() {
         this.createdAt = OffsetDateTime.now();
         this.updatedAt = OffsetDateTime.now();
     }
     
-    public UserEntity(Long telegramId, String username, String firstName, String lastName, String avatarUrl) {
+    public UserEntity(Long telegramId, String username, String firstName, String lastName) {
         this();
         this.telegramId = telegramId;
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.avatarUrl = avatarUrl;
     }
     
-    // Геттеры и сеттеры
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
@@ -72,12 +63,6 @@ public class UserEntity {
     
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-    
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
-    
-    public Long getArtBalance() { return artBalance; }
-    public void setArtBalance(Long artBalance) { this.artBalance = artBalance; }
     
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
@@ -110,7 +95,6 @@ public class UserEntity {
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", role=" + role +
-                ", artBalance=" + artBalance +
                 '}';
     }
 }

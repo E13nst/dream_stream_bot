@@ -31,16 +31,15 @@ public class UserService {
     
     /**
      * Найти или создать пользователя по telegram_id
-     * 
+     *
      * @param telegramId ID пользователя в Telegram
      * @param username username пользователя (может быть null)
      * @param firstName имя пользователя (может быть null)
      * @param lastName фамилия пользователя (может быть null)
-     * @param avatarUrl URL аватара (может быть null)
      * @return найденный или созданный пользователь
      */
-    public UserEntity findOrCreateByTelegramId(Long telegramId, String username, String firstName, 
-                                             String lastName, String avatarUrl) {
+    public UserEntity findOrCreateByTelegramId(Long telegramId, String username, String firstName,
+                                             String lastName) {
         LOGGER.info("🔍 Поиск пользователя по telegram_id: {}", telegramId);
         
         Optional<UserEntity> existingUser = userRepository.findByTelegramId(telegramId);
@@ -63,10 +62,6 @@ public class UserService {
                 user.setLastName(lastName);
                 updated = true;
             }
-            if (avatarUrl != null && !avatarUrl.equals(user.getAvatarUrl())) {
-                user.setAvatarUrl(avatarUrl);
-                updated = true;
-            }
             
             if (updated) {
                 user = userRepository.save(user);
@@ -77,7 +72,7 @@ public class UserService {
         } else {
             LOGGER.info("🆕 Создание нового пользователя с telegram_id: {}", telegramId);
             
-            UserEntity newUser = new UserEntity(telegramId, username, firstName, lastName, avatarUrl);
+            UserEntity newUser = new UserEntity(telegramId, username, firstName, lastName);
             newUser = userRepository.save(newUser);
             
             LOGGER.info("✅ Новый пользователь создан: {} (ID: {})", newUser.getUsername(), newUser.getId());
@@ -148,31 +143,5 @@ public class UserService {
      */
     public List<UserEntity> findByRole(UserEntity.UserRole role) {
         return userRepository.findByRole(role);
-    }
-    
-    /**
-     * Обновить баланс пользователя
-     */
-    public UserEntity updateArtBalance(Long userId, Long newBalance) {
-        Optional<UserEntity> userOpt = userRepository.findById(userId);
-        if (userOpt.isPresent()) {
-            UserEntity user = userOpt.get();
-            user.setArtBalance(newBalance);
-            return userRepository.save(user);
-        }
-        throw new IllegalArgumentException("Пользователь с ID " + userId + " не найден");
-    }
-    
-    /**
-     * Добавить к балансу пользователя
-     */
-    public UserEntity addToArtBalance(Long userId, Long amount) {
-        Optional<UserEntity> userOpt = userRepository.findById(userId);
-        if (userOpt.isPresent()) {
-            UserEntity user = userOpt.get();
-            user.setArtBalance(user.getArtBalance() + amount);
-            return userRepository.save(user);
-        }
-        throw new IllegalArgumentException("Пользователь с ID " + userId + " не найден");
     }
 }

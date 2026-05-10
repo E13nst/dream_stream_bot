@@ -70,8 +70,7 @@ public class TelegramAuthenticationProvider implements AuthenticationProvider {
                     telegramUser.getId(),
                     telegramUser.getUsername(),
                     telegramUser.getFirstName(),
-                    telegramUser.getLastName(),
-                    telegramUser.getPhotoUrl()
+                    telegramUser.getLastName()
             );
             LOGGER.debug("✅ Пользователь найден/создан: id={}, username={}, role={}", 
                     user.getId(), user.getUsername(), user.getRole());

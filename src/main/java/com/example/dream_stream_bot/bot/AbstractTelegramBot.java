@@ -2,10 +2,12 @@ package com.example.dream_stream_bot.bot;
 
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
+import com.example.dream_stream_bot.service.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.api.methods.ActionType;
@@ -14,11 +16,31 @@ import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 public abstract class AbstractTelegramBot extends TelegramLongPollingBot {
     protected final BotEntity botEntity;
     protected MessageHandlerService messageHandlerService;
+    protected final UserService userService;
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractTelegramBot.class);
 
-    public AbstractTelegramBot(BotEntity botEntity, MessageHandlerService messageHandlerService) {
+    public AbstractTelegramBot(BotEntity botEntity,
+                               MessageHandlerService messageHandlerService,
+                               UserService userService) {
         this.botEntity = botEntity;
         this.messageHandlerService = messageHandlerService;
+        this.userService = userService;
+    }
+
+    /**
+     * Гарантирует, что для пользователя Telegram существует запись в БД.
+     * Создаёт минимальную запись (только telegram_id), если её ещё нет.
+     * Имена и username не сохраняются из бота — только при веб-авторизации через Telegram Web App.
+     */
+    protected void ensureUserExists(User from) {
+        if (from == null || Boolean.TRUE.equals(from.getIsBot())) {
+            return;
+        }
+        try {
+            userService.findOrCreateByTelegramId(from.getId(), null, null, null);
+        } catch (Exception e) {
+            LOGGER.error("❌ Failed to register user telegramId={} | Error: {}", from.getId(), e.getMessage(), e);
+        }
     }
 
     @Override

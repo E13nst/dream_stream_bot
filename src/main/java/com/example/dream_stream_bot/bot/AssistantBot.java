@@ -2,18 +2,20 @@ package com.example.dream_stream_bot.bot;
 
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
+import com.example.dream_stream_bot.service.user.UserService;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 public class AssistantBot extends AbstractTelegramBot {
-    public AssistantBot(BotEntity botEntity, MessageHandlerService messageHandlerService) {
-        super(botEntity, messageHandlerService);
+    public AssistantBot(BotEntity botEntity, MessageHandlerService messageHandlerService, UserService userService) {
+        super(botEntity, messageHandlerService, userService);
     }
 
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             Message msg = update.getMessage();
+            ensureUserExists(msg.getFrom());
             String conversationId = getConversationId(msg.getChatId());
             boolean isGroup = msg.isGroupMessage() || msg.isSuperGroupMessage();
             boolean isReplyToBot = msg.getReplyToMessage() != null &&
