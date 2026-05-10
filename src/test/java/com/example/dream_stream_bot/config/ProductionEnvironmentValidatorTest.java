@@ -25,7 +25,6 @@ class ProductionEnvironmentValidatorTest {
                 .hasMessageContaining("Missing required production configuration")
                 .hasMessageContaining("OPENAI_API_KEY")
                 .hasMessageContaining("DB_HOST")
-                .hasMessageContaining("TELEGRAM_API_TOKEN")
                 .hasMessageContaining("ADMIN_AUTH_PASSWORD or ADMIN_AUTH_PASSWORD_HASH")
                 .hasMessageContaining("TELEGRAM_WEBHOOK_BASE_URL or BOT_WEBHOOK_URL");
     }
@@ -76,8 +75,6 @@ class ProductionEnvironmentValidatorTest {
         env.setProperty("DB_NAME", "mindbase");
         env.setProperty("DB_USERNAME", "u");
         env.setProperty("DB_PASSWORD", "p");
-        env.setProperty("telegram.bot.token", "123:abc");
-        env.setProperty("telegram.bot.name", "MyBot");
         env.setProperty("telegram.delivery-mode", "webhook");
         env.setProperty("telegram.webhook.base-url", "https://example.com");
         return env;

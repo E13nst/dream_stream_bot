@@ -33,9 +33,6 @@ public final class ProductionEnvironmentValidator {
         requireNonBlank(environment, "DB_USERNAME", "DB_USERNAME", errors);
         requireNonBlank(environment, "DB_PASSWORD", "DB_PASSWORD", errors);
 
-        requireNonBlank(environment, "telegram.bot.token", "TELEGRAM_API_TOKEN", errors);
-        requireNonBlank(environment, "telegram.bot.name", "TELEGRAM_BOT_NAME", errors);
-
         requireAdminCredential(environment, errors);
 
         requireWebhookBaseIfWebhookMode(environment, errors);
