@@ -18,7 +18,10 @@
             Create Bot
         </button>
     </div>
-    <p class="admin-section-lead">Выберите бота для редактирования параметров и промпта. Все действия доступны на этой странице.</p>
+    <p class="admin-section-lead">Телеграм-настройки бота и привязка к LLM-агенту. Промпт и модель — только в разделе Agents.</p>
+    <div class="alert alert-danger py-2" th:if="${param.error != null && param.error[0] == 'assistantNeedsAgent'}">
+        Для типа <strong>assistant</strong> нужно выбрать агента в форме создания.
+    </div>
     <div id="botsTable" th:replace="~{admin/fragments/bots-table :: botsTable}"></div>
 </main>
 </div>
@@ -51,13 +54,12 @@
                                 <option th:each="botType : ${botTypes}" th:text="${botType.value}" th:value="${botType.value}">assistant</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="createBotMemWindow">Memory Window</label>
-                            <input class="form-control" id="createBotMemWindow" min="1" name="memWindow" type="number" value="100">
-                        </div>
                         <div class="col-12">
-                            <label class="form-label" for="createBotPrompt">Prompt</label>
-                            <textarea class="form-control" id="createBotPrompt" name="prompt" rows="4"></textarea>
+                            <label class="form-label" for="createBotAgent">LLM Agent (обязательно для assistant)</label>
+                            <select class="form-select" id="createBotAgent" name="agentConfigId">
+                                <option value="">— не выбрано (для copycat) —</option>
+                                <option th:each="ag : ${allAgents}" th:text="${ag.name + ' (id ' + ag.id + ')'}" th:value="${ag.id}">agent</option>
+                            </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="createBotKeywords">Keywords (comma separated)</label>

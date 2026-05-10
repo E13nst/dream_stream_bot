@@ -6,6 +6,7 @@ import com.example.dream_stream_bot.dto.CreateBotRequest;
 import com.example.dream_stream_bot.dto.UpdateBotRequest;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.telegram.BotType;
+import com.example.dream_stream_bot.service.agent.AgentConfigService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,10 +38,12 @@ public class BotController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(BotController.class);
     private final BotService botService;
+    private final AgentConfigService agentConfigService;
     
     @Autowired
-    public BotController(BotService botService) {
+    public BotController(BotService botService, AgentConfigService agentConfigService) {
         this.botService = botService;
+        this.agentConfigService = agentConfigService;
     }
     
     /**
@@ -102,7 +105,8 @@ public class BotController {
                         "name": "Dream Stream Bot",
                         "username": "dreamstream_bot",
                         "type": "assistant",
-                        "prompt": "You are a helpful assistant",
+                        "agentConfigId": 1,
+                        "systemPrompt": "You are a helpful assistant",
                         "isActive": true,
                         "createdAt": "2025-01-15T10:30:00",
                         "updatedAt": "2025-01-15T10:30:00"
@@ -288,19 +292,24 @@ public class BotController {
                 return ResponseEntity.status(HttpStatus.CONFLICT).build();
             }
             
-            // Создание нового бота
             BotEntity newBot = new BotEntity();
             newBot.setName(request.getName());
             newBot.setUsername(request.getUsername());
             newBot.setToken(request.getToken());
             newBot.setType(request.getType().getValue());
-            newBot.setPrompt(request.getPrompt());
             newBot.setWebhookUrl(request.getWebhookUrl());
             newBot.setDescription(request.getDescription());
-            newBot.setMemWindow(request.getMemWindow() != null ? request.getMemWindow() : 100);
             newBot.setMiniapp(request.getMiniapp());
             newBot.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
-            
+            if (request.getType() == BotType.ASSISTANT) {
+                if (request.getAgentConfigId() == null) {
+                    return ResponseEntity.badRequest().build();
+                }
+                newBot.setAgentConfig(agentConfigService.requireById(request.getAgentConfigId()));
+            } else if (request.getAgentConfigId() != null) {
+                newBot.setAgentConfig(agentConfigService.requireById(request.getAgentConfigId()));
+            }
+
             BotEntity savedBot = botService.save(newBot);
             if (request.getKeywords() != null) {
                 savedBot = botService.replaceKeywords(savedBot.getId(), request.getKeywords());
@@ -365,9 +374,12 @@ public class BotController {
             }
             if (request.getType() != null) {
                 existingBot.setType(request.getType().getValue());
+                if (request.getType() == BotType.COPYCAT) {
+                    existingBot.setAgentConfig(null);
+                }
             }
-            if (request.getPrompt() != null) {
-                existingBot.setPrompt(request.getPrompt());
+            if (request.getAgentConfigId() != null) {
+                existingBot.setAgentConfig(agentConfigService.requireById(request.getAgentConfigId()));
             }
             if (request.getWebhookUrl() != null) {
                 existingBot.setWebhookUrl(request.getWebhookUrl());
@@ -375,16 +387,13 @@ public class BotController {
             if (request.getDescription() != null) {
                 existingBot.setDescription(request.getDescription());
             }
-            if (request.getMemWindow() != null) {
-                existingBot.setMemWindow(request.getMemWindow());
-            }
             if (request.getMiniapp() != null) {
                 existingBot.setMiniapp(request.getMiniapp());
             }
             if (request.getIsActive() != null) {
                 existingBot.setIsActive(request.getIsActive());
             }
-            
+
             BotEntity updatedBot = botService.save(existingBot);
             if (request.getKeywords() != null) {
                 updatedBot = botService.replaceKeywords(id, request.getKeywords());
@@ -485,58 +494,7 @@ public class BotController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
-    /**
-     * Обновить только prompt для бота по ID
-     */
-    @PatchMapping("/{id}/prompt")
-    @Operation(
-        summary = "Обновить prompt бота",
-        description = "Обновляет только промпт (системное сообщение) для указанного бота. Промпт используется для настройки поведения AI бота."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Prompt обновлен",
-            content = @Content(schema = @Schema(implementation = BotEntityDto.class),
-                examples = @ExampleObject(value = """
-                    {
-                        "id": 1,
-                        "name": "Dream Stream Bot",
-                        "username": "dreamstream_bot",
-                        "prompt": "You are a helpful assistant that helps users interpret their dreams.",
-                        "type": "assistant",
-                        "isActive": true
-                    }
-                    """))),
-        @ApiResponse(responseCode = "404", description = "Бот не найден"),
-        @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
-    })
-    public ResponseEntity<BotEntityDto> updateBotPrompt(
-            @Parameter(description = "ID бота", required = true, example = "")
-            @PathVariable Long id,
-            @Parameter(description = "Новый промпт для бота", required = true, 
-                example = "You are a helpful assistant that helps users interpret their dreams. Be concise and friendly.")
-            @RequestBody String prompt) {
-        try {
-            LOGGER.info("🔧 Обновление prompt для бота с ID {}", id);
-            
-            BotEntity existingBot = botService.findById(id);
-            if (existingBot == null) {
-                LOGGER.warn("⚠️ Бот с ID {} не найден", id);
-                return ResponseEntity.notFound().build();
-            }
-            
-            existingBot.setPrompt(prompt);
-            BotEntity updatedBot = botService.save(existingBot);
-            BotEntityDto updatedDto = BotEntityDto.fromEntity(updatedBot);
-            
-            LOGGER.info("✅ Prompt обновлен для бота с ID {}", id);
-            return ResponseEntity.ok(updatedDto);
-        } catch (Exception e) {
-            LOGGER.error("❌ Ошибка при обновлении prompt для бота с ID: {}", id, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-    
+
     /**
      * Удалить бота
      */

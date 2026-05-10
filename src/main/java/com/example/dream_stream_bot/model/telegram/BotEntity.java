@@ -1,5 +1,6 @@
 package com.example.dream_stream_bot.model.telegram;
 
+import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -7,6 +8,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PreUpdate;
@@ -35,9 +38,6 @@ public class BotEntity {
     @Column(nullable = false, length = 128)
     private String token;
 
-    @Column(columnDefinition = "TEXT")
-    private String prompt;
-
     @Column(name = "webhook_url", length = 256)
     private String webhookUrl;
 
@@ -60,8 +60,9 @@ public class BotEntity {
     @OrderBy("id ASC")
     private List<BotKeywordEntity> keywords = new ArrayList<>();
 
-    @Column(name = "mem_window")
-    private Integer memWindow = 100;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "agent_config_id")
+    private AgentConfigEntity agentConfig;
 
     @Column(name = "miniapp", length = 512)
     private String miniapp; // ссылка на миниприложение Telegram

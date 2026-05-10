@@ -1,10 +1,14 @@
 package com.example.dream_stream_bot.service.telegram;
 
+import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.telegram.BotKeywordEntity;
 import com.example.dream_stream_bot.model.telegram.BotKeywordRepository;
 import com.example.dream_stream_bot.model.telegram.BotRepository;
+import com.example.dream_stream_bot.service.agent.AgentConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,13 +23,23 @@ import java.util.Set;
 
 @Service
 public class BotService {
+
+    public static final String CACHE_NAME = "bots";
+
     private final BotRepository botRepository;
     private final BotKeywordRepository botKeywordRepository;
+    private final AgentConfigService agentConfigService;
+    private final CacheManager cacheManager;
 
     @Autowired
-    public BotService(BotRepository botRepository, BotKeywordRepository botKeywordRepository) {
+    public BotService(BotRepository botRepository,
+                      BotKeywordRepository botKeywordRepository,
+                      AgentConfigService agentConfigService,
+                      CacheManager cacheManager) {
         this.botRepository = botRepository;
         this.botKeywordRepository = botKeywordRepository;
+        this.agentConfigService = agentConfigService;
+        this.cacheManager = cacheManager;
     }
 
     public List<BotEntity> getAllBots() {
@@ -36,8 +50,9 @@ public class BotService {
         return botRepository.findAll();
     }
 
+    @Cacheable(value = CACHE_NAME, key = "#id", unless = "#result == null")
     public BotEntity findById(Long id) {
-        return botRepository.findById(id).orElse(null);
+        return botRepository.findWithAgentConfigById(id).orElse(null);
     }
 
     public List<BotEntity> findByType(String type) {
@@ -52,59 +67,75 @@ public class BotService {
                 .toList();
     }
 
-    /**
-     * Сохранение бота с автоматическим обновлением updatedAt
-     */
+    @Transactional
     public BotEntity save(BotEntity bot) {
         if (bot.getId() == null) {
-            // Новый бот - устанавливаем createdAt
             bot.setCreatedAt(LocalDateTime.now());
         }
-        // Обновляем updatedAt для всех сохранений
         bot.setUpdatedAt(LocalDateTime.now());
-        return botRepository.save(bot);
+        assertAssistantHasAgent(bot);
+        BotEntity saved = botRepository.save(bot);
+        evictBotCache(saved.getId());
+        return saved;
     }
 
-    public void deleteById(Long id) {
-        botRepository.deleteById(id);
+    private static void assertAssistantHasAgent(BotEntity bot) {
+        if ("assistant".equalsIgnoreCase(bot.getType()) && bot.getAgentConfig() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Assistant bot must reference an agent (agent_config_id)");
+        }
     }
 
     /**
-     * Проверка существования бота по ID
+     * Удаляет только строку бота; общий {@link AgentConfigEntity} не удаляется.
      */
+    @Transactional
+    public void deleteById(Long id) {
+        botRepository.findById(id).ifPresent(bot -> {
+            botRepository.delete(bot);
+            evictBotCache(id);
+        });
+    }
+
+    private void evictBotCache(Long id) {
+        if (id == null) {
+            return;
+        }
+        var cache = cacheManager.getCache(CACHE_NAME);
+        if (cache != null) {
+            cache.evict(id);
+        }
+    }
+
     public boolean existsById(Long id) {
         return botRepository.existsById(id);
     }
 
-    /**
-     * Проверка существования бота по username
-     */
     public boolean existsByUsername(String username) {
         return botRepository.findAll().stream()
                 .anyMatch(bot -> username.equalsIgnoreCase(bot.getUsername()));
     }
 
-    /**
-     * Поиск бота по имени
-     */
     public Optional<BotEntity> findByName(String name) {
         return botRepository.findAll().stream()
                 .filter(bot -> name.equals(bot.getName()))
                 .findFirst();
     }
 
-    /**
-     * Поиск бота по username
-     */
     public Optional<BotEntity> findByUsername(String username) {
         return botRepository.findAll().stream()
                 .filter(bot -> username.equalsIgnoreCase(bot.getUsername()))
                 .findFirst();
     }
 
-    /**
-     * Добавить ключевое слово-триггер. Дубликат по регистру — 409.
-     */
+    /** Сколько ботов ссылается на этот agent_config (для админки). */
+    public long countBotsUsingAgent(Long agentConfigId) {
+        if (agentConfigId == null) {
+            return 0;
+        }
+        return botRepository.countByAgentConfig_Id(agentConfigId);
+    }
+
     @Transactional
     public BotEntity addKeyword(Long botId, String rawKeyword) {
         BotEntity bot = botRepository.findById(botId)
@@ -123,9 +154,6 @@ public class BotService {
         return save(bot);
     }
 
-    /**
-     * Удалить ключевое слово (сравнение без учёта регистра).
-     */
     @Transactional
     public BotEntity removeKeyword(Long botId, String rawKeyword) {
         BotEntity bot = botRepository.findById(botId)
@@ -142,9 +170,6 @@ public class BotService {
         return save(bot);
     }
 
-    /**
-     * Полная замена списка ключевых слов (null = не менять; вызывать только с non-null из контроллера).
-     */
     @Transactional
     public BotEntity replaceKeywords(Long botId, List<String> rawList) {
         BotEntity bot = botRepository.findById(botId)

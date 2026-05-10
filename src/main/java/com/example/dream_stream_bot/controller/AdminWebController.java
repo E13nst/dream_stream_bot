@@ -1,9 +1,13 @@
 package com.example.dream_stream_bot.controller;
 
+import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
+import com.example.dream_stream_bot.model.agent.AgentProvider;
+import com.example.dream_stream_bot.model.agent.AgentRole;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.telegram.BotType;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
+import com.example.dream_stream_bot.service.agent.AgentConfigService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.springframework.stereotype.Controller;
@@ -15,20 +19,27 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+
+import static java.util.Comparator.comparing;
 
 @Controller
 public class AdminWebController {
 
     private final UserService userService;
     private final BotService botService;
+    private final AgentConfigService agentConfigService;
     private final AdminUserDetailsService adminUserDetailsService;
 
     public AdminWebController(UserService userService, BotService botService,
+                              AgentConfigService agentConfigService,
                               AdminUserDetailsService adminUserDetailsService) {
         this.userService = userService;
         this.botService = botService;
+        this.agentConfigService = agentConfigService;
         this.adminUserDetailsService = adminUserDetailsService;
     }
 
@@ -94,24 +105,28 @@ public class AdminWebController {
             @RequestParam String username,
             @RequestParam String token,
             @RequestParam String type,
-            @RequestParam(required = false) String prompt,
+            @RequestParam(required = false) Long agentConfigId,
             @RequestParam(required = false) String webhookUrl,
             @RequestParam(required = false) String description,
-            @RequestParam(required = false) Integer memWindow,
             @RequestParam(required = false) String miniapp,
             @RequestParam(required = false) String keywords,
             @RequestParam(name = "isActive", defaultValue = "false") boolean isActive) {
+        String typeValue = BotType.fromString(type).getValue();
+        if (BotType.ASSISTANT.getValue().equalsIgnoreCase(typeValue) && agentConfigId == null) {
+            return "redirect:/admin/bots?error=assistantNeedsAgent";
+        }
         BotEntity bot = new BotEntity();
         bot.setName(name.trim());
         bot.setUsername(username.trim());
         bot.setToken(token.trim());
-        bot.setType(BotType.fromString(type).getValue());
-        bot.setPrompt(blankToNull(prompt));
+        bot.setType(typeValue);
         bot.setWebhookUrl(blankToNull(webhookUrl));
         bot.setDescription(blankToNull(description));
-        bot.setMemWindow(memWindow != null ? memWindow : 100);
         bot.setMiniapp(blankToNull(miniapp));
         bot.setIsActive(isActive);
+        if (agentConfigId != null) {
+            bot.setAgentConfig(agentConfigService.requireById(agentConfigId));
+        }
         BotEntity saved = botService.save(bot);
         botService.replaceKeywords(saved.getId(), splitKeywords(keywords));
         return "redirect:/admin/bots?selectedId=" + saved.getId();
@@ -123,36 +138,133 @@ public class AdminWebController {
             @RequestParam String name,
             @RequestParam String username,
             @RequestParam String type,
+            @RequestParam(required = false) Long agentConfigId,
             @RequestParam(required = false) String webhookUrl,
             @RequestParam(required = false) String description,
-            @RequestParam(required = false) Integer memWindow,
             @RequestParam(required = false) String miniapp,
             @RequestParam(required = false) String keywords,
             @RequestParam(name = "isActive", defaultValue = "false") boolean isActive) {
         BotEntity bot = botService.findById(id);
         if (bot != null) {
+            String typeValue = BotType.fromString(type).getValue();
             bot.setName(name.trim());
             bot.setUsername(username.trim());
-            bot.setType(BotType.fromString(type).getValue());
+            bot.setType(typeValue);
             bot.setWebhookUrl(blankToNull(webhookUrl));
             bot.setDescription(blankToNull(description));
-            bot.setMemWindow(memWindow != null ? memWindow : 100);
             bot.setMiniapp(blankToNull(miniapp));
             bot.setIsActive(isActive);
+
+            if (BotType.COPYCAT.getValue().equalsIgnoreCase(typeValue)) {
+                bot.setAgentConfig(null);
+            } else if (BotType.ASSISTANT.getValue().equalsIgnoreCase(typeValue)) {
+                if (agentConfigId != null) {
+                    bot.setAgentConfig(agentConfigService.requireById(agentConfigId));
+                }
+            }
+
             botService.save(bot);
             botService.replaceKeywords(id, splitKeywords(keywords));
         }
         return "redirect:/admin/bots?selectedId=" + id;
     }
 
-    @PostMapping("/admin/bots/{id}/prompt")
-    public String updateBotPrompt(@PathVariable Long id, @RequestParam(required = false) String prompt) {
-        BotEntity bot = botService.findById(id);
-        if (bot != null) {
-            bot.setPrompt(blankToNull(prompt));
-            botService.save(bot);
+    @GetMapping("/admin/agents")
+    public String agentsPage(@RequestParam(name = "selectedId", required = false) Long selectedId, Model model) {
+        List<AgentConfigEntity> agents = agentConfigService.findAll().stream()
+                .sorted(comparing(AgentConfigEntity::getId))
+                .toList();
+        Long normalizedId = normalizeSelectedAgentId(selectedId, agents);
+        if (selectedId != null && normalizedId == null) {
+            return "redirect:/admin/agents";
         }
-        return "redirect:/admin/bots?selectedId=" + id;
+        fillAgentsModel(model, normalizedId, agents);
+        return "admin/agents";
+    }
+
+    @PostMapping("/admin/agents/new")
+    public String createAgent(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "CONVERSATION") String role,
+            @RequestParam(defaultValue = "OPENAI") String provider,
+            @RequestParam(defaultValue = "gpt-4o") String model,
+            @RequestParam(required = false) Double temperature,
+            @RequestParam(required = false) Double topP,
+            @RequestParam(required = false) Double frequencyPenalty,
+            @RequestParam(required = false) Double presencePenalty,
+            @RequestParam(required = false) String systemPrompt,
+            @RequestParam(required = false) Integer memWindow) {
+        AgentConfigEntity e = new AgentConfigEntity();
+        e.setName(name.trim());
+        e.setRole(AgentRole.valueOf(role));
+        e.setProvider(AgentProvider.valueOf(provider));
+        e.setModel(model.trim());
+        e.setTemperature(temperature);
+        e.setTopP(topP);
+        e.setFrequencyPenalty(frequencyPenalty);
+        e.setPresencePenalty(presencePenalty);
+        e.setSystemPrompt(blankToNull(systemPrompt));
+        e.setMemWindow(memWindow != null ? memWindow : 100);
+        AgentConfigEntity saved = agentConfigService.save(e);
+        return "redirect:/admin/agents?selectedId=" + saved.getId();
+    }
+
+    @PostMapping("/admin/agents/{id}/update")
+    public String updateAgent(
+            @PathVariable Long id,
+            @RequestParam String name,
+            @RequestParam String role,
+            @RequestParam String provider,
+            @RequestParam String model,
+            @RequestParam(required = false) Double temperature,
+            @RequestParam(required = false) Double topP,
+            @RequestParam(required = false) Double frequencyPenalty,
+            @RequestParam(required = false) Double presencePenalty,
+            @RequestParam(required = false) String systemPrompt,
+            @RequestParam(required = false) Integer memWindow) {
+        agentConfigService.update(
+                id,
+                name.trim(),
+                AgentRole.valueOf(role),
+                AgentProvider.valueOf(provider),
+                model.trim(),
+                temperature,
+                topP,
+                frequencyPenalty,
+                presencePenalty,
+                blankToNull(systemPrompt),
+                memWindow);
+        return "redirect:/admin/agents?selectedId=" + id;
+    }
+
+    private Long normalizeSelectedAgentId(Long selectedId, List<AgentConfigEntity> agents) {
+        if (selectedId == null) {
+            return null;
+        }
+        return agents.stream().anyMatch(a -> a.getId().equals(selectedId)) ? selectedId : null;
+    }
+
+    private void fillAgentsModel(Model model, Long selectedId, List<AgentConfigEntity> agents) {
+        Map<Long, Long> agentUsageCounts = new LinkedHashMap<>();
+        for (AgentConfigEntity a : agents) {
+            agentUsageCounts.put(a.getId(), botService.countBotsUsingAgent(a.getId()));
+        }
+        model.addAttribute("agentUsageCounts", agentUsageCounts);
+        model.addAttribute("agents", agents);
+        model.addAttribute("selectedId", selectedId);
+        model.addAttribute("roles", AgentRole.values());
+        model.addAttribute("providers", AgentProvider.values());
+
+        Optional<AgentConfigEntity> selected = selectedId == null
+                ? Optional.empty()
+                : agents.stream().filter(a -> a.getId().equals(selectedId)).findFirst();
+        model.addAttribute("selectedAgent", selected.orElse(null));
+        if (selectedId != null && selected.isPresent()) {
+            model.addAttribute("selectedAgentBotCount", botService.countBotsUsingAgent(selectedId));
+        } else {
+            model.addAttribute("selectedAgentBotCount", 0L);
+        }
+        model.addAttribute("openAgentDetailsModal", selectedId != null && selected.isPresent());
     }
 
     @PostMapping("/admin/bots/{id}/delete")
@@ -189,9 +301,14 @@ public class AdminWebController {
         model.addAttribute("botTypes", BotType.values());
         model.addAttribute("selectedId", selectedId);
 
+        List<AgentConfigEntity> allAgents = agentConfigService.findAll().stream()
+                .sorted(comparing(AgentConfigEntity::getId))
+                .toList();
+        model.addAttribute("allAgents", allAgents);
+
         Optional<BotEntity> selectedBot = selectedId == null
                 ? Optional.empty()
-                : bots.stream().filter(bot -> bot.getId().equals(selectedId)).findFirst();
+                : Optional.ofNullable(botService.findById(selectedId));
 
         model.addAttribute("selectedBot", selectedBot.orElse(null));
         model.addAttribute("selectedBotKeywords", selectedBot

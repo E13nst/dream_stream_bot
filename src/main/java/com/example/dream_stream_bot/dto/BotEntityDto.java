@@ -1,16 +1,20 @@
 package com.example.dream_stream_bot.dto;
 
+import com.example.dream_stream_bot.model.telegram.BotEntity;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * REST DTO for bots. Prompt and memory window come from the linked {@code agent_config} only.
+ */
 public class BotEntityDto {
 
     private Long id;
     private String name;
     private String username;
     private String token;
-    private String prompt;
     private String webhookUrl;
     private String type;
     private Boolean isActive;
@@ -18,21 +22,24 @@ public class BotEntityDto {
     private LocalDateTime updatedAt;
     private String description;
     private List<String> keywords = new ArrayList<>();
-    private Integer memWindow;
     private String miniapp;
+
+    private Long agentConfigId;
+    /** Denormalized from agent for convenience (single source of truth is agent_config). */
+    private String systemPrompt;
+    private Integer memWindow;
 
     public BotEntityDto() {
     }
 
-    public BotEntityDto(Long id, String name, String username, String token, String prompt,
+    public BotEntityDto(Long id, String name, String username, String token,
                         String webhookUrl, String type, Boolean isActive, LocalDateTime createdAt,
                         LocalDateTime updatedAt, String description, List<String> keywords,
-                        Integer memWindow, String miniapp) {
+                        String miniapp, Long agentConfigId, String systemPrompt, Integer memWindow) {
         this.id = id;
         this.name = name;
         this.username = username;
         this.token = token;
-        this.prompt = prompt;
         this.webhookUrl = webhookUrl;
         this.type = type;
         this.isActive = isActive;
@@ -40,8 +47,10 @@ public class BotEntityDto {
         this.updatedAt = updatedAt;
         this.description = description;
         this.keywords = keywords != null ? new ArrayList<>(keywords) : new ArrayList<>();
-        this.memWindow = memWindow;
         this.miniapp = miniapp;
+        this.agentConfigId = agentConfigId;
+        this.systemPrompt = systemPrompt;
+        this.memWindow = memWindow;
     }
 
     public Long getId() {
@@ -74,14 +83,6 @@ public class BotEntityDto {
 
     public void setToken(String token) {
         this.token = token;
-    }
-
-    public String getPrompt() {
-        return prompt;
-    }
-
-    public void setPrompt(String prompt) {
-        this.prompt = prompt;
     }
 
     public String getWebhookUrl() {
@@ -140,14 +141,6 @@ public class BotEntityDto {
         this.keywords = keywords != null ? new ArrayList<>(keywords) : new ArrayList<>();
     }
 
-    public Integer getMemWindow() {
-        return memWindow;
-    }
-
-    public void setMemWindow(Integer memWindow) {
-        this.memWindow = memWindow;
-    }
-
     public String getMiniapp() {
         return miniapp;
     }
@@ -156,20 +149,51 @@ public class BotEntityDto {
         this.miniapp = miniapp;
     }
 
+    public Long getAgentConfigId() {
+        return agentConfigId;
+    }
+
+    public void setAgentConfigId(Long agentConfigId) {
+        this.agentConfigId = agentConfigId;
+    }
+
+    public String getSystemPrompt() {
+        return systemPrompt;
+    }
+
+    public void setSystemPrompt(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
+    }
+
+    public Integer getMemWindow() {
+        return memWindow;
+    }
+
+    public void setMemWindow(Integer memWindow) {
+        this.memWindow = memWindow;
+    }
+
     /**
      * Token не возвращается в API ответах для безопасности.
      */
-    public static BotEntityDto fromEntity(com.example.dream_stream_bot.model.telegram.BotEntity entity) {
+    public static BotEntityDto fromEntity(BotEntity entity) {
         if (entity == null) {
             return null;
         }
-
+        Long agentId = null;
+        String sysPrompt = null;
+        Integer mw = null;
+        if (entity.getAgentConfig() != null) {
+            var ac = entity.getAgentConfig();
+            agentId = ac.getId();
+            sysPrompt = ac.getSystemPrompt();
+            mw = ac.getMemWindow();
+        }
         return new BotEntityDto(
                 entity.getId(),
                 entity.getName(),
                 entity.getUsername(),
                 null,
-                entity.getPrompt(),
                 entity.getWebhookUrl(),
                 entity.getType(),
                 entity.getIsActive(),
@@ -177,8 +201,10 @@ public class BotEntityDto {
                 entity.getUpdatedAt(),
                 entity.getDescription(),
                 entity.getBotTriggersList(),
-                entity.getMemWindow(),
-                entity.getMiniapp()
+                entity.getMiniapp(),
+                agentId,
+                sysPrompt,
+                mw
         );
     }
 
@@ -200,6 +226,7 @@ public class BotEntityDto {
                 ", username='" + username + '\'' +
                 ", type='" + type + '\'' +
                 ", isActive=" + isActive +
+                ", agentConfigId=" + agentConfigId +
                 ", miniapp='" + miniapp + '\'' +
                 ", createdAt=" + createdAt +
                 '}';

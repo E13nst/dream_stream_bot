@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -48,12 +46,9 @@ public class CreateBotRequest {
     @Size(max = 512, message = "Miniapp URL не должен превышать 512 символов")
     @Pattern(regexp = "^$|^https?://.*", message = "Miniapp URL должен быть валидным HTTP/HTTPS URL или пустым", flags = Pattern.Flag.CASE_INSENSITIVE)
     private String miniapp;
-    
-    private String prompt; // TEXT поле, без ограничений по длине
-    
-    @Min(value = 1, message = "Окно памяти должно быть не менее 1")
-    @Max(value = 10000, message = "Окно памяти должно быть не более 10000")
-    private Integer memWindow;
+
+    /** Required for {@link BotType#ASSISTANT}; ignored for non-AI bots. */
+    private Long agentConfigId;
     
     private Boolean isActive;
     
@@ -124,21 +119,13 @@ public class CreateBotRequest {
     public void setMiniapp(String miniapp) {
         this.miniapp = miniapp;
     }
-    
-    public String getPrompt() {
-        return prompt;
+
+    public Long getAgentConfigId() {
+        return agentConfigId;
     }
-    
-    public void setPrompt(String prompt) {
-        this.prompt = prompt;
-    }
-    
-    public Integer getMemWindow() {
-        return memWindow;
-    }
-    
-    public void setMemWindow(Integer memWindow) {
-        this.memWindow = memWindow;
+
+    public void setAgentConfigId(Long agentConfigId) {
+        this.agentConfigId = agentConfigId;
     }
     
     public Boolean getIsActive() {

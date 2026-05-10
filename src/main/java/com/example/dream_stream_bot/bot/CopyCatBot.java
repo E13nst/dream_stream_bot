@@ -1,31 +1,24 @@
 package com.example.dream_stream_bot.bot;
 
-import com.example.dream_stream_bot.model.telegram.BotEntity;
+import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public class CopyCatBot extends AbstractTelegramBot {
-    public CopyCatBot(BotEntity botEntity, MessageHandlerService messageHandlerService, UserService userService) {
-        super(botEntity, messageHandlerService, userService);
+    public CopyCatBot(Long botId, BotService botService,
+                      MessageHandlerService messageHandlerService, UserService userService) {
+        super(botId, botService, messageHandlerService, userService);
     }
 
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            Message msg = update.getMessage();
+            var msg = update.getMessage();
             ensureUserExists(msg.getFrom());
-            String text = msg.getText();
-            String conversationId = getConversationId(msg.getChatId());
-            // Если потребуется память — использовать conversationId
-            SendMessage reply = SendMessage.builder()
-                    .chatId(msg.getChatId())
-                    .text(text)
-                    .build();
+            SendMessage reply = new SendMessage(msg.getChatId().toString(), msg.getText());
             sendWithLogging(reply);
         }
     }
-} 
+}

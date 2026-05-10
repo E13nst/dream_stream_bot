@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot.bot;
 
 import com.example.dream_stream_bot.model.telegram.BotEntity;
+import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.slf4j.Logger;
@@ -14,17 +15,25 @@ import org.telegram.telegrambots.meta.api.methods.ActionType;
 import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 
 public abstract class AbstractTelegramBot extends TelegramLongPollingBot {
-    protected final BotEntity botEntity;
+    protected final Long botId;
+    protected final BotService botService;
     protected MessageHandlerService messageHandlerService;
     protected final UserService userService;
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractTelegramBot.class);
 
-    public AbstractTelegramBot(BotEntity botEntity,
+    public AbstractTelegramBot(Long botId,
+                               BotService botService,
                                MessageHandlerService messageHandlerService,
                                UserService userService) {
-        this.botEntity = botEntity;
+        this.botId = botId;
+        this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userService = userService;
+    }
+
+    /** Fresh row from DB (cached); used so prompt / keywords / token changes apply without restart. */
+    protected BotEntity getBotEntity() {
+        return botService.findById(botId);
     }
 
     /**
@@ -45,12 +54,14 @@ public abstract class AbstractTelegramBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return botEntity.getUsername();
+        BotEntity b = getBotEntity();
+        return b != null ? b.getUsername() : "";
     }
 
     @Override
     public String getBotToken() {
-        return botEntity.getToken();
+        BotEntity b = getBotEntity();
+        return b != null ? b.getToken() : "";
     }
 
     @Override

@@ -37,6 +37,19 @@
                                 th:value="${botType.value}">assistant</option>
                     </select>
                 </div>
+                <div class="mb-3" th:if="${selectedBot.type == 'assistant'}">
+                    <label class="form-label" for="botDetailAgent">LLM Agent</label>
+                    <select class="form-select form-select-sm" id="botDetailAgent" name="agentConfigId" required>
+                        <option disabled value="" th:selected="${selectedBot.agentConfig == null}">— выберите агента —</option>
+                        <option th:each="ag : ${allAgents}"
+                                th:selected="${selectedBot.agentConfig != null && selectedBot.agentConfig.id == ag.id}"
+                                th:text="${ag.name + ' (id ' + ag.id + ', ' + ag.model + ')'}"
+                                th:value="${ag.id}">agent</option>
+                    </select>
+                    <div class="form-text">
+                        Промпт и параметры модели — только в <a th:href="@{/admin/agents}">Agents</a>. Один агент может быть привязан к нескольким ботам.
+                    </div>
+                </div>
                 <div class="mb-3">
                     <label class="form-label" for="botDetailKeywords">Keywords (comma separated)</label>
                     <input class="form-control form-control-sm" id="botDetailKeywords" name="keywords" th:value="${selectedBotKeywords}">
@@ -53,25 +66,11 @@
                     <label class="form-label" for="botDetailDescription">Description</label>
                     <input class="form-control form-control-sm" id="botDetailDescription" name="description" th:value="${selectedBot.description}">
                 </div>
-                <div class="mb-3">
-                    <label class="form-label" for="botDetailMemWindow">Memory Window</label>
-                    <input class="form-control form-control-sm admin-num" id="botDetailMemWindow" min="1" name="memWindow" th:value="${selectedBot.memWindow}" type="number">
-                </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" id="selectedBotActive" name="isActive" th:checked="${selectedBot.isActive}" type="checkbox" value="true">
                     <label class="form-check-label" for="selectedBotActive">Active</label>
                 </div>
                 <button class="btn btn-primary btn-sm" type="submit">Save Parameters</button>
-            </form>
-
-            <p class="admin-section-heading">Промпт</p>
-            <form method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/prompt'}">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <div class="mb-3">
-                    <label class="form-label" for="botDetailPrompt">Prompt</label>
-                    <textarea class="form-control form-control-sm" id="botDetailPrompt" name="prompt" rows="8" th:text="${selectedBot.prompt}"></textarea>
-                </div>
-                <button class="btn btn-outline-primary btn-sm" type="submit">Update Prompt</button>
             </form>
         </div>
     </div>

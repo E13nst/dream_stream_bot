@@ -6,6 +6,7 @@ import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.security.TelegramAuthenticationFilter;
 import com.example.dream_stream_bot.security.TelegramAuthenticationProvider;
 import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
+import com.example.dream_stream_bot.service.agent.AgentConfigService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,9 @@ class AdminSecurityIntegrationTest {
 
     @MockBean
     private BotService botService;
+
+    @MockBean
+    private AgentConfigService agentConfigService;
 
     @MockBean
     private TelegramAuthenticationFilter telegramAuthenticationFilter;
