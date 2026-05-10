@@ -15,10 +15,13 @@ description = 'telegram-bot-dream-stream'
 sourceCompatibility = '17'
 targetCompatibility = '17'
 
+// Без прямого mavenCentral(): с одного IP часто режут repo1.maven.org. Используем зеркала Central + региональные.
 repositories {
     mavenLocal()
-    maven { url 'https://maven.aliyun.com/repository/public' }
+    // Тот же индекс, что и Maven Central, но другой хост (обычно другие лимиты, чем у repo1.maven.org)
+    maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }
     maven { url 'https://repo.huaweicloud.com/repository/maven/' }
+    maven { url 'https://maven.aliyun.com/repository/public' }
     maven { url 'https://jitpack.io' }
     maven { url 'https://repo.spring.io/milestone' }
     mavenCentral()
