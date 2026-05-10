@@ -4,7 +4,7 @@ server:
 admin:
   auth:
     username: ${ADMIN_AUTH_USERNAME:admin}
-    password: ${ADMIN_AUTH_PASSWORD:}
+    # Emergency override: set ADMIN_AUTH_PASSWORD_HASH (BCrypt) to force-reset the password stored in DB.
     password-hash: ${ADMIN_AUTH_PASSWORD_HASH:}
   bootstrap:
     enabled: ${ADMIN_BOOTSTRAP_ENABLED:true}

@@ -8,6 +8,7 @@
             <a class="admin-nav-link" th:classappend="${active == 'dashboard'} ? ' admin-nav-link--active'" th:href="@{/admin}">Dashboard</a>
             <a class="admin-nav-link" th:classappend="${active == 'users'} ? ' admin-nav-link--active'" th:href="@{/admin/users}">Users</a>
             <a class="admin-nav-link" th:classappend="${active == 'bots'} ? ' admin-nav-link--active'" th:href="@{/admin/bots}">Bots</a>
+            <a class="admin-nav-link" th:classappend="${active == 'settings'} ? ' admin-nav-link--active'" th:href="@{/admin/settings}">Settings</a>
         </div>
         <form th:action="@{/logout}" method="post">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

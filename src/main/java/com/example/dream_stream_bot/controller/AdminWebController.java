@@ -3,6 +3,7 @@ package com.example.dream_stream_bot.controller;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.telegram.BotType;
 import com.example.dream_stream_bot.model.user.UserEntity;
+import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.springframework.stereotype.Controller;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Comparator;
 import java.util.List;
@@ -21,10 +23,13 @@ public class AdminWebController {
 
     private final UserService userService;
     private final BotService botService;
+    private final AdminUserDetailsService adminUserDetailsService;
 
-    public AdminWebController(UserService userService, BotService botService) {
+    public AdminWebController(UserService userService, BotService botService,
+                              AdminUserDetailsService adminUserDetailsService) {
         this.userService = userService;
         this.botService = botService;
+        this.adminUserDetailsService = adminUserDetailsService;
     }
 
     @GetMapping("/login")
@@ -43,6 +48,7 @@ public class AdminWebController {
         model.addAttribute("adminsCount", adminsCount);
         model.addAttribute("botsCount", botsCount);
         model.addAttribute("activeBotsCount", activeBotsCount);
+        model.addAttribute("showPasswordWarning", adminUserDetailsService.isDefaultPassword());
         return "admin/dashboard";
     }
 
@@ -211,7 +217,35 @@ public class AdminWebController {
         return value.trim();
     }
 
-    private List<UserEntity> filterUsers(String query) {
+    @GetMapping("/admin/settings")
+    public String settingsPage() {
+        return "admin/settings";
+    }
+
+    @PostMapping("/admin/settings/password")
+    public String changePassword(
+            @RequestParam String currentPassword,
+            @RequestParam String newPassword,
+            @RequestParam String confirmPassword,
+            RedirectAttributes redirectAttributes) {
+        if (newPassword == null || newPassword.length() < 8) {
+            redirectAttributes.addFlashAttribute("error", "Новый пароль должен содержать не менее 8 символов");
+            return "redirect:/admin/settings";
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            redirectAttributes.addFlashAttribute("error", "Новый пароль и подтверждение не совпадают");
+            return "redirect:/admin/settings";
+        }
+        try {
+            adminUserDetailsService.changePassword(currentPassword, newPassword);
+            redirectAttributes.addFlashAttribute("success", "Пароль успешно изменён");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/settings";
+    }
+
+        private List<UserEntity> filterUsers(String query) {
         List<UserEntity> users = userService.findAll();
         String normalized = query == null ? "" : query.trim().toLowerCase();
         return users.stream()

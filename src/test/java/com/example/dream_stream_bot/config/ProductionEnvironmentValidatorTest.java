@@ -25,33 +25,19 @@ class ProductionEnvironmentValidatorTest {
                 .hasMessageContaining("Missing required production configuration")
                 .hasMessageContaining("OPENAI_API_KEY")
                 .hasMessageContaining("DB_HOST")
-                .hasMessageContaining("ADMIN_AUTH_PASSWORD or ADMIN_AUTH_PASSWORD_HASH")
                 .hasMessageContaining("TELEGRAM_WEBHOOK_BASE_URL or BOT_WEBHOOK_URL");
     }
 
     @Test
-    void prodWithPasswordHashAndWebhookLongPolling_doesNotRequireWebhookBaseUrl() {
+    void prodWithLongPolling_doesNotRequireWebhookBaseUrl() {
         MockEnvironment env = minimalProdEnv();
         env.setProperty("telegram.delivery-mode", "long-polling");
-        env.setProperty("admin.auth.password", "");
-        env.setProperty("admin.auth.password-hash", "$2a$10$abcdefghijklmnopqrstuv");
-
-        ProductionEnvironmentValidator.validateIfProd(env);
-    }
-
-    @Test
-    void prodWithPlainPassword_succeeds() {
-        MockEnvironment env = minimalProdEnv();
-        env.setProperty("admin.auth.password", "secret");
-        env.setProperty("admin.auth.password-hash", "");
-
         ProductionEnvironmentValidator.validateIfProd(env);
     }
 
     @Test
     void prodWebhookMode_requiresBaseUrl() {
         MockEnvironment env = minimalProdEnv();
-        env.setProperty("admin.auth.password", "secret");
         env.setProperty("telegram.delivery-mode", "webhook");
         env.setProperty("telegram.webhook.base-url", "");
 
@@ -75,8 +61,7 @@ class ProductionEnvironmentValidatorTest {
         env.setProperty("DB_NAME", "mindbase");
         env.setProperty("DB_USERNAME", "u");
         env.setProperty("DB_PASSWORD", "p");
-        env.setProperty("telegram.delivery-mode", "webhook");
-        env.setProperty("telegram.webhook.base-url", "https://example.com");
+        env.setProperty("telegram.delivery-mode", "long-polling");
         return env;
     }
 }

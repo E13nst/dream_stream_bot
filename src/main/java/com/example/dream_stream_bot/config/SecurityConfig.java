@@ -2,8 +2,8 @@ package com.example.dream_stream_bot.config;
 
 import com.example.dream_stream_bot.security.TelegramAuthenticationFilter;
 import com.example.dream_stream_bot.security.TelegramAuthenticationProvider;
+import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -11,12 +11,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -148,31 +145,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(
-            @Value("${admin.auth.username:admin}") String adminUsername,
-            @Value("${admin.auth.password-hash:}") String passwordHash,
-            @Value("${admin.auth.password:admin12345}") String password) {
-        if ((passwordHash == null || passwordHash.isBlank()) && (password == null || password.isBlank())) {
-            throw new IllegalStateException(
-                    "Admin credentials missing: set ADMIN_AUTH_PASSWORD or ADMIN_AUTH_PASSWORD_HASH "
-                            + "(prod checks this at startup via ProductionEnvironmentValidator).");
-        }
-        String effectiveHash = (passwordHash != null && !passwordHash.isBlank())
-                ? passwordHash
-                : passwordEncoder().encode(password);
-
-        return new InMemoryUserDetailsManager(
-                User.withUsername(adminUsername)
-                        .password(effectiveHash)
-                        .roles("ADMIN")
-                        .build()
-        );
-    }
-
-    @Bean
-    public DaoAuthenticationProvider adminAuthenticationProvider(UserDetailsService userDetailsService) {
+    public DaoAuthenticationProvider adminAuthenticationProvider(AdminUserDetailsService adminUserDetailsService) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        provider.setUserDetailsService(adminUserDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }

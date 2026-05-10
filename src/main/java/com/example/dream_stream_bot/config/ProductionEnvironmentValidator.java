@@ -33,8 +33,6 @@ public final class ProductionEnvironmentValidator {
         requireNonBlank(environment, "DB_USERNAME", "DB_USERNAME", errors);
         requireNonBlank(environment, "DB_PASSWORD", "DB_PASSWORD", errors);
 
-        requireAdminCredential(environment, errors);
-
         requireWebhookBaseIfWebhookMode(environment, errors);
 
         if (!errors.isEmpty()) {
@@ -62,14 +60,6 @@ public final class ProductionEnvironmentValidator {
         String value = environment.getProperty(Objects.requireNonNull(propertyKey, "propertyKey"));
         if (isBlank(value)) {
             errors.add(envHint + " (property `" + propertyKey + "`)");
-        }
-    }
-
-    private static void requireAdminCredential(Environment environment, List<String> errors) {
-        String password = environment.getProperty("admin.auth.password");
-        String passwordHash = environment.getProperty("admin.auth.password-hash");
-        if (isBlank(password) && isBlank(passwordHash)) {
-            errors.add("ADMIN_AUTH_PASSWORD or ADMIN_AUTH_PASSWORD_HASH (properties `admin.auth.password` / `admin.auth.password-hash`)");
         }
     }
 

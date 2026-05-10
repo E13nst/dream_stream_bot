@@ -4,8 +4,7 @@ server:
 admin:
   auth:
     username: ${ADMIN_AUTH_USERNAME:admin}
-    # For production prefer ADMIN_AUTH_PASSWORD_HASH (BCrypt).
-    password: ${ADMIN_AUTH_PASSWORD:admin12345}
+    # Emergency override: set ADMIN_AUTH_PASSWORD_HASH (BCrypt) to force-reset the password stored in DB.
     password-hash: ${ADMIN_AUTH_PASSWORD_HASH:}
   bootstrap:
     enabled: ${ADMIN_BOOTSTRAP_ENABLED:true}
