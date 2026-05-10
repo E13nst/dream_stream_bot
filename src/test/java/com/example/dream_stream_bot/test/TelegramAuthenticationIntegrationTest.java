@@ -12,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
-
 import java.time.Instant;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -30,11 +28,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@TestPropertySource(properties = {
-    "spring.jpa.hibernate.ddl-auto=create-drop",
-    "spring.datasource.url=jdbc:h2:mem:testdb",
-    "spring.datasource.driver-class-name=org.h2.Driver"
-})
 public class TelegramAuthenticationIntegrationTest {
 
     @LocalServerPort
@@ -82,7 +75,7 @@ public class TelegramAuthenticationIntegrationTest {
         assertFalse(bots.isEmpty(), "В базе данных должен быть хотя бы один бот");
         
         // Проверяем через API
-        Response response = given()
+        given()
                 .contentType(ContentType.JSON)
                 .when()
                 .get("/api/bots")
@@ -204,12 +197,12 @@ public class TelegramAuthenticationIntegrationTest {
                     .map(entry -> entry.getKey() + "=" + entry.getValue())
                     .collect(Collectors.joining("\n"));
             
-            // Вычисляем HMAC-SHA256 подпись согласно документации Telegram
-            // Шаг 1: Создаем секретный ключ (secret_key = HMAC-SHA256(bot_token, "WebAppData"))
+            // Вычисляем HMAC-SHA256 подпись (как в {@link com.example.dream_stream_bot.util.TelegramInitDataValidator#validateHash})
+            // secret_key = HMAC_SHA256(key="WebAppData", data=bot_token)
             Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec botTokenKeySpec = new SecretKeySpec(botToken.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            SecretKeySpec botTokenKeySpec = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(botTokenKeySpec);
-            byte[] secretKey = mac.doFinal("WebAppData".getBytes(StandardCharsets.UTF_8));
+            byte[] secretKey = mac.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
             
             // Шаг 2: Вычисляем hash (hash = HMAC-SHA256(data_check_string, secret_key))
             mac = Mac.getInstance("HmacSHA256");
