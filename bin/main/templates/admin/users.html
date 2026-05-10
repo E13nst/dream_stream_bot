@@ -8,7 +8,8 @@
     <link rel="stylesheet" th:href="@{/css/admin.css}">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
-<body class="admin-app">
+<body>
+<div class="admin-app">
 <div class="admin-toast-host" id="adminToastHost" aria-atomic="true" aria-live="polite"></div>
 <th:block th:replace="~{admin/fragments/nav-sidebar :: adminNav (active='users')}"></th:block>
 <main class="admin-app__main">
@@ -34,5 +35,6 @@
     </div>
     <div id="usersTable" th:replace="~{admin/fragments/users-table :: usersTable}"></div>
 </main>
+</div>
 </body>
 </html>

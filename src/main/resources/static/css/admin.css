@@ -1,5 +1,10 @@
 /* Dream Stream Admin — design tokens & overrides (Bootstrap 5.3 retained) */
 
+/* Модалки Bootstrap вешают backdrop на body; flex на body ломает fixed-слой в Chrome. */
+body:has(> .admin-app) {
+  margin: 0;
+}
+
 :root {
   --admin-space-1: 4px;
   --admin-space-2: 8px;
@@ -59,6 +64,8 @@
 }
 
 .admin-app__main {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
   padding: var(--admin-space-5);
@@ -126,6 +133,8 @@
 
 /* --- Sidebar nav --- */
 .admin-app .admin-sidebar {
+  position: relative;
+  z-index: 5;
   width: 260px;
   flex-shrink: 0;
   min-height: 100vh;
@@ -238,6 +247,19 @@
   font-weight: 700;
   font-size: 1.75rem;
   font-variant-numeric: tabular-nums;
+}
+
+.admin-app .admin-stat-card--interactive {
+  transition:
+    border-color var(--admin-transition),
+    box-shadow var(--admin-transition),
+    transform var(--admin-transition);
+}
+
+.admin-app .admin-stat-card--interactive:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: var(--admin-shadow-md);
+  transform: translateY(-1px);
 }
 
 /* --- Tables --- */
@@ -447,7 +469,7 @@
   margin-bottom: var(--admin-space-4);
   padding: var(--admin-space-4);
   border-width: 1px;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .admin-skeleton {

@@ -61,19 +61,24 @@ public class AdminWebController {
 
     @GetMapping("/admin/bots")
     public String botsPage(@RequestParam(name = "selectedId", required = false) Long selectedId, Model model) {
-        fillBotsModel(model, selectedId);
+        List<BotEntity> bots = getSortedBots();
+        Long normalizedId = normalizeSelectedId(selectedId, bots);
+        if (selectedId != null && normalizedId == null) {
+            return "redirect:/admin/bots";
+        }
+        fillBotsModel(model, normalizedId);
         return "admin/bots";
     }
 
     @GetMapping("/admin/bots/table")
     public String botsTable(@RequestParam(name = "selectedId", required = false) Long selectedId, Model model) {
-        fillBotsModel(model, selectedId);
+        fillBotsModel(model, normalizeSelectedId(selectedId, getSortedBots()));
         return "admin/fragments/bots-table :: botsTable";
     }
 
     @GetMapping("/admin/bots/details")
     public String botDetails(@RequestParam(name = "selectedId", required = false) Long selectedId, Model model) {
-        fillBotsModel(model, selectedId);
+        fillBotsModel(model, normalizeSelectedId(selectedId, getSortedBots()));
         return "admin/fragments/bot-details :: botDetails";
     }
 
@@ -162,6 +167,16 @@ public class AdminWebController {
         return "redirect:/admin/bots?selectedId=" + id;
     }
 
+    /**
+     * {@code null} если параметр {@code null}; иначе id только если бот с таким id есть в списке.
+     */
+    private Long normalizeSelectedId(Long selectedId, List<BotEntity> bots) {
+        if (selectedId == null) {
+            return null;
+        }
+        return bots.stream().anyMatch(b -> b.getId().equals(selectedId)) ? selectedId : null;
+    }
+
     private void fillBotsModel(Model model, Long selectedId) {
         List<BotEntity> bots = getSortedBots();
         model.addAttribute("bots", bots);
@@ -169,13 +184,14 @@ public class AdminWebController {
         model.addAttribute("selectedId", selectedId);
 
         Optional<BotEntity> selectedBot = selectedId == null
-                ? bots.stream().findFirst()
+                ? Optional.empty()
                 : bots.stream().filter(bot -> bot.getId().equals(selectedId)).findFirst();
 
         model.addAttribute("selectedBot", selectedBot.orElse(null));
         model.addAttribute("selectedBotKeywords", selectedBot
                 .map(bot -> String.join(", ", bot.getBotTriggersList()))
                 .orElse(""));
+        model.addAttribute("openBotDetailsModal", selectedId != null && selectedBot.isPresent());
     }
 
     private List<String> splitKeywords(String keywords) {

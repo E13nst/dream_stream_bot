@@ -2,8 +2,8 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <th:block th:fragment="adminNav (active)">
-    <nav class="navbar navbar-dark admin-sidebar">
-        <a class="navbar-brand admin-sidebar-brand mb-0" th:href="@{/admin}">Dream Stream Admin</a>
+    <nav class="admin-sidebar" role="navigation" aria-label="Админка">
+        <a class="admin-sidebar-brand mb-0 text-decoration-none" th:href="@{/admin}">Dream Stream Admin</a>
         <div class="admin-sidebar-links">
             <a class="admin-nav-link" th:classappend="${active == 'dashboard'} ? ' admin-nav-link--active'" th:href="@{/admin}">Dashboard</a>
             <a class="admin-nav-link" th:classappend="${active == 'users'} ? ' admin-nav-link--active'" th:href="@{/admin/users}">Users</a>
