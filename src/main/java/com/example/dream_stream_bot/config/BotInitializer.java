@@ -112,7 +112,7 @@ public class BotInitializer {
                             log.info("📡 Bot '{}' current delivery: unknown(unavailable)", bot.getUsername());
                         }
 
-                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, messageHandlerService, userStateService, userService);
+                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, botService, messageHandlerService, userStateService, userService);
                         botRegistry.put(bot.getUsername(), telegramBot);
 
                         if ("long-polling".equals(mode)) {

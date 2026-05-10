@@ -1,11 +1,10 @@
 -- Тестовые данные для автотестов
 
--- Очищаем таблицы
 DELETE FROM users;
 DELETE FROM bot_keyword;
 DELETE FROM bot;
+DELETE FROM agent_config;
 
--- Тестовый бот для интеграционных тестов (BotService.findAll и т.п.)
 INSERT INTO bot (name, username, token, type, is_active, mem_window, created_at, updated_at)
 VALUES (
     'IntegrationTestBot',
@@ -14,10 +13,19 @@ VALUES (
     'assistant',
     true,
     100,
-    NOW(),
-    NOW()
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
 );
 
--- Вставляем тестового пользователя
+INSERT INTO agent_config (name, role, provider, model, system_prompt, mem_window, created_at, updated_at)
+SELECT 'agent_' || CAST(id AS VARCHAR), 'CONVERSATION', 'OPENAI', 'gpt-4o', 'Test system prompt', 100, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM bot WHERE username = 'integration_test_bot';
+
+UPDATE bot b
+SET agent_config_id = (
+    SELECT a.id FROM agent_config a WHERE a.name = ('agent_' || CAST(b.id AS VARCHAR))
+)
+WHERE b.username = 'integration_test_bot';
+
 INSERT INTO users (telegram_id, username, first_name, last_name, role, created_at, updated_at)
-VALUES (141614461, 'E13nst', 'Andrey', 'Mitroshin', 'USER', NOW(), NOW());
+VALUES (141614461, 'E13nst', 'Andrey', 'Mitroshin', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
