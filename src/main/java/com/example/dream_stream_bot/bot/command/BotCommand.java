@@ -4,6 +4,8 @@ import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Команда бота. Реализация — Spring {@code @Component},
@@ -29,6 +31,28 @@ public interface BotCommand {
     }
 
     List<OutgoingMessage> handle(CommandContext ctx);
+
+    /**
+     * Описание команды для меню Telegram (выпадающего по «/»).
+     * Пустой {@link Optional} означает, что команда не должна публиковаться в меню
+     * (например, callback-обработчики или служебные).
+     *
+     * Telegram требует 1..256 символов; короткие, аккуратные формулировки.
+     */
+    default Optional<String> menuDescription() {
+        return Optional.empty();
+    }
+
+    /**
+     * Области чатов, в которых команда отображается в меню Telegram.
+     * По умолчанию — везде, где она применима ({@link #appliesIn(ChatScope)}).
+     *
+     * Меняется отдельно от {@link #appliesIn(ChatScope)}, чтобы можно было
+     * скрыть пункт из меню группового чата, оставив выполнение по явному вводу.
+     */
+    default Set<ChatScope> menuScopes() {
+        return Set.of(ChatScope.PRIVATE, ChatScope.GROUP, ChatScope.SUPERGROUP);
+    }
 
     /** Удобный helper для пустого ответа. */
     static List<OutgoingMessage> silent() {

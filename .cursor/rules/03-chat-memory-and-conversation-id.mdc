@@ -1,0 +1,19 @@
+---
+description: Безопасная работа с chat_memory и схемой conversationId
+globs: src/main/java/com/example/dream_stream_bot/{bot,service/memory,service/access}/**
+alwaysApply: false
+---
+
+# Chat memory и идентификаторы диалога
+
+- Сохраняй контракт `conversationId`:
+  - личка: `bot:<bot_id>:user:<user_id>`
+  - группа: `bot:<bot_id>:chat:<chat_id>:user:<user_id>`
+  - топик: `bot:<bot_id>:chat:<chat_id>:thread:<thread_id>:user:<user_id>`
+- Не используй неоднозначные `LIKE`-шаблоны для удаления истории пользователя.
+- Для personal-retention очищай только личную историю пользователя, не задевая групповые разговоры.
+
+## Пример анти-паттерна
+
+- Плохо: шаблон вроде `%user:5` (может зацепить `user:55`).
+- Хорошо: точный суффикс `:user:<id>` или точный `conversationId`.

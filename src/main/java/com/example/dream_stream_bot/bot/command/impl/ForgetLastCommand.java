@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * /forget_last — удалить последнюю пару user→assistant из истории диалога.
@@ -26,6 +27,11 @@ public class ForgetLastCommand implements BotCommand {
     @Override
     public String name() {
         return "forget_last";
+    }
+
+    @Override
+    public Optional<String> menuDescription() {
+        return Optional.of("Удалить последний обмен из памяти");
     }
 
     @Override

@@ -1,0 +1,23 @@
+---
+description: Чеклист для rollout флагов согласий и комплаенса
+globs: src/main/java/com/example/dream_stream_bot/{service/onboarding,service/consent,service/access,controller,dto,model}/**,src/main/resources/templates/admin/**,src/main/resources/db/migration/**,src/test/**
+alwaysApply: false
+---
+
+# Rollout комплаенс-флагов без регрессий
+
+- Любой новый флаг комплаенса проводи сквозным изменением: БД -> Entity -> Controller/API -> Admin UI -> Onboarding -> Consent checks -> AccessGate сообщения.
+- Если переносишь флаг между сущностями, добавляй backfill-миграцию для существующих данных.
+- Не оставляй "висячие" параметры в форме/DTO/сервисе после переноса логики.
+
+## Минимальный чеклист
+
+- Создание и редактирование в админке работают одинаково.
+- REST create/update принимают и возвращают флаг (если он часть API-контракта).
+- Онбординг не требует документы, если соответствующий флаг выключен.
+- `hasRequiredConsents()` и `hasParticipantConsents()` используют тот же источник истины, что и онбординг.
+- Обновлен `data-test.sql` при новых `NOT NULL` полях.
+
+## Анти-паттерн
+
+- Частично перенести флаг (например, UI уже в `bot`, а проверка все еще читает `agent_config`).

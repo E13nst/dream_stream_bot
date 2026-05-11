@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot.bot.command.impl;
 
 import com.example.dream_stream_bot.bot.command.BotCommand;
+import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * /forget_me — отзыв согласий по подпискам этого бота, отмена ваших подписок как владельца на этом боте и полная очистка истории для вас в этом боте.
@@ -34,6 +37,16 @@ public class ForgetMeCommand implements BotCommand {
     @Override
     public String name() {
         return "forget_me";
+    }
+
+    @Override
+    public Optional<String> menuDescription() {
+        return Optional.of("Отозвать согласия и удалить мои данные");
+    }
+
+    @Override
+    public Set<ChatScope> menuScopes() {
+        return Set.of(ChatScope.PRIVATE);
     }
 
     @Override

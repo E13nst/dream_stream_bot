@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * {@code /referral} — персональная ссылка {@code ref_<internal_user_id>} для {@link com.example.dream_stream_bot.service.onboarding.OnboardingService}.
@@ -24,6 +26,16 @@ public class ReferralCommand implements BotCommand {
     @Override
     public boolean appliesIn(ChatScope scope) {
         return scope == ChatScope.PRIVATE;
+    }
+
+    @Override
+    public Optional<String> menuDescription() {
+        return Optional.of("Моя реферальная ссылка");
+    }
+
+    @Override
+    public Set<ChatScope> menuScopes() {
+        return Set.of(ChatScope.PRIVATE);
     }
 
     @Override

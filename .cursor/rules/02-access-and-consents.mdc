@@ -1,0 +1,20 @@
+---
+description: Правила для AccessGate и системы согласий
+globs: src/main/java/com/example/dream_stream_bot/service/{access,consent,subscription}/**
+alwaysApply: false
+---
+
+# Access + Consents
+
+- Не упрощай проверку согласий до одного документа (например, только OFFER), если бизнес-логика требует полный набор.
+- Разделяй требования для владельца подписки и участника группы (для участника OFFER не обязателен).
+- При MATERIAL-изменениях документов сохраняй грейс-период и эскалацию в `BLOCKED_CONSENT` после дедлайна.
+
+## Что нельзя ломать
+
+- Статусы доступа: `PENDING_CONSENT`, `AWAITING_ACTIVATION`, `EXPIRED`, `BLOCKED_CONSENT`, `CANCELLED`.
+- Поведение мягкого/жесткого ограничения по участникам в группах.
+
+## Пример
+
+- Если меняешь `escalateExpiredConsents()`, проверяй актуальные согласия по текущему боту и роли пользователя, а не по одному документу.

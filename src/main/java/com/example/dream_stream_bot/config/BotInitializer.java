@@ -11,6 +11,7 @@ import com.example.dream_stream_bot.config.properties.TelegramProperties;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.access.AccessGate;
 import com.example.dream_stream_bot.service.access.GatingDedup;
+import com.example.dream_stream_bot.service.telegram.BotMenuSyncService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.TelegramBotApiService;
@@ -44,6 +45,7 @@ public class BotInitializer {
     private final AccessGate accessGate;
     private final GatingDedup gatingDedup;
     private final TelegramProperties telegramProperties;
+    private final BotMenuSyncService botMenuSyncService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     public BotInitializer(BotService botService, MessageHandlerService messageHandlerService,
@@ -57,7 +59,8 @@ public class BotInitializer {
                           EditedMessageHandler editedMessageHandler,
                           AccessGate accessGate,
                           GatingDedup gatingDedup,
-                          TelegramProperties telegramProperties) {
+                          TelegramProperties telegramProperties,
+                          BotMenuSyncService botMenuSyncService) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userStateService = userStateService;
@@ -71,6 +74,7 @@ public class BotInitializer {
         this.accessGate = accessGate;
         this.gatingDedup = gatingDedup;
         this.telegramProperties = telegramProperties;
+        this.botMenuSyncService = botMenuSyncService;
     }
 
     @Bean
@@ -152,6 +156,7 @@ public class BotInitializer {
                                     .orElse("unknown(unavailable)");
                             log.info("✅ Bot '{}' registered successfully (mode=long-polling, type={}, webhookDeleted={}, effective={})",
                                     bot.getUsername(), bot.getType(), deleted, effective);
+                            syncBotMenuSafely(bot);
                             successCount++;
                         } else if (telegramProperties.isWebhookMode()) {
                             String baseUrl = telegramProperties.getWebhook().normalizedBaseUrl();
@@ -172,6 +177,7 @@ public class BotInitializer {
                                         .orElse("unknown(unavailable)");
                                 log.info("✅ Bot '{}' registered successfully (mode=webhook, type={}, targetUrl={}, effective={})",
                                         bot.getUsername(), bot.getType(), webhookUrl, effective);
+                                syncBotMenuSafely(bot);
                                 successCount++;
                             } else {
                                 log.error("❌ Bot '{}' webhook registration failed", bot.getUsername());
@@ -196,6 +202,14 @@ public class BotInitializer {
         } catch (Exception e) {
             log.error("❌ Error loading bots from database: {}", e.getMessage(), e);
             throw e;
+        }
+    }
+
+    private void syncBotMenuSafely(BotEntity bot) {
+        try {
+            botMenuSyncService.syncFor(bot);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to sync Telegram menu for bot '{}': {}", bot.getUsername(), e.getMessage());
         }
     }
 }

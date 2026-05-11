@@ -8,6 +8,7 @@ import com.example.dream_stream_bot.service.onboarding.OnboardingService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Команда /start: в группах — deeplink для владельца; в личке — онбординг (персональный, владелец группы или участник).
@@ -29,6 +30,11 @@ public class StartCommand implements BotCommand {
     @Override
     public boolean appliesIn(ChatScope scope) {
         return true;
+    }
+
+    @Override
+    public Optional<String> menuDescription() {
+        return Optional.of("Запустить бота и онбординг");
     }
 
     @Override

@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -188,6 +189,70 @@ public class TelegramBotApiService {
             return ok;
         } catch (RestClientException e) {
             LOGGER.warn("❌ sendTextMessage exception bot '{}' chatId={}: {}", bot.getUsername(), chatId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Описание команды для меню Telegram.
+     * Поле {@code command} — имя без слэша; {@code description} — 1..256 символов.
+     */
+    public record MenuCommand(String command, String description) {}
+
+    /**
+     * Устанавливает меню команд бота через {@code setMyCommands}.
+     *
+     * @param bot          бот, чьим токеном пользуемся
+     * @param commands     список команд (передача пустого списка очищает меню для этого scope)
+     * @param scope        опциональный {@code BotCommandScope}-объект,
+     *                     например {@code Map.of("type", "all_private_chats")}.
+     *                     {@code null} — применить как default-меню.
+     * @param languageCode опциональный IETF-код (например, {@code "ru"}). {@code null} — без локали.
+     */
+    public boolean setMyCommands(BotEntity bot,
+                                 List<MenuCommand> commands,
+                                 Map<String, Object> scope,
+                                 String languageCode) {
+        String token = bot.getToken();
+        if (token == null || token.isBlank()) {
+            LOGGER.warn("❌ setMyCommands skipped: empty token for bot '{}'", bot.getUsername());
+            return false;
+        }
+        if (commands == null) {
+            commands = List.of();
+        }
+
+        String url = TELEGRAM_API_URL + token + "/setMyCommands";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("commands", commands.stream()
+                .map(c -> Map.of("command", c.command(), "description", c.description()))
+                .toList());
+        if (scope != null && !scope.isEmpty()) {
+            payload.put("scope", scope);
+        }
+        if (languageCode != null && !languageCode.isBlank()) {
+            payload.put("language_code", languageCode);
+        }
+
+        try {
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            boolean ok = isTelegramOk(response);
+            if (ok) {
+                LOGGER.info("✅ setMyCommands ok for bot '{}' scope={} lang={} count={}",
+                        bot.getUsername(), scope, languageCode, commands.size());
+            } else {
+                LOGGER.warn("❌ setMyCommands failed for bot '{}' scope={} lang={} | {}",
+                        bot.getUsername(), scope, languageCode, safeBody(response));
+            }
+            return ok;
+        } catch (RestClientException e) {
+            LOGGER.warn("❌ setMyCommands exception bot '{}' scope={} lang={}: {}",
+                    bot.getUsername(), scope, languageCode, e.getMessage());
             return false;
         }
     }

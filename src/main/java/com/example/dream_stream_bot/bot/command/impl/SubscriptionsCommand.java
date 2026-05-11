@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +48,16 @@ public class SubscriptionsCommand implements BotCommand {
     @Override
     public boolean appliesIn(ChatScope scope) {
         return scope == ChatScope.PRIVATE;
+    }
+
+    @Override
+    public Optional<String> menuDescription() {
+        return Optional.of("Мои подписки");
+    }
+
+    @Override
+    public Set<ChatScope> menuScopes() {
+        return Set.of(ChatScope.PRIVATE);
     }
 
     @Override
