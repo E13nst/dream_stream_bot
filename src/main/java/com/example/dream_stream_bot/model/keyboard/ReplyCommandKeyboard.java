@@ -26,6 +26,19 @@ public class ReplyCommandKeyboard {
         return this;
     }
 
+    /** Следующие {@link #addKey} пойдут в новую строку (текущая строка не дублируется, если уже пустая). */
+    public ReplyCommandKeyboard nextRow() {
+        if (rows.isEmpty()) {
+            rows.add(new KeyboardRow());
+            return this;
+        }
+        KeyboardRow last = rows.get(rows.size() - 1);
+        if (!last.isEmpty()) {
+            rows.add(new KeyboardRow());
+        }
+        return this;
+    }
+
     public ReplyKeyboardMarkup build() {
         keyboard.setKeyboard(rows);
         keyboard.setResizeKeyboard(true);

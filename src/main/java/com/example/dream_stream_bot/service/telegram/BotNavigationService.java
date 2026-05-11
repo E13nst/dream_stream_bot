@@ -11,6 +11,7 @@ import java.util.List;
 @Service
 public class BotNavigationService {
 
+    public static final String BTN_START = "▶ Начать";
     public static final String BTN_DREAM = "\uD83C\uDF19 Рассказать сон";
     public static final String BTN_DIARY = "\uD83D\uDCD6 Мой дневник";
     public static final String BTN_SETTINGS = "⚙\uFE0F Настройки";
@@ -20,6 +21,8 @@ public class BotNavigationService {
 
     public ReplyKeyboard privateMainKeyboard() {
         return new ReplyCommandKeyboard()
+                .addKey(BTN_START)
+                .nextRow()
                 .addKey(BTN_DREAM)
                 .addKey(BTN_DIARY)
                 .addKey(BTN_SETTINGS)

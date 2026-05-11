@@ -105,21 +105,11 @@ public class OnboardingService {
 
     private List<OutgoingMessage> showBotIntro(BotEntity bot, Long chatId) {
         String text = botIntroText(bot);
-
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        row.add(InlineKeyboardButton.builder()
-                .text("Начать")
-                .callbackData(CALLBACK_START)
-                .build());
-
-        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
-                .keyboardRow(row)
-                .build();
-
+        // В одном сообщении нельзя совместить inline- и reply-клавиатуру; /start показывает нижнее меню.
         return List.of(OutgoingMessage.builder()
                 .chatId(chatId)
                 .text(text)
-                .replyMarkup(keyboard)
+                .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
     }
 
@@ -485,8 +475,8 @@ public class OnboardingService {
         return """
                 Привет! Я %s.
 
-                Нажмите «Начать», чтобы активировать доступ, или просто пришлите сообщение, если доступ уже подключён.
-                """.formatted(label).trim();
+                Нажмите «%s» в меню внизу, чтобы активировать доступ, или просто пришлите сообщение, если доступ уже подключён.
+                """.formatted(label, BotNavigationService.BTN_START).trim();
     }
 
     private static String activeGreeting(SubscriptionEntity subscription) {
