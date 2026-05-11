@@ -5,6 +5,7 @@ import com.example.dream_stream_bot.bot.BotFactory;
 import com.example.dream_stream_bot.bot.EditedMessageHandler;
 import com.example.dream_stream_bot.bot.command.CallbackDispatcher;
 import com.example.dream_stream_bot.bot.command.CommandDispatcher;
+import com.example.dream_stream_bot.bot.command.PrivateReplyNavigationRouter;
 import com.example.dream_stream_bot.bot.error.BotUpdateErrorHandler;
 import com.example.dream_stream_bot.bot.message.MessageSender;
 import com.example.dream_stream_bot.config.properties.TelegramProperties;
@@ -44,6 +45,7 @@ public class BotInitializer {
     private final EditedMessageHandler editedMessageHandler;
     private final AccessGate accessGate;
     private final GatingDedup gatingDedup;
+    private final PrivateReplyNavigationRouter privateReplyNavigationRouter;
     private final TelegramProperties telegramProperties;
     private final BotMenuSyncService botMenuSyncService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
@@ -59,6 +61,7 @@ public class BotInitializer {
                           EditedMessageHandler editedMessageHandler,
                           AccessGate accessGate,
                           GatingDedup gatingDedup,
+                          PrivateReplyNavigationRouter privateReplyNavigationRouter,
                           TelegramProperties telegramProperties,
                           BotMenuSyncService botMenuSyncService) {
         this.botService = botService;
@@ -73,6 +76,7 @@ public class BotInitializer {
         this.editedMessageHandler = editedMessageHandler;
         this.accessGate = accessGate;
         this.gatingDedup = gatingDedup;
+        this.privateReplyNavigationRouter = privateReplyNavigationRouter;
         this.telegramProperties = telegramProperties;
         this.botMenuSyncService = botMenuSyncService;
     }
@@ -142,7 +146,7 @@ public class BotInitializer {
                                 bot, botService, messageHandlerService, userStateService, userService,
                                 messageSender, commandDispatcher, callbackDispatcher,
                                 errorHandler, editedMessageHandler,
-                                accessGate, gatingDedup);
+                                accessGate, gatingDedup, privateReplyNavigationRouter);
                         botRegistry.put(bot.getUsername(), telegramBot);
 
                         if (telegramProperties.isLongPolling()) {

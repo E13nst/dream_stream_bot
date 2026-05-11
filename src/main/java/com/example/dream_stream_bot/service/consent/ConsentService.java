@@ -1,7 +1,7 @@
 package com.example.dream_stream_bot.service.consent;
 
-import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
-import com.example.dream_stream_bot.model.agent.DataLocality;
+import com.example.dream_stream_bot.model.consent.BotConsentBindingEntity;
+import com.example.dream_stream_bot.model.consent.BotConsentBindingRepository;
 import com.example.dream_stream_bot.model.consent.ConsentChangeType;
 import com.example.dream_stream_bot.model.consent.ConsentCode;
 import com.example.dream_stream_bot.model.consent.ConsentDocumentEntity;
@@ -19,7 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -38,6 +43,7 @@ public class ConsentService {
     public static final int MATERIAL_GRACE_DAYS = 14;
 
     private final ConsentDocumentRepository documentRepository;
+    private final BotConsentBindingRepository botConsentBindingRepository;
     private final UserConsentRepository userConsentRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final TelegraphClient telegraphClient;
@@ -45,12 +51,14 @@ public class ConsentService {
     private final ConsentPublicationNotifier publicationNotifier;
 
     public ConsentService(ConsentDocumentRepository documentRepository,
+                          BotConsentBindingRepository botConsentBindingRepository,
                           UserConsentRepository userConsentRepository,
                           SubscriptionRepository subscriptionRepository,
                           TelegraphClient telegraphClient,
                           BotService botService,
                           ConsentPublicationNotifier publicationNotifier) {
         this.documentRepository = documentRepository;
+        this.botConsentBindingRepository = botConsentBindingRepository;
         this.userConsentRepository = userConsentRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.telegraphClient = telegraphClient;
@@ -68,6 +76,120 @@ public class ConsentService {
 
     public List<ConsentDocumentEntity> listAll() {
         return documentRepository.findAll();
+    }
+
+    public ConsentDocumentEntity requireDocument(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Consent document id is required");
+        }
+        return documentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Consent document not found: " + id));
+    }
+
+    public List<ConsentDocumentEntity> listLatestVersions() {
+        Map<ConsentCode, ConsentDocumentEntity> latest = new LinkedHashMap<>();
+        for (ConsentDocumentEntity document : documentRepository.findAll()) {
+            ConsentDocumentEntity current = latest.get(document.getCode());
+            if (current == null || current.getVersion() < document.getVersion()) {
+                latest.put(document.getCode(), document);
+            }
+        }
+        return latest.values().stream()
+                .sorted(Comparator.comparing(ConsentDocumentEntity::getCode))
+                .toList();
+    }
+
+    public Optional<ConsentDocumentEntity> getActiveForBot(Long botId, ConsentCode code) {
+        if (botId == null || code == null) {
+            return Optional.empty();
+        }
+        Optional<BotConsentBindingEntity> binding = botConsentBindingRepository
+                .findFirstByBotIdAndConsentCodeAndActiveTrue(botId, code);
+        if (binding.isEmpty()) {
+            return Optional.empty();
+        }
+        Long documentId = binding.get().getDocumentId();
+        if (documentId == null) {
+            return Optional.empty();
+        }
+        return documentRepository.findById(documentId);
+    }
+
+    public List<ConsentCode> requiredCodesForBot(Long botId, boolean includeOffer) {
+        if (botId == null) {
+            return List.of();
+        }
+        EnumSet<ConsentCode> codes = EnumSet.noneOf(ConsentCode.class);
+        for (BotConsentBindingEntity binding : botConsentBindingRepository.findByBotIdAndActiveTrueOrderByConsentCodeAsc(botId)) {
+            if (!includeOffer && binding.getConsentCode() == ConsentCode.OFFER) {
+                continue;
+            }
+            codes.add(binding.getConsentCode());
+        }
+        return new ArrayList<>(codes);
+    }
+
+    public Map<ConsentCode, ConsentDocumentEntity> activeDocumentsByBot(Long botId) {
+        Map<ConsentCode, ConsentDocumentEntity> result = new LinkedHashMap<>();
+        if (botId == null) {
+            return result;
+        }
+        for (BotConsentBindingEntity binding : botConsentBindingRepository.findByBotIdAndActiveTrueOrderByConsentCodeAsc(botId)) {
+            Long documentId = binding.getDocumentId();
+            if (documentId == null) {
+                continue;
+            }
+            documentRepository.findById(documentId)
+                    .ifPresent(document -> result.put(binding.getConsentCode(), document));
+        }
+        return result;
+    }
+
+    @Transactional
+    public BotConsentBindingEntity bindDocumentToBot(Long botId, ConsentCode code, Long documentId) {
+        if (botId == null || code == null || documentId == null) {
+            throw new IllegalArgumentException("botId, code and documentId are required");
+        }
+        ConsentDocumentEntity doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Consent document not found: " + documentId));
+        if (doc.getCode() != code) {
+            throw new IllegalArgumentException("Document code mismatch: expected " + code + ", got " + doc.getCode());
+        }
+
+        Optional<BotConsentBindingEntity> existing = botConsentBindingRepository
+                .findFirstByBotIdAndConsentCodeAndActiveTrue(botId, code);
+        if (existing.isPresent() && existing.get().getDocumentId().equals(documentId)) {
+            return existing.get();
+        }
+        existing.ifPresent(binding -> {
+            binding.setActive(false);
+            botConsentBindingRepository.save(binding);
+        });
+
+        BotConsentBindingEntity newBinding = new BotConsentBindingEntity();
+        newBinding.setBotId(botId);
+        newBinding.setConsentCode(code);
+        newBinding.setDocumentId(documentId);
+        newBinding.setActive(true);
+        BotConsentBindingEntity saved = botConsentBindingRepository.save(newBinding);
+
+        if (doc.getChangeType() == ConsentChangeType.MATERIAL) {
+            triggerMaterialGraceForBot(botId);
+        }
+        return saved;
+    }
+
+    @Transactional
+    public void clearBindingForBot(Long botId, ConsentCode code) {
+        if (botId == null || code == null) {
+            return;
+        }
+        Optional<BotConsentBindingEntity> existing = botConsentBindingRepository
+                .findFirstByBotIdAndConsentCodeAndActiveTrue(botId, code);
+        existing.ifPresent(binding -> {
+            binding.setActive(false);
+            botConsentBindingRepository.save(binding);
+        });
     }
 
     /**
@@ -90,6 +212,22 @@ public class ConsentService {
         entity.setChangeType(changeType != null ? changeType : ConsentChangeType.MINOR);
         entity.setCurrent(false);
         return documentRepository.save(entity);
+    }
+
+    @Transactional
+    public ConsentDocumentEntity createDraftFrom(Long sourceDocumentId,
+                                                 String title,
+                                                 String bodyMarkdown,
+                                                 String externalUrl,
+                                                 ConsentChangeType changeType) {
+        ConsentDocumentEntity source = requireDocument(sourceDocumentId);
+        return createDraft(
+                source.getCode(),
+                title != null ? title : source.getTitle(),
+                bodyMarkdown != null ? bodyMarkdown : source.getBodyMarkdown(),
+                externalUrl != null ? externalUrl : source.getExternalUrl(),
+                changeType != null ? changeType : source.getChangeType()
+        );
     }
 
     /**
@@ -179,18 +317,10 @@ public class ConsentService {
         if (bot == null || appUserId == null) {
             return false;
         }
-        if (!hasAcceptedCurrent(appUserId, ConsentCode.PRIVACY_POLICY)) {
-            return false;
-        }
-        if (!hasAcceptedCurrent(appUserId, ConsentCode.PERSONAL_DATA)) {
-            return false;
-        }
-        if (bot.requiresAgeConfirmation() && !hasAcceptedCurrent(appUserId, ConsentCode.AGE_18)) {
-            return false;
-        }
-        AgentConfigEntity agent = bot.getAgentConfig();
-        if (agent != null && agent.getDataLocality() == DataLocality.CROSS_BORDER) {
-            return hasAcceptedCurrent(appUserId, ConsentCode.CROSS_BORDER);
+        for (ConsentCode code : requiredCodesForBot(bot.getId(), false)) {
+            if (!hasAcceptedActiveDocument(appUserId, bot.getId(), code)) {
+                return false;
+            }
         }
         return true;
     }
@@ -202,18 +332,10 @@ public class ConsentService {
         if (bot == null || appUserId == null) {
             return false;
         }
-        if (!hasAcceptedCurrent(appUserId, ConsentCode.PRIVACY_POLICY)) {
-            return false;
-        }
-        if (!hasAcceptedCurrent(appUserId, ConsentCode.PERSONAL_DATA)) {
-            return false;
-        }
-        if (bot.requiresAgeConfirmation() && !hasAcceptedCurrent(appUserId, ConsentCode.AGE_18)) {
-            return false;
-        }
-        AgentConfigEntity agent = bot.getAgentConfig();
-        if (agent != null && agent.getDataLocality() == DataLocality.CROSS_BORDER) {
-            return hasAcceptedCurrent(appUserId, ConsentCode.CROSS_BORDER);
+        for (ConsentCode code : requiredCodesForBot(bot.getId(), false)) {
+            if (!hasAcceptedActiveDocument(appUserId, bot.getId(), code)) {
+                return false;
+            }
         }
         return true;
     }
@@ -236,6 +358,26 @@ public class ConsentService {
             subscriptionRepository.save(sub);
         }
         LOGGER.info("🚨 Material change — set grace until {} for {} subscriptions", until, all.size());
+    }
+
+    private void triggerMaterialGraceForBot(Long botId) {
+        OffsetDateTime until = OffsetDateTime.now().plusDays(MATERIAL_GRACE_DAYS);
+        List<SubscriptionEntity> subscriptions = subscriptionRepository.findByBotId(botId);
+        for (SubscriptionEntity sub : subscriptions) {
+            sub.setRequiresConsentReacceptanceUntil(until);
+            subscriptionRepository.save(sub);
+        }
+        LOGGER.info("🚨 Material change binding on bot={} — set grace until {} for {} subscriptions",
+                botId, until, subscriptions.size());
+    }
+
+    private boolean hasAcceptedActiveDocument(Long userId, Long botId, ConsentCode code) {
+        Optional<ConsentDocumentEntity> active = getActiveForBot(botId, code);
+        if (active.isEmpty()) {
+            return false;
+        }
+        return userConsentRepository.findFirstByUserIdAndDocumentIdAndRevokedAtIsNull(userId, active.get().getId())
+                .isPresent();
     }
 
     /**

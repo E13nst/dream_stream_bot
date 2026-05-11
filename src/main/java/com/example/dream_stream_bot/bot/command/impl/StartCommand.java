@@ -5,6 +5,7 @@ import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.service.onboarding.OnboardingService;
+import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,9 +18,11 @@ import java.util.Optional;
 public class StartCommand implements BotCommand {
 
     private final OnboardingService onboardingService;
+    private final BotNavigationService botNavigationService;
 
-    public StartCommand(OnboardingService onboardingService) {
+    public StartCommand(OnboardingService onboardingService, BotNavigationService botNavigationService) {
         this.onboardingService = onboardingService;
+        this.botNavigationService = botNavigationService;
     }
 
     @Override
@@ -63,6 +66,7 @@ public class StartCommand implements BotCommand {
                     .chatId(ctx.getChatId())
                     .messageThreadId(threadId)
                     .text(text.trim())
+                    .replyMarkup(botNavigationService.groupStartKeyboard(username, ctx.getChatId()))
                     .build());
         }
 

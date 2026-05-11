@@ -1,8 +1,6 @@
 package com.example.dream_stream_bot.service.onboarding;
 
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
-import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
-import com.example.dream_stream_bot.model.agent.DataLocality;
 import com.example.dream_stream_bot.model.consent.ConsentCode;
 import com.example.dream_stream_bot.model.consent.ConsentDocumentEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
@@ -14,6 +12,7 @@ import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.consent.ConsentService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
+import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import com.example.dream_stream_bot.service.telegram.TelegramGroupAdminService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.slf4j.Logger;
@@ -45,19 +44,22 @@ public class OnboardingService {
     private final ConsentService consentService;
     private final OnboardingScopeHolder scopeHolder;
     private final TelegramGroupAdminService telegramGroupAdminService;
+    private final BotNavigationService botNavigationService;
 
     public OnboardingService(UserService userService,
                              SubscriptionService subscriptionService,
                              SubscriptionTariffService subscriptionTariffService,
                              ConsentService consentService,
                              OnboardingScopeHolder scopeHolder,
-                             TelegramGroupAdminService telegramGroupAdminService) {
+                             TelegramGroupAdminService telegramGroupAdminService,
+                             BotNavigationService botNavigationService) {
         this.userService = userService;
         this.subscriptionService = subscriptionService;
         this.subscriptionTariffService = subscriptionTariffService;
         this.consentService = consentService;
         this.scopeHolder = scopeHolder;
         this.telegramGroupAdminService = telegramGroupAdminService;
+        this.botNavigationService = botNavigationService;
     }
 
     /** /start payload в личке. */
@@ -168,7 +170,7 @@ public class OnboardingService {
         List<ConsentCode> required = requiredConsentsOwner(bot);
         ConsentCode next = nextMissingConsent(user.getId(), required);
         if (next != null) {
-            return promptConsent(chatId, next);
+            return promptConsent(bot.getId(), chatId, next);
         }
         return finalizePersonalAfterConsents(user, bot, chatId, subscription);
     }
@@ -178,7 +180,7 @@ public class OnboardingService {
         List<ConsentCode> required = requiredConsentsOwner(bot);
         ConsentCode next = nextMissingConsent(user.getId(), required);
         if (next != null) {
-            return promptConsent(chatId, next);
+            return promptConsent(bot.getId(), chatId, next);
         }
         return finalizeGroupOwnerAfterConsents(user, bot, chatId, subscription);
     }
@@ -187,7 +189,7 @@ public class OnboardingService {
         List<ConsentCode> required = requiredConsentsParticipant(bot);
         ConsentCode next = nextMissingConsent(user.getId(), required);
         if (next != null) {
-            return promptConsent(chatId, next);
+            return promptConsent(bot.getId(), chatId, next);
         }
         Optional<Long> subId = scopeHolder.getPendingParticipantSubscription(bot.getId(), user.getId());
         if (subId.isEmpty()) {
@@ -262,7 +264,7 @@ public class OnboardingService {
                                                               SubscriptionEntity subscription) {
         if (subscription.getStatus() == SubscriptionStatus.ACTIVE
                 || subscription.getStatus() == SubscriptionStatus.TRIAL) {
-            return List.of(OutgoingMessage.of(chatId, activeGreeting(subscription)));
+            return List.of(mainMenuMessage(chatId, activeGreeting(subscription)));
         }
 
         if (subscription.getStatus() == SubscriptionStatus.PENDING_CONSENT) {
@@ -270,23 +272,20 @@ public class OnboardingService {
             if (tariff.getAccessMode() == TariffAccessMode.FREE_UNLIMITED) {
                 subscriptionService.activateFreeUnlimited(subscription);
                 LOGGER.info("🎉 Free unlimited activated for user={} bot={}", user.getId(), bot.getId());
-                return List.of(OutgoingMessage.of(chatId,
+                return List.of(mainMenuMessage(chatId,
                         """
                         ✅ Все согласия приняты. Доступ бесплатный и без ограничения срока.
-                        Просто пришлите сообщение — и мы начнём.
-                        Полезные команды:
-                        /subscriptions — статус
-                        /forget_last — удалить последнее сообщение
-                        /forget_me — стереть всю историю"""));
+                        Используйте кнопки ниже для навигации:
+                        🌙 Рассказать сон, 📖 Мой дневник, ⚙️ Настройки, 💎 Подписка."""));
             }
             if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM) {
-                ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner());
+                ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner(bot.getId()));
                 if (nextPurchaseConsent != null) {
-                    return promptConsent(chatId, nextPurchaseConsent);
+                    return promptConsent(bot.getId(), chatId, nextPurchaseConsent);
                 }
                 SubscriptionEntity awaiting = subscriptionService.markAwaitingActivation(subscription);
                 LOGGER.info("Personal subscription awaiting activation | sub={} | user={}", awaiting.getId(), user.getId());
-                return List.of(OutgoingMessage.of(chatId,
+                return List.of(mainMenuMessage(chatId,
                         """
                         Спасибо! Согласия приняты. Подписка ожидает активации или оплаты администратором.
                         Если у вас уже была оплаченная запись — обратитесь в поддержку.
@@ -298,14 +297,11 @@ public class OnboardingService {
                     SubscriptionEntity activated = subscriptionService.activateTrial(subscription, days, null);
                     LOGGER.info("🎉 Trial activated for user={} bot={} expires={}",
                             user.getId(), bot.getId(), activated.getExpiresAt());
-                    return List.of(OutgoingMessage.of(chatId,
+                    return List.of(mainMenuMessage(chatId,
                             """
                             🎉 Все согласия приняты. Активирован пробный период на %d дня (до %s).
-                            Просто пришлите сообщение — и мы начнём.
-                            Полезные команды:
-                            /subscriptions — статус и продление
-                            /forget_last — удалить последнее сообщение
-                            /forget_me — стереть всю историю""".formatted(
+                            Используйте кнопки ниже для навигации:
+                            🌙 Рассказать сон, 📖 Мой дневник, ⚙️ Настройки, 💎 Подписка.""".formatted(
                                     days,
                                     formatExpiry(activated.getExpiresAt()))));
                 } catch (IllegalStateException e) {
@@ -326,12 +322,12 @@ public class OnboardingService {
         if (subscription.getStatus() == SubscriptionStatus.TRIAL
                 || subscription.getStatus() == SubscriptionStatus.ACTIVE) {
             scopeHolder.clearPendingGroup(bot.getId(), user.getId());
-            return List.of(OutgoingMessage.of(chatId, activeGreeting(subscription)));
+            return List.of(mainMenuMessage(chatId, activeGreeting(subscription)));
         }
 
-        ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner());
+        ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner(bot.getId()));
         if (nextPurchaseConsent != null) {
-            return promptConsent(chatId, nextPurchaseConsent);
+            return promptConsent(bot.getId(), chatId, nextPurchaseConsent);
         }
 
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
@@ -367,12 +363,23 @@ public class OnboardingService {
                 "Текущий статус подписки: " + subscription.getStatus()));
     }
 
-    private List<OutgoingMessage> promptConsent(Long chatId, ConsentCode code) {
-        Optional<ConsentDocumentEntity> doc = consentService.getCurrent(code);
+    private List<OutgoingMessage> promptConsent(Long botId, Long chatId, ConsentCode code) {
+        Optional<ConsentDocumentEntity> doc = botId == null
+                ? Optional.empty()
+                : consentService.getActiveForBot(botId, code);
         if (doc.isEmpty()) {
-            return List.of(OutgoingMessage.of(chatId,
-                    "Документ «%s» ещё не опубликован администратором. Обратитесь в поддержку или подождите."
-                            .formatted(code.getDefaultTitle())));
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("""
+                            Документ «%s» ещё не опубликован администратором.
+
+                            Это не мешает посмотреть тарифы: откройте /subscriptions
+                            или кнопку «💎 Подписка» внизу.
+
+                            Для полноценного доступа к диалогу понадобится публикация документа и его принятие.
+                            """.formatted(code.getDefaultTitle()).trim())
+                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .build());
         }
 
         ConsentDocumentEntity d = doc.get();
@@ -417,36 +424,26 @@ public class OnboardingService {
     }
 
     private List<ConsentCode> requiredConsentsOwner(BotEntity bot) {
-        List<ConsentCode> codes = new ArrayList<>();
-        if (bot.requiresAgeConfirmation()) {
-            codes.add(ConsentCode.AGE_18);
+        if (bot == null || bot.getId() == null) {
+            return List.of();
         }
-        codes.add(ConsentCode.PRIVACY_POLICY);
-        codes.add(ConsentCode.PERSONAL_DATA);
-        AgentConfigEntity agent = bot.getAgentConfig();
-        if (agent != null && agent.getDataLocality() == DataLocality.CROSS_BORDER) {
-            codes.add(ConsentCode.CROSS_BORDER);
-        }
-        return codes;
+        return consentService.requiredCodesForBot(bot.getId(), false);
     }
 
-    private List<ConsentCode> requiredPurchaseConsentsOwner() {
-        return List.of(ConsentCode.OFFER);
+    private List<ConsentCode> requiredPurchaseConsentsOwner(Long botId) {
+        if (botId == null) {
+            return List.of();
+        }
+        List<ConsentCode> allCodes = consentService.requiredCodesForBot(botId, true);
+        return allCodes.contains(ConsentCode.OFFER) ? List.of(ConsentCode.OFFER) : List.of();
     }
 
     /** Участник группы не подписывает оферту (покупает ведущий). */
     private List<ConsentCode> requiredConsentsParticipant(BotEntity bot) {
-        List<ConsentCode> codes = new ArrayList<>();
-        if (bot.requiresAgeConfirmation()) {
-            codes.add(ConsentCode.AGE_18);
+        if (bot == null || bot.getId() == null) {
+            return List.of();
         }
-        codes.add(ConsentCode.PRIVACY_POLICY);
-        codes.add(ConsentCode.PERSONAL_DATA);
-        AgentConfigEntity agent = bot.getAgentConfig();
-        if (agent != null && agent.getDataLocality() == DataLocality.CROSS_BORDER) {
-            codes.add(ConsentCode.CROSS_BORDER);
-        }
-        return codes;
+        return consentService.requiredCodesForBot(bot.getId(), false);
     }
 
     private void applyReferralPayload(UserEntity user, String args) {
@@ -494,9 +491,17 @@ public class OnboardingService {
 
     private static String activeGreeting(SubscriptionEntity subscription) {
         return """
-                Подписка активна (%s). Просто пришлите сообщение — и мы продолжим.
-                Команды: /subscriptions, /forget_last, /forget_me, /referral.""".formatted(
+                Подписка активна (%s).
+                Главное меню доступно в кнопках внизу: 🌙, 📖, ⚙️, 💎.""".formatted(
                 formatExpiry(subscription.getExpiresAt()));
+    }
+
+    private OutgoingMessage mainMenuMessage(Long chatId, String text) {
+        return OutgoingMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .replyMarkup(botNavigationService.privateMainKeyboard())
+                .build();
     }
 
     private static String formatExpiry(OffsetDateTime expiresAt) {

@@ -1,6 +1,8 @@
 package com.example.dream_stream_bot.service.consent;
 
 import com.example.dream_stream_bot.model.consent.ConsentDocumentEntity;
+import com.example.dream_stream_bot.model.consent.BotConsentBindingRepository;
+import com.example.dream_stream_bot.model.consent.BotConsentBindingEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
@@ -34,26 +36,38 @@ public class ConsentPublicationNotifier {
     private final UserService userService;
     private final TelegramBotApiService telegramBotApiService;
     private final SubscriptionTariffService subscriptionTariffService;
+    private final BotConsentBindingRepository botConsentBindingRepository;
 
     public ConsentPublicationNotifier(SubscriptionRepository subscriptionRepository,
                                       BotService botService,
                                       UserService userService,
                                       TelegramBotApiService telegramBotApiService,
-                                      SubscriptionTariffService subscriptionTariffService) {
+                                      SubscriptionTariffService subscriptionTariffService,
+                                      BotConsentBindingRepository botConsentBindingRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.botService = botService;
         this.userService = userService;
         this.telegramBotApiService = telegramBotApiService;
         this.subscriptionTariffService = subscriptionTariffService;
+        this.botConsentBindingRepository = botConsentBindingRepository;
     }
 
     public void notifyPublished(ConsentDocumentEntity doc) {
         if (doc == null) {
             return;
         }
+        Set<Long> affectedBotIds = botConsentBindingRepository.findByDocumentIdAndActiveTrue(doc.getId()).stream()
+                .map(BotConsentBindingEntity::getBotId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (affectedBotIds.isEmpty()) {
+            return;
+        }
         List<SubscriptionEntity> subs = subscriptionRepository.findAll();
         Set<String> groupNotified = new HashSet<>();
         for (SubscriptionEntity sub : subs) {
+            if (!affectedBotIds.contains(sub.getBotId())) {
+                continue;
+            }
             if (sub.getStatus() == SubscriptionStatus.CANCELLED) {
                 continue;
             }

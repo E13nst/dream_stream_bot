@@ -9,6 +9,7 @@ import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.consent.ConsentService;
 import com.example.dream_stream_bot.service.memory.ChatMemoryService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
+import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -25,13 +26,16 @@ public class ForgetMeCommand implements BotCommand {
     private final ChatMemoryService chatMemoryService;
     private final ConsentService consentService;
     private final SubscriptionService subscriptionService;
+    private final BotNavigationService botNavigationService;
 
     public ForgetMeCommand(ChatMemoryService chatMemoryService,
                           ConsentService consentService,
-                          SubscriptionService subscriptionService) {
+                          SubscriptionService subscriptionService,
+                          BotNavigationService botNavigationService) {
         this.chatMemoryService = chatMemoryService;
         this.consentService = consentService;
         this.subscriptionService = subscriptionService;
+        this.botNavigationService = botNavigationService;
     }
 
     @Override
@@ -74,6 +78,7 @@ public class ForgetMeCommand implements BotCommand {
                 .chatId(message.getChatId())
                 .messageThreadId(ctx.getMessageThreadId())
                 .text(text)
+                .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
     }
 }

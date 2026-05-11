@@ -2,6 +2,7 @@ package com.example.dream_stream_bot.bot;
 
 import com.example.dream_stream_bot.bot.command.CallbackDispatcher;
 import com.example.dream_stream_bot.bot.command.CommandDispatcher;
+import com.example.dream_stream_bot.bot.command.PrivateReplyNavigationRouter;
 import com.example.dream_stream_bot.bot.error.BotUpdateErrorHandler;
 import com.example.dream_stream_bot.bot.message.MessageSender;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
@@ -32,7 +33,8 @@ public class BotFactory {
                                                 BotUpdateErrorHandler errorHandler,
                                                 EditedMessageHandler editedMessageHandler,
                                                 AccessGate accessGate,
-                                                GatingDedup gatingDedup) {
+                                                GatingDedup gatingDedup,
+                                                PrivateReplyNavigationRouter privateReplyNavigationRouter) {
         String type = botEntity.getType();
         if (type == null) {
             throw new IllegalArgumentException("Bot type is not specified");
@@ -50,7 +52,7 @@ public class BotFactory {
                     messageSender, commandDispatcher, callbackDispatcher, errorHandler, editedMessageHandler);
             case "assistant" -> new AssistantBot(id, botService, messageHandlerService, userService,
                     messageSender, commandDispatcher, callbackDispatcher, errorHandler, editedMessageHandler,
-                    accessGate, gatingDedup);
+                    accessGate, gatingDedup, privateReplyNavigationRouter);
             default -> throw new IllegalArgumentException("Unknown bot type: " + type + ". Supported types: copycat, assistant");
         };
     }

@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Controller
 public class AdminConsentController {
@@ -26,9 +27,8 @@ public class AdminConsentController {
 
     @GetMapping("/admin/consents")
     public String list(Model model) {
-        List<ConsentDocumentEntity> docs = consentService.listAll().stream()
-                .sorted(Comparator.comparing(ConsentDocumentEntity::getCode)
-                        .thenComparing(Comparator.comparing(ConsentDocumentEntity::getVersion).reversed()))
+        List<ConsentDocumentEntity> docs = consentService.listLatestVersions().stream()
+                .sorted(Comparator.comparing(ConsentDocumentEntity::getCode))
                 .toList();
         model.addAttribute("documents", docs);
         model.addAttribute("codes", ConsentCode.values());
@@ -37,15 +37,24 @@ public class AdminConsentController {
     }
 
     @GetMapping("/admin/consents/{id}")
-    public String details(@PathVariable Long id, Model model) {
-        ConsentDocumentEntity doc = consentService.listAll().stream()
-                .filter(d -> d.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-        if (doc == null) {
+    public String details(@PathVariable Long id,
+                          @RequestParam(required = false) Integer version,
+                          Model model) {
+        ConsentDocumentEntity base;
+        try {
+            base = consentService.requireDocument(id);
+        } catch (Exception e) {
             return "redirect:/admin/consents";
         }
+        ConsentDocumentEntity doc = base;
+        if (version != null) {
+            doc = consentService.listVersions(base.getCode()).stream()
+                    .filter(d -> Objects.equals(d.getVersion(), version))
+                    .findFirst()
+                    .orElse(base);
+        }
         model.addAttribute("document", doc);
+        model.addAttribute("versions", consentService.listVersions(doc.getCode()));
         model.addAttribute("changeTypes", ConsentChangeType.values());
         return "admin/consent-edit";
     }
@@ -81,26 +90,54 @@ public class AdminConsentController {
                           @RequestParam(defaultValue = "MINOR") String changeType,
                           RedirectAttributes redirectAttributes) {
         try {
-            ConsentDocumentEntity doc = consentService.listAll().stream()
-                    .filter(d -> d.getId().equals(id))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
-            if (title != null) {
-                doc.setTitle(title);
+            ConsentDocumentEntity source = consentService.requireDocument(id);
+            ConsentChangeType requestedChangeType = ConsentChangeType.valueOf(changeType);
+            String requestedTitle = title != null ? title : source.getTitle();
+            String requestedBody = bodyMarkdown != null ? bodyMarkdown : source.getBodyMarkdown();
+            String requestedExternalUrl = externalUrl != null ? externalUrl : source.getExternalUrl();
+
+            boolean changed = !Objects.equals(source.getTitle(), requestedTitle)
+                    || !Objects.equals(source.getBodyMarkdown(), requestedBody)
+                    || !Objects.equals(source.getExternalUrl(), requestedExternalUrl)
+                    || source.getChangeType() != requestedChangeType;
+
+            ConsentDocumentEntity toPublish = source;
+            if (changed) {
+                toPublish = consentService.createDraftFrom(
+                        source.getId(),
+                        requestedTitle,
+                        requestedBody,
+                        requestedExternalUrl,
+                        requestedChangeType
+                );
             }
-            if (bodyMarkdown != null) {
-                doc.setBodyMarkdown(bodyMarkdown);
-            }
-            if (externalUrl != null && !externalUrl.isBlank()) {
-                doc.setExternalUrl(externalUrl);
-            }
-            doc.setChangeType(ConsentChangeType.valueOf(changeType));
-            consentService.publish(doc.getId(), toTelegraph);
-            redirectAttributes.addFlashAttribute("success", "Документ опубликован");
+            ConsentDocumentEntity published = consentService.publish(toPublish.getId(), toTelegraph);
+            redirectAttributes.addFlashAttribute("success",
+                    changed ? "Создана новая версия и опубликована" : "Документ опубликован");
+            return "redirect:/admin/consents/" + published.getId();
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/admin/consents/" + id;
+    }
+
+    @PostMapping("/admin/consents/{id}/new-version")
+    public String createNewVersionFrom(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            ConsentDocumentEntity source = consentService.requireDocument(id);
+            ConsentDocumentEntity draft = consentService.createDraftFrom(
+                    source.getId(),
+                    source.getTitle(),
+                    source.getBodyMarkdown(),
+                    source.getExternalUrl(),
+                    source.getChangeType()
+            );
+            redirectAttributes.addFlashAttribute("success", "Создан новый черновик версии v" + draft.getVersion());
+            return "redirect:/admin/consents/" + draft.getId();
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/admin/consents/" + id;
+        }
     }
 
     @PostMapping("/admin/consents/escalate")

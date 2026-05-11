@@ -4,11 +4,14 @@ import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
 import com.example.dream_stream_bot.model.agent.AgentProvider;
 import com.example.dream_stream_bot.model.agent.AgentRole;
 import com.example.dream_stream_bot.model.agent.DataLocality;
+import com.example.dream_stream_bot.model.consent.ConsentCode;
+import com.example.dream_stream_bot.model.consent.ConsentDocumentEntity;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.telegram.BotType;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
 import com.example.dream_stream_bot.service.agent.AgentConfigService;
+import com.example.dream_stream_bot.service.consent.ConsentService;
 import com.example.dream_stream_bot.service.settings.SystemSettingsService;
 import com.example.dream_stream_bot.service.access.GatingDedup;
 import com.example.dream_stream_bot.service.telegram.BotService;
@@ -35,16 +38,19 @@ public class AdminWebController {
     private final UserService userService;
     private final BotService botService;
     private final AgentConfigService agentConfigService;
+    private final ConsentService consentService;
     private final AdminUserDetailsService adminUserDetailsService;
     private final SystemSettingsService systemSettingsService;
 
     public AdminWebController(UserService userService, BotService botService,
                               AgentConfigService agentConfigService,
+                              ConsentService consentService,
                               AdminUserDetailsService adminUserDetailsService,
                               SystemSettingsService systemSettingsService) {
         this.userService = userService;
         this.botService = botService;
         this.agentConfigService = agentConfigService;
+        this.consentService = consentService;
         this.adminUserDetailsService = adminUserDetailsService;
         this.systemSettingsService = systemSettingsService;
     }
@@ -175,6 +181,32 @@ public class AdminWebController {
 
             botService.save(bot);
             botService.replaceKeywords(id, splitKeywords(keywords));
+        }
+        return "redirect:/admin/bots?selectedId=" + id;
+    }
+
+    @PostMapping("/admin/bots/{id}/consents")
+    public String updateBotConsents(@PathVariable Long id,
+                                    @RequestParam Map<String, String> params,
+                                    RedirectAttributes redirectAttributes) {
+        BotEntity bot = botService.findById(id);
+        if (bot == null) {
+            redirectAttributes.addFlashAttribute("error", "Бот не найден");
+            return "redirect:/admin/bots";
+        }
+        try {
+            for (ConsentCode code : ConsentCode.values()) {
+                String raw = params.get("binding_" + code.name());
+                if (raw == null || raw.isBlank()) {
+                    consentService.clearBindingForBot(id, code);
+                    continue;
+                }
+                Long documentId = Long.parseLong(raw);
+                consentService.bindDocumentToBot(id, code, documentId);
+            }
+            redirectAttributes.addFlashAttribute("success", "Привязки документов сохранены");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/admin/bots?selectedId=" + id;
     }
@@ -341,6 +373,16 @@ public class AdminWebController {
         model.addAttribute("selectedBotKeywords", selectedBot
                 .map(bot -> String.join(", ", bot.getBotTriggersList()))
                 .orElse(""));
+        // String keys: Thymeleaf map[enum] lookup is unreliable; template uses .get(code.name()).
+        Map<String, List<ConsentDocumentEntity>> documentsByCode = new LinkedHashMap<>();
+        for (ConsentCode code : ConsentCode.values()) {
+            documentsByCode.put(code.name(), consentService.listVersions(code));
+        }
+        model.addAttribute("consentCodes", ConsentCode.values());
+        model.addAttribute("consentDocumentsByCode", documentsByCode);
+        model.addAttribute("selectedBotConsentBindings", selectedBot
+                .map(bot -> consentService.activeDocumentsByBot(bot.getId()))
+                .orElseGet(Map::of));
         model.addAttribute("openBotDetailsModal", selectedId != null && selectedBot.isPresent());
     }
 

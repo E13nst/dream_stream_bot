@@ -5,6 +5,7 @@ import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.user.UserEntity;
+import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -17,6 +18,12 @@ import java.util.Set;
  */
 @Component
 public class ReferralCommand implements BotCommand {
+
+    private final BotNavigationService botNavigationService;
+
+    public ReferralCommand(BotNavigationService botNavigationService) {
+        this.botNavigationService = botNavigationService;
+    }
 
     @Override
     public String name() {
@@ -59,6 +66,7 @@ public class ReferralCommand implements BotCommand {
                 .chatId(message.getChatId())
                 .messageThreadId(ctx.getMessageThreadId())
                 .text(text)
+                .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
     }
 }

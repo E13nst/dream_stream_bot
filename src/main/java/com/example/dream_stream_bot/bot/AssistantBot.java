@@ -2,7 +2,9 @@ package com.example.dream_stream_bot.bot;
 
 import com.example.dream_stream_bot.bot.command.CallbackDispatcher;
 import com.example.dream_stream_bot.bot.command.ChatScope;
+import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.command.CommandDispatcher;
+import com.example.dream_stream_bot.bot.command.PrivateReplyNavigationRouter;
 import com.example.dream_stream_bot.bot.error.BotUpdateErrorHandler;
 import com.example.dream_stream_bot.bot.message.MessageSender;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
@@ -21,6 +23,7 @@ public class AssistantBot extends AbstractTelegramBot {
 
     private final AccessGate accessGate;
     private final GatingDedup gatingDedup;
+    private final PrivateReplyNavigationRouter privateReplyNavigationRouter;
 
     public AssistantBot(Long botId, BotService botService,
                         MessageHandlerService messageHandlerService, UserService userService,
@@ -29,11 +32,13 @@ public class AssistantBot extends AbstractTelegramBot {
                         BotUpdateErrorHandler errorHandler,
                         EditedMessageHandler editedMessageHandler,
                         AccessGate accessGate,
-                        GatingDedup gatingDedup) {
+                        GatingDedup gatingDedup,
+                        PrivateReplyNavigationRouter privateReplyNavigationRouter) {
         super(botId, botService, messageHandlerService, userService, messageSender, commandDispatcher,
                 callbackDispatcher, errorHandler, editedMessageHandler);
         this.accessGate = accessGate;
         this.gatingDedup = gatingDedup;
+        this.privateReplyNavigationRouter = privateReplyNavigationRouter;
     }
 
     @Override
@@ -50,9 +55,17 @@ public class AssistantBot extends AbstractTelegramBot {
         }
 
         Message msg = update.getMessage();
-        ensureUserExists(msg.getFrom());
+        var user = ensureUserExists(msg.getFrom());
         ChatScope scope = ChatScope.fromMessageType(
                 msg.isUserMessage(), msg.isGroupMessage(), msg.isSuperGroupMessage(), msg.isChannelMessage());
+
+        if (scope == ChatScope.PRIVATE) {
+            CommandContext cmdCtx = new CommandContext(
+                    update, msg, botEntity, this, getBotUsername(), user, null, null, scope);
+            if (privateReplyNavigationRouter.tryRoute(cmdCtx)) {
+                return;
+            }
+        }
 
         AccessDecision decision = accessGate.evaluate(botEntity, msg, scope, getBotUsername());
         if (!decision.isAllowed()) {

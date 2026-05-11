@@ -10,11 +10,13 @@ import com.example.dream_stream_bot.model.subscription.SubscriptionTariffReposit
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
+import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,13 +33,16 @@ public class SubscriptionsCommand implements BotCommand {
     private final SubscriptionService subscriptionService;
     private final BotService botService;
     private final SubscriptionTariffRepository subscriptionTariffRepository;
+    private final BotNavigationService botNavigationService;
 
     public SubscriptionsCommand(SubscriptionService subscriptionService,
                                 BotService botService,
-                                SubscriptionTariffRepository subscriptionTariffRepository) {
+                                SubscriptionTariffRepository subscriptionTariffRepository,
+                                BotNavigationService botNavigationService) {
         this.subscriptionService = subscriptionService;
         this.botService = botService;
         this.subscriptionTariffRepository = subscriptionTariffRepository;
+        this.botNavigationService = botNavigationService;
     }
 
     @Override
@@ -85,8 +90,14 @@ public class SubscriptionsCommand implements BotCommand {
         }
         List<String> lines = new ArrayList<>();
         lines.add("Ваши подписки (как владелец):");
+        Set<Long> tariffIds = new HashSet<>();
+        for (SubscriptionEntity subscription : mine) {
+            if (subscription.getTariffId() != null) {
+                tariffIds.add(subscription.getTariffId());
+            }
+        }
         Map<Long, SubscriptionTariffEntity> tariffById = subscriptionTariffRepository
-                .findAllById(mine.stream().map(SubscriptionEntity::getTariffId).collect(Collectors.toSet()))
+                .findAllById(tariffIds)
                 .stream()
                 .collect(Collectors.toMap(SubscriptionTariffEntity::getId, t -> t));
         for (SubscriptionEntity s : mine) {
@@ -104,6 +115,7 @@ public class SubscriptionsCommand implements BotCommand {
                 .chatId(message.getChatId())
                 .messageThreadId(ctx.getMessageThreadId())
                 .text(String.join("\n", lines))
+                .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
     }
 }

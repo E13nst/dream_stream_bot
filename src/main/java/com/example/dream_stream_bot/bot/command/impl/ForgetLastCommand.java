@@ -4,6 +4,7 @@ import com.example.dream_stream_bot.bot.command.BotCommand;
 import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.service.memory.ChatMemoryService;
+import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -19,9 +20,11 @@ import java.util.Optional;
 public class ForgetLastCommand implements BotCommand {
 
     private final ChatMemoryService chatMemoryService;
+    private final BotNavigationService botNavigationService;
 
-    public ForgetLastCommand(ChatMemoryService chatMemoryService) {
+    public ForgetLastCommand(ChatMemoryService chatMemoryService, BotNavigationService botNavigationService) {
         this.chatMemoryService = chatMemoryService;
+        this.botNavigationService = botNavigationService;
     }
 
     @Override
@@ -50,6 +53,7 @@ public class ForgetLastCommand implements BotCommand {
                 .chatId(message.getChatId())
                 .messageThreadId(threadId)
                 .text(text)
+                .replyMarkup(message.isUserMessage() ? botNavigationService.privateMainKeyboard() : null)
                 .build());
     }
 

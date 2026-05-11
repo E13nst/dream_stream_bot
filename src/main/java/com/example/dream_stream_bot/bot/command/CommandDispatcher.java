@@ -52,19 +52,25 @@ public class CommandDispatcher {
         if (parsed.targetBot != null && !parsed.targetBot.equalsIgnoreCase(ctx.getBotUsername())) {
             return false;
         }
+        return dispatch(ctx, parsed.name, parsed.args);
+    }
 
-        BotCommand handler = byName.get(parsed.name.toLowerCase(Locale.ROOT));
+    public boolean dispatch(CommandContext ctx, String commandName, String args) {
+        if (commandName == null || commandName.isBlank()) {
+            return false;
+        }
+        BotCommand handler = byName.get(commandName.toLowerCase(Locale.ROOT));
         if (handler == null) {
             return false;
         }
         if (!handler.appliesIn(ctx.getChatScope())) {
-            LOGGER.info("⏭ Command /{} skipped — not applicable in {}", parsed.name, ctx.getChatScope());
+            LOGGER.info("⏭ Command /{} skipped — not applicable in {}", commandName, ctx.getChatScope());
             return true;
         }
 
         CommandContext enriched = new CommandContext(
                 ctx.getUpdate(), ctx.getMessage(), ctx.getBotEntity(), ctx.getSender(),
-                ctx.getBotUsername(), ctx.getUser(), parsed.name, parsed.args, ctx.getChatScope());
+                ctx.getBotUsername(), ctx.getUser(), commandName, args == null ? "" : args, ctx.getChatScope());
 
         try {
             List<OutgoingMessage> responses = handler.handle(enriched);
@@ -72,7 +78,7 @@ public class CommandDispatcher {
                 messageSender.sendAll(ctx.getSender(), responses);
             }
         } catch (Exception e) {
-            LOGGER.error("❌ Command /{} failed: {}", parsed.name, e.getMessage(), e);
+            LOGGER.error("❌ Command /{} failed: {}", commandName, e.getMessage(), e);
         }
         return true;
     }

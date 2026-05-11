@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.security.TelegramAuthenticationFilter;
 import com.example.dream_stream_bot.security.TelegramAuthenticationProvider;
 import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
 import com.example.dream_stream_bot.service.agent.AgentConfigService;
+import com.example.dream_stream_bot.service.consent.ConsentService;
 import com.example.dream_stream_bot.service.settings.SystemSettingsService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
@@ -45,6 +46,9 @@ class AdminSecurityIntegrationTest {
 
     @MockBean
     private AgentConfigService agentConfigService;
+
+    @MockBean
+    private ConsentService consentService;
 
     @MockBean
     private TelegramAuthenticationFilter telegramAuthenticationFilter;
