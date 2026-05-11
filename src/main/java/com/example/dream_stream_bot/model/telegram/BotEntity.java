@@ -86,6 +86,11 @@ public class BotEntity {
         return name;
     }
 
+    /** Подтверждение 18+ включено в настройках привязанного агента. */
+    public boolean requiresAgeConfirmation() {
+        return agentConfig != null && agentConfig.isRequireAgeConfirmation();
+    }
+
     /**
      * Автоматическое обновление updatedAt перед сохранением
      */
