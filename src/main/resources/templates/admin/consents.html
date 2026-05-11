@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Consents</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<div class="admin-app">
+<th:block th:replace="~{admin/fragments/nav-sidebar :: adminNav (active='consents')}"></th:block>
+<main class="admin-app__main">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-2">
+        <h1 class="admin-page-title mb-0">Consent documents</h1>
+        <button class="btn btn-primary btn-sm" data-bs-target="#createConsentModal" data-bs-toggle="modal" type="button">
+            New version
+        </button>
+    </div>
+    <p class="admin-section-lead">
+        Документы версионируются. <strong>MATERIAL</strong> запускает 14-дневный грейс на перепринятие.
+    </p>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0 admin-data-table">
+                <thead>
+                <tr>
+                    <th class="admin-num">ID</th>
+                    <th>Code</th>
+                    <th>Version</th>
+                    <th>Title</th>
+                    <th>Change</th>
+                    <th>Current</th>
+                    <th>Telegra.ph</th>
+                    <th>Published</th>
+                    <th class="admin-table-actions">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(documents)}">
+                    <td colspan="9" class="admin-empty-state">Документов пока нет.</td>
+                </tr>
+                <tr th:each="d : ${documents}">
+                    <td class="admin-num" th:text="${d.id}">1</td>
+                    <td th:text="${d.code}">OFFER</td>
+                    <td th:text="${d.version}">1</td>
+                    <td th:text="${d.title}">—</td>
+                    <td th:text="${d.changeType}">MINOR</td>
+                    <td>
+                        <span th:if="${d.current}" class="badge bg-success">current</span>
+                        <span th:unless="${d.current}" class="text-muted">draft</span>
+                    </td>
+                    <td>
+                        <a th:if="${d.externalUrl}" th:href="${d.externalUrl}" target="_blank" rel="noopener">link</a>
+                        <span th:unless="${d.externalUrl}">—</span>
+                    </td>
+                    <td th:text="${d.publishedAt ?: '—'}">—</td>
+                    <td class="admin-table-actions">
+                        <a class="btn btn-sm btn-outline-secondary" th:href="@{'/admin/consents/' + ${d.id}}">Open</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <form method="post" th:action="@{/admin/consents/escalate}"
+              onsubmit="return confirm('Перевести просроченные грейсы в BLOCKED_CONSENT?');">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button class="btn btn-outline-warning btn-sm" type="submit">Эскалировать просроченные грейсы</button>
+        </form>
+    </div>
+</main>
+</div>
+
+<div class="modal fade" id="createConsentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5">New consent draft</h2>
+                <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Close"></button>
+            </div>
+            <form method="post" th:action="@{/admin/consents/new}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="modal-body row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="newCode">Code</label>
+                        <select class="form-select" id="newCode" name="code" required>
+                            <option th:each="c : ${codes}" th:text="${c}" th:value="${c}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="newChangeType">Change type</label>
+                        <select class="form-select" id="newChangeType" name="changeType">
+                            <option th:each="ct : ${changeTypes}" th:text="${ct}" th:value="${ct}"></option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="newTitle">Title</label>
+                        <input class="form-control" id="newTitle" name="title" type="text">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="newUrl">External URL (если используете внешний хостинг)</label>
+                        <input class="form-control" id="newUrl" name="externalUrl" type="url">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="newBody">Markdown body</label>
+                        <textarea class="form-control" id="newBody" name="bodyMarkdown" rows="10"
+                                  placeholder="# Заголовок..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+                    <button class="btn btn-primary" type="submit">Create draft</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

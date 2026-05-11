@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Subscription</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+<div class="admin-app">
+<th:block th:replace="~{admin/fragments/nav-sidebar :: adminNav (active='subscriptions')}"></th:block>
+<main class="admin-app__main">
+    <div class="mb-3">
+        <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/subscriptions}">&larr; Все подписки</a>
+    </div>
+
+    <h1 class="admin-page-title">Подписка #<span th:text="${subscription.id}">1</span></h1>
+
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h2 class="h5">Основные сведения</h2>
+                <dl class="row mb-0">
+                    <dt class="col-5">Plan</dt>
+                    <dd class="col-7" th:text="${subscription.plan}">PERSONAL</dd>
+                    <dt class="col-5">Status</dt>
+                    <dd class="col-7">
+                        <span class="badge"
+                              th:classappend="${isActive} ? ' bg-success' : ' bg-secondary'"
+                              th:text="${subscription.status}">ACTIVE</span>
+                    </dd>
+                    <dt class="col-5">Bot</dt>
+                    <dd class="col-7" th:text="${bot != null ? bot.name + ' (#' + bot.id + ')' : subscription.botId}">—</dd>
+                    <dt class="col-5">Owner user</dt>
+                    <dd class="col-7" th:text="${ownerUser != null ? ownerUser.username + ' (#' + ownerUser.id + ')' : subscription.ownerUserId}">—</dd>
+                    <dt class="col-5">Scope chat</dt>
+                    <dd class="col-7" th:text="${subscription.scopeChatId ?: '—'}">—</dd>
+                    <dt class="col-5">Max participants</dt>
+                    <dd class="col-7" th:text="${subscription.maxParticipants ?: '—'}">—</dd>
+                    <dt class="col-5">Started</dt>
+                    <dd class="col-7" th:text="${subscription.startedAt}">—</dd>
+                    <dt class="col-5">Expires</dt>
+                    <dd class="col-7" th:text="${subscription.expiresAt}">—</dd>
+                    <dt class="col-5">Reaccept until</dt>
+                    <dd class="col-7" th:text="${subscription.requiresConsentReacceptanceUntil ?: '—'}">—</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h2 class="h5">Выдать триал</h2>
+                <form method="post" th:action="@{'/admin/subscriptions/' + ${subscription.id} + '/grant-trial'}" class="row g-2 align-items-end">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <div class="col-6">
+                        <label class="form-label" for="trialDays">Дней</label>
+                        <input class="form-control" id="trialDays" name="days" type="number" min="1" value="3">
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-warning w-100" type="submit">Активировать триал</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card p-3 mb-3">
+                <h2 class="h5">Продлить</h2>
+                <form method="post" th:action="@{'/admin/subscriptions/' + ${subscription.id} + '/extend'}" class="row g-2 align-items-end">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <div class="col-4">
+                        <label class="form-label" for="extendMonths">Месяцев</label>
+                        <select class="form-select" id="extendMonths" name="months">
+                            <option value="1">1</option>
+                            <option value="3">3</option>
+                            <option value="6">6</option>
+                            <option value="12">12</option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" for="extendSource">Источник</label>
+                        <select class="form-select" id="extendSource" name="source">
+                            <option th:each="s : ${periodSources}" th:text="${s}" th:value="${s}"></option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label" for="extendNote">Комментарий</label>
+                        <input class="form-control" id="extendNote" name="note" type="text">
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button class="btn btn-primary" type="submit">Продлить</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card p-3 mb-3">
+                <h2 class="h5">Лимит участников</h2>
+                <form method="post" th:action="@{'/admin/subscriptions/' + ${subscription.id} + '/set-max'}" class="row g-2 align-items-end">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <div class="col-8">
+                        <input class="form-control" name="maxParticipants" type="number" min="1"
+                               th:value="${subscription.maxParticipants}">
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-secondary w-100" type="submit">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card p-3 mb-3 border-danger">
+                <h2 class="h5 text-danger">Отмена</h2>
+                <form method="post" th:action="@{'/admin/subscriptions/' + ${subscription.id} + '/cancel'}"
+                      onsubmit="return confirm('Отменить подписку? Действие необратимо.');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <button class="btn btn-danger" type="submit">Отменить подписку</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="h5 mt-4">История периодов</h2>
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Source</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Granted by</th>
+                    <th>Note</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(periods)}">
+                    <td colspan="6" class="text-muted">Периодов нет.</td>
+                </tr>
+                <tr th:each="p : ${periods}">
+                    <td th:text="${p.id}">1</td>
+                    <td th:text="${p.source}">PAYMENT</td>
+                    <td th:text="${p.periodStartedAt}">—</td>
+                    <td th:text="${p.periodEndsAt}">—</td>
+                    <td th:text="${p.grantedByUserId ?: '—'}">—</td>
+                    <td th:text="${p.note}">—</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
