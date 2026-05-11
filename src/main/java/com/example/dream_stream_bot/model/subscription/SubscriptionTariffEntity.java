@@ -56,6 +56,18 @@ public class SubscriptionTariffEntity {
     @Column(name = "default_group", nullable = false)
     private boolean defaultGroup;
 
+    @Column(name = "referral_enabled", nullable = false)
+    private boolean referralEnabled;
+
+    @Column(name = "referral_referrer_days")
+    private Integer referralReferrerDays;
+
+    @Column(name = "referral_referred_days")
+    private Integer referralReferredDays;
+
+    @Column(name = "referral_first_payment_only", nullable = false)
+    private boolean referralFirstPaymentOnly = true;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -111,6 +123,18 @@ public class SubscriptionTariffEntity {
 
     public boolean isDefaultGroup() { return defaultGroup; }
     public void setDefaultGroup(boolean defaultGroup) { this.defaultGroup = defaultGroup; }
+
+    public boolean isReferralEnabled() { return referralEnabled; }
+    public void setReferralEnabled(boolean referralEnabled) { this.referralEnabled = referralEnabled; }
+
+    public Integer getReferralReferrerDays() { return referralReferrerDays; }
+    public void setReferralReferrerDays(Integer referralReferrerDays) { this.referralReferrerDays = referralReferrerDays; }
+
+    public Integer getReferralReferredDays() { return referralReferredDays; }
+    public void setReferralReferredDays(Integer referralReferredDays) { this.referralReferredDays = referralReferredDays; }
+
+    public boolean isReferralFirstPaymentOnly() { return referralFirstPaymentOnly; }
+    public void setReferralFirstPaymentOnly(boolean referralFirstPaymentOnly) { this.referralFirstPaymentOnly = referralFirstPaymentOnly; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

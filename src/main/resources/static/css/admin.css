@@ -6,12 +6,12 @@ body:has(> .admin-app) {
 }
 
 :root {
-  --admin-space-1: 4px;
-  --admin-space-2: 8px;
-  --admin-space-3: 12px;
-  --admin-space-4: 16px;
-  --admin-space-5: 24px;
-  --admin-space-6: 32px;
+  --admin-space-1: 3px;
+  --admin-space-2: 6px;
+  --admin-space-3: 10px;
+  --admin-space-4: 12px;
+  --admin-space-5: 16px;
+  --admin-space-6: 24px;
   --admin-space-7: 48px;
 
   --color-bg: #f0f2f5;
@@ -45,7 +45,7 @@ body:has(> .admin-app) {
 
   --admin-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
   --admin-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --admin-radius: 10px;
+  --admin-radius: 8px;
   --admin-transition: 0.18s ease;
 }
 
@@ -57,8 +57,8 @@ body:has(> .admin-app) {
   align-items: stretch;
   margin: 0;
   font-family: var(--admin-font-sans);
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  font-size: 0.875rem;
+  line-height: 1.35;
   color: var(--color-text-primary);
   background-color: var(--color-bg);
 }
@@ -69,12 +69,12 @@ body:has(> .admin-app) {
   flex: 1;
   min-width: 0;
   padding: var(--admin-space-5);
-  max-width: 1200px;
+  max-width: 1500px;
 }
 
 @media (min-width: 1400px) {
   .admin-app__main {
-    max-width: 1320px;
+    max-width: 1700px;
   }
 }
 
@@ -90,7 +90,7 @@ body:has(> .admin-app) {
 }
 
 .admin-app .admin-page-title {
-  font-size: 1.375rem;
+  font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-bottom: var(--admin-space-2);
@@ -98,8 +98,8 @@ body:has(> .admin-app) {
 
 .admin-app .admin-section-lead {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.35;
   margin-bottom: var(--admin-space-4);
 }
 
@@ -135,7 +135,7 @@ body:has(> .admin-app) {
 .admin-app .admin-sidebar {
   position: relative;
   z-index: 5;
-  width: 260px;
+  width: 220px;
   flex-shrink: 0;
   min-height: 100vh;
   padding: var(--admin-space-4);
@@ -150,7 +150,7 @@ body:has(> .admin-app) {
 
 .admin-app .admin-sidebar-brand {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--color-sidebar-text) !important;
   padding: var(--admin-space-2) var(--admin-space-3);
   border-radius: var(--admin-radius);
@@ -172,13 +172,13 @@ body:has(> .admin-app) {
 .admin-app .admin-nav-link {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 34px;
   padding: var(--admin-space-2) var(--admin-space-3);
   border-radius: var(--admin-radius);
   color: var(--color-sidebar-muted);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   border: 1px solid transparent;
   transition:
     background-color var(--admin-transition),
@@ -200,7 +200,7 @@ body:has(> .admin-app) {
 }
 
 .admin-app .admin-sidebar .btn-danger {
-  min-height: 44px;
+  min-height: 34px;
   margin-top: auto;
   font-weight: 600;
   border-radius: var(--admin-radius);
@@ -223,13 +223,13 @@ body:has(> .admin-app) {
 }
 
 .admin-app .card-body {
-  padding: var(--admin-space-4) var(--admin-space-5);
+  padding: var(--admin-space-3) var(--admin-space-4);
 }
 
 .admin-app .card-header {
-  padding: var(--admin-space-3) var(--admin-space-5);
+  padding: var(--admin-space-2) var(--admin-space-4);
   font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   background: rgba(15, 23, 42, 0.03);
   border-bottom: 1px solid var(--color-border);
 }
@@ -267,7 +267,7 @@ body:has(> .admin-app) {
   --bs-table-bg: transparent;
   margin-bottom: 0;
   font-family: var(--admin-font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .admin-app .admin-data-table thead th {
@@ -278,16 +278,16 @@ body:has(> .admin-app) {
   color: var(--color-text-secondary);
   font-family: var(--admin-font-sans);
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--color-border-strong);
-  padding: var(--admin-space-3) var(--admin-space-4);
+  padding: var(--admin-space-2) var(--admin-space-3);
   box-shadow: 0 1px 0 var(--color-border);
 }
 
 .admin-app .admin-data-table tbody td {
-  padding: var(--admin-space-3) var(--admin-space-4);
+  padding: var(--admin-space-2) var(--admin-space-3);
   border-color: var(--color-border);
   vertical-align: middle;
 }
@@ -320,7 +320,10 @@ body:has(> .admin-app) {
 }
 
 .admin-app .admin-table-actions .btn {
-  min-height: 40px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 .admin-app .admin-empty-state {
@@ -343,14 +346,14 @@ body:has(> .admin-app) {
 .admin-app .badge.bg-success {
   background-color: var(--color-success) !important;
   font-weight: 600;
-  font-size: 0.65rem;
-  padding: 0.35em 0.55em;
+  font-size: 0.6rem;
+  padding: 0.2em 0.45em;
 }
 
 .admin-app .badge.bg-secondary {
   background-color: #64748b !important;
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
 }
 
 .admin-app .badge.bg-danger {
@@ -391,9 +394,10 @@ body:has(> .admin-app) {
 }
 
 .admin-app .btn-sm {
-  min-height: 40px;
-  padding-left: var(--admin-space-4);
-  padding-right: var(--admin-space-4);
+  min-height: 30px;
+  padding-left: var(--admin-space-3);
+  padding-right: var(--admin-space-3);
+  font-size: 0.75rem;
 }
 
 /* --- Forms --- */
@@ -402,6 +406,9 @@ body:has(> .admin-app) {
 .admin-login .form-control {
   border-radius: 8px;
   border-color: var(--color-border-strong);
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
   transition: border-color var(--admin-transition), box-shadow var(--admin-transition);
 }
 
@@ -413,8 +420,9 @@ body:has(> .admin-app) {
 .admin-app .form-label,
 .admin-login .form-label {
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--color-text-secondary);
+  margin-bottom: 2px;
 }
 
 .admin-app .form-text {

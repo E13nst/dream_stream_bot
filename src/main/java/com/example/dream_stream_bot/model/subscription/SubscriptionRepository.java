@@ -27,4 +27,8 @@ public interface SubscriptionRepository extends JpaRepository<SubscriptionEntity
     List<SubscriptionEntity> findByBotId(Long botId);
 
     List<SubscriptionEntity> findByStatus(SubscriptionStatus status);
+
+    long countByTariffId(Long tariffId);
+
+    long deleteByTariffIdAndStatusIn(Long tariffId, List<SubscriptionStatus> statuses);
 }

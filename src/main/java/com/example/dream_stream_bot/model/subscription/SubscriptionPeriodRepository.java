@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface SubscriptionPeriodRepository extends JpaRepository<SubscriptionPeriodEntity, Long> {
 
     List<SubscriptionPeriodEntity> findBySubscriptionIdOrderByPeriodEndsAtDesc(Long subscriptionId);
+    long countBySubscriptionIdAndSource(Long subscriptionId, PeriodSource source);
 
     @Query("select max(p.periodEndsAt) from SubscriptionPeriodEntity p where p.subscriptionId = :id")
     Optional<OffsetDateTime> findMaxEndsAt(@Param("id") Long subscriptionId);

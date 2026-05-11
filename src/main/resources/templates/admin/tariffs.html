@@ -51,13 +51,14 @@
                     <th scope="col">Режим</th>
                     <th scope="col">Порядок</th>
                     <th scope="col">По умолч.</th>
+                    <th scope="col">Рефералка</th>
                     <th scope="col">Акт.</th>
                     <th class="admin-table-actions" scope="col">Действия</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:if="${#lists.isEmpty(tariffs)}">
-                    <td colspan="10" class="admin-empty-state">Тарифов нет.</td>
+                    <td colspan="11" class="admin-empty-state">Тарифов нет.</td>
                 </tr>
                 <tr th:each="t : ${tariffs}">
                     <td class="admin-num" th:text="${t.id}">1</td>
@@ -71,6 +72,11 @@
                         <span th:if="${t.defaultPersonal}" class="badge bg-info text-dark me-1">личка</span>
                         <span th:if="${t.defaultGroup}" class="badge bg-secondary">группа</span>
                         <span th:if="${!t.defaultPersonal && !t.defaultGroup}">—</span>
+                    </td>
+                    <td>
+                        <span th:if="${t.referralEnabled}"
+                              th:text="${(t.referralReferrerDays ?: 0) + '/' + (t.referralReferredDays ?: 0) + ' дн.'}">7/7 дн.</span>
+                        <span th:unless="${t.referralEnabled}">—</span>
                     </td>
                     <td th:text="${t.active}"></td>
                     <td class="admin-table-actions">

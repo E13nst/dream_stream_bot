@@ -40,17 +40,20 @@ public class SubscriptionService {
     private final TrialUsageRepository trialUsageRepository;
     private final SubscriptionTariffRepository tariffRepository;
     private final SubscriptionTariffService tariffService;
+    private final ReferralBonusService referralBonusService;
 
     public SubscriptionService(SubscriptionRepository subscriptionRepository,
                                SubscriptionPeriodRepository periodRepository,
                                TrialUsageRepository trialUsageRepository,
                                SubscriptionTariffRepository tariffRepository,
-                               SubscriptionTariffService tariffService) {
+                               SubscriptionTariffService tariffService,
+                               ReferralBonusService referralBonusService) {
         this.subscriptionRepository = subscriptionRepository;
         this.periodRepository = periodRepository;
         this.trialUsageRepository = trialUsageRepository;
         this.tariffRepository = tariffRepository;
         this.tariffService = tariffService;
+        this.referralBonusService = referralBonusService;
     }
 
     /** Личная подписка пользователя на бот. */
@@ -262,7 +265,10 @@ public class SubscriptionService {
                 ? subscription.getExpiresAt()
                 : now;
         OffsetDateTime endsAt = base.plusDays(days);
-        addPeriod(subscription, source, base, endsAt, grantedByUserId, note);
+        SubscriptionPeriodEntity createdPeriod = addPeriod(subscription, source, base, endsAt, grantedByUserId, note);
+        if (source == PeriodSource.PAYMENT) {
+            applyReferralBonusOnPayment(subscription, createdPeriod);
+        }
 
         if (subscription.getStartedAt() == null) {
             subscription.setStartedAt(now);
@@ -272,9 +278,9 @@ public class SubscriptionService {
         return subscriptionRepository.save(subscription);
     }
 
-    private void addPeriod(SubscriptionEntity subscription, PeriodSource source,
-                           OffsetDateTime start, OffsetDateTime end,
-                           Long grantedByUserId, String note) {
+    private SubscriptionPeriodEntity addPeriod(SubscriptionEntity subscription, PeriodSource source,
+                                               OffsetDateTime start, OffsetDateTime end,
+                                               Long grantedByUserId, String note) {
         SubscriptionPeriodEntity period = new SubscriptionPeriodEntity();
         period.setSubscriptionId(subscription.getId());
         period.setSource(source);
@@ -282,9 +288,28 @@ public class SubscriptionService {
         period.setPeriodEndsAt(end);
         period.setGrantedByUserId(grantedByUserId);
         period.setNote(note);
-        periodRepository.save(period);
+        SubscriptionPeriodEntity saved = periodRepository.save(period);
         LOGGER.info("➕ Granted period | sub={} | source={} | days={} | ends={}",
                 subscription.getId(), source, java.time.Duration.between(start, end).toDays(), end);
+        return saved;
+    }
+
+    private void applyReferralBonusOnPayment(SubscriptionEntity referredSubscription,
+                                             SubscriptionPeriodEntity paymentPeriod) {
+        referralBonusService.prepareForPayment(referredSubscription, paymentPeriod).ifPresent(prepared -> {
+            if (prepared.referredBonusDays() > 0) {
+                grantReferralBonus(prepared.referredSubscription(), prepared.referredBonusDays(), null,
+                        "Referral bonus (referred)");
+            }
+            if (prepared.referrerBonusDays() > 0) {
+                grantReferralBonus(prepared.referrerSubscription(), prepared.referrerBonusDays(), null,
+                        "Referral bonus (referrer)");
+            }
+            referralBonusService.markGranted(prepared);
+            LOGGER.info("🤝 Referral bonus granted | paymentPeriod={} | referredUser={} | referrerUser={} | referredDays={} | referrerDays={}",
+                    prepared.paymentPeriodId(), prepared.referredUserId(), prepared.referrerUserId(),
+                    prepared.referredBonusDays(), prepared.referrerBonusDays());
+        });
     }
 
     private void refreshExpiresAt(SubscriptionEntity subscription) {

@@ -96,13 +96,20 @@ public class AdminTariffController {
                          @RequestParam(required = false) Boolean active,
                          @RequestParam(required = false) Boolean defaultPersonal,
                          @RequestParam(required = false) Boolean defaultGroup,
+                         @RequestParam(required = false) Boolean referralEnabled,
+                         @RequestParam(required = false) Integer referralReferrerDays,
+                         @RequestParam(required = false) Integer referralReferredDays,
+                         @RequestParam(required = false) Boolean referralFirstPaymentOnly,
                          RedirectAttributes ra) {
         try {
             boolean activeEffective = !Boolean.FALSE.equals(active);
             boolean defP = Boolean.TRUE.equals(defaultPersonal);
             boolean defG = Boolean.TRUE.equals(defaultGroup);
+            boolean refEnabled = Boolean.TRUE.equals(referralEnabled);
+            boolean firstPaymentOnly = !Boolean.FALSE.equals(referralFirstPaymentOnly);
             SubscriptionTariffEntity t = tariffService.create(botId, code.trim(), title, scope,
-                    accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG);
+                    accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG,
+                    refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly);
             ra.addFlashAttribute("success", "Тариф «" + t.getCode() + "» создан");
             return "redirect:/admin/tariffs?botId=" + botId;
         } catch (Exception e) {
@@ -124,13 +131,20 @@ public class AdminTariffController {
                          @RequestParam(required = false) Boolean active,
                          @RequestParam(required = false) Boolean defaultPersonal,
                          @RequestParam(required = false) Boolean defaultGroup,
+                         @RequestParam(required = false) Boolean referralEnabled,
+                         @RequestParam(required = false) Integer referralReferrerDays,
+                         @RequestParam(required = false) Integer referralReferredDays,
+                         @RequestParam(required = false) Boolean referralFirstPaymentOnly,
                          RedirectAttributes ra) {
         try {
             boolean activeEffective = Boolean.TRUE.equals(active);
             boolean defP = Boolean.TRUE.equals(defaultPersonal);
             boolean defG = Boolean.TRUE.equals(defaultGroup);
+            boolean refEnabled = Boolean.TRUE.equals(referralEnabled);
+            boolean firstPaymentOnly = !Boolean.FALSE.equals(referralFirstPaymentOnly);
             tariffService.update(id, botId, code.trim(), title, scope,
-                    accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG);
+                    accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG,
+                    refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly);
             ra.addFlashAttribute("success", "Тариф обновлён");
             return "redirect:/admin/tariffs?botId=" + botId;
         } catch (Exception e) {

@@ -2,8 +2,12 @@ package com.example.dream_stream_bot.service.subscription;
 
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
+import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
+import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
 import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
 import com.example.dream_stream_bot.model.subscription.TariffScope;
+import com.example.dream_stream_bot.model.subscription.TrialUsageRepository;
+import com.example.dream_stream_bot.model.subscription.ReferralBonusGrantRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +22,18 @@ public class SubscriptionTariffService {
     static final String CODE_PERSONAL_FREE = "PERSONAL_FREE";
 
     private final SubscriptionTariffRepository tariffRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final TrialUsageRepository trialUsageRepository;
+    private final ReferralBonusGrantRepository referralBonusGrantRepository;
 
-    public SubscriptionTariffService(SubscriptionTariffRepository tariffRepository) {
+    public SubscriptionTariffService(SubscriptionTariffRepository tariffRepository,
+                                     SubscriptionRepository subscriptionRepository,
+                                     TrialUsageRepository trialUsageRepository,
+                                     ReferralBonusGrantRepository referralBonusGrantRepository) {
         this.tariffRepository = tariffRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.trialUsageRepository = trialUsageRepository;
+        this.referralBonusGrantRepository = referralBonusGrantRepository;
     }
 
     public SubscriptionTariffEntity require(Long id) {
@@ -60,20 +73,27 @@ public class SubscriptionTariffService {
         }
         int order = 0;
         saveNew(botId, CODE_PERSONAL_TRIAL, "Персональный (пробный период)", TariffScope.PERSONAL,
-                TariffAccessMode.TRIAL_ONBOARDING, 3, null, order++, true, false);
+                TariffAccessMode.TRIAL_ONBOARDING, 3, null, order++, true, false,
+                false, null, null, true);
         saveNew(botId, CODE_PERSONAL_FREE, "Персональный (бесплатно)", TariffScope.PERSONAL,
-                TariffAccessMode.FREE_UNLIMITED, null, null, order++, false, false);
+                TariffAccessMode.FREE_UNLIMITED, null, null, order++, false, false,
+                false, null, null, true);
         saveNew(botId, "GROUP_S", "Группа (до 10)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
-                null, 10, order++, false, true);
+                null, 10, order++, false, true,
+                false, null, null, true);
         saveNew(botId, "GROUP_M", "Группа (до 25)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
-                null, 25, order++, false, false);
+                null, 25, order++, false, false,
+                false, null, null, true);
         saveNew(botId, "GROUP_L", "Группа (до 50)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
-                null, 50, order++, false, false);
+                null, 50, order++, false, false,
+                false, null, null, true);
     }
 
     private void saveNew(Long botId, String code, String title, TariffScope scope,
                          TariffAccessMode mode, Integer trialDays, Integer maxParticipants, int sortOrder,
-                         boolean defaultPersonal, boolean defaultGroup) {
+                         boolean defaultPersonal, boolean defaultGroup,
+                         boolean referralEnabled, Integer referralReferrerDays,
+                         Integer referralReferredDays, boolean referralFirstPaymentOnly) {
         SubscriptionTariffEntity e = new SubscriptionTariffEntity();
         e.setBotId(botId);
         e.setCode(code);
@@ -85,6 +105,10 @@ public class SubscriptionTariffService {
         e.setSortOrder(sortOrder);
         e.setDefaultPersonal(defaultPersonal);
         e.setDefaultGroup(defaultGroup);
+        e.setReferralEnabled(referralEnabled);
+        e.setReferralReferrerDays(referralReferrerDays);
+        e.setReferralReferredDays(referralReferredDays);
+        e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
         validate(e);
         tariffRepository.save(e);
     }
@@ -93,7 +117,9 @@ public class SubscriptionTariffService {
     public SubscriptionTariffEntity create(Long botId, String code, String title, TariffScope scope,
                                              TariffAccessMode accessMode, Integer trialDays,
                                              Integer maxParticipants, int sortOrder, boolean active,
-                                             boolean defaultPersonal, boolean defaultGroup) {
+                                             boolean defaultPersonal, boolean defaultGroup,
+                                             boolean referralEnabled, Integer referralReferrerDays,
+                                             Integer referralReferredDays, boolean referralFirstPaymentOnly) {
         SubscriptionTariffEntity e = new SubscriptionTariffEntity();
         e.setBotId(botId);
         e.setCode(normalizeCode(code));
@@ -104,6 +130,10 @@ public class SubscriptionTariffService {
         e.setMaxParticipants(maxParticipants);
         e.setSortOrder(sortOrder);
         e.setActive(active);
+        e.setReferralEnabled(referralEnabled);
+        e.setReferralReferrerDays(referralReferrerDays);
+        e.setReferralReferredDays(referralReferredDays);
+        e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
         applyDefaultFlags(e, defaultPersonal, defaultGroup);
         validate(e);
         return tariffRepository.save(e);
@@ -113,7 +143,9 @@ public class SubscriptionTariffService {
     public SubscriptionTariffEntity update(Long id, Long botId, String code, String title, TariffScope scope,
                                              TariffAccessMode accessMode, Integer trialDays,
                                              Integer maxParticipants, int sortOrder, boolean active,
-                                             boolean defaultPersonal, boolean defaultGroup) {
+                                             boolean defaultPersonal, boolean defaultGroup,
+                                             boolean referralEnabled, Integer referralReferrerDays,
+                                             Integer referralReferredDays, boolean referralFirstPaymentOnly) {
         SubscriptionTariffEntity e = requireForBot(botId, id);
         e.setCode(normalizeCode(code));
         e.setTitle(title.trim());
@@ -123,6 +155,10 @@ public class SubscriptionTariffService {
         e.setMaxParticipants(maxParticipants);
         e.setSortOrder(sortOrder);
         e.setActive(active);
+        e.setReferralEnabled(referralEnabled);
+        e.setReferralReferrerDays(referralReferrerDays);
+        e.setReferralReferredDays(referralReferredDays);
+        e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
         applyDefaultFlags(e, defaultPersonal, defaultGroup);
         validate(e);
         return tariffRepository.save(e);
@@ -131,6 +167,22 @@ public class SubscriptionTariffService {
     @Transactional
     public void delete(Long id, Long botId) {
         SubscriptionTariffEntity e = requireForBot(botId, id);
+
+        // Deletion must not fail if only historical/cancelled data remains.
+        subscriptionRepository.deleteByTariffIdAndStatusIn(id, List.of(
+                SubscriptionStatus.CANCELLED,
+                SubscriptionStatus.EXPIRED,
+                SubscriptionStatus.PENDING_CONSENT,
+                SubscriptionStatus.AWAITING_ACTIVATION
+        ));
+        referralBonusGrantRepository.deleteByTariffId(id);
+        trialUsageRepository.deleteByTariffId(id);
+
+        long linkedSubscriptions = subscriptionRepository.countByTariffId(id);
+        if (linkedSubscriptions > 0) {
+            throw new IllegalStateException(
+                    "Тариф используется активными/триальными подписками. Сначала переведите их на другой тариф или отмените.");
+        }
         tariffRepository.delete(e);
     }
 
@@ -189,6 +241,19 @@ public class SubscriptionTariffService {
             if (e.getTrialDays() != null) {
                 throw new IllegalArgumentException("PAID_TERM не использует trial_days (оставьте пустым)");
             }
+        }
+        if (e.isReferralEnabled()) {
+            int referrerDays = e.getReferralReferrerDays() == null ? 0 : e.getReferralReferrerDays();
+            int referredDays = e.getReferralReferredDays() == null ? 0 : e.getReferralReferredDays();
+            if (referrerDays < 0 || referredDays < 0) {
+                throw new IllegalArgumentException("Реферальные дни не могут быть отрицательными");
+            }
+            if (referrerDays + referredDays <= 0) {
+                throw new IllegalArgumentException("При включенной рефералке укажите дни хотя бы для одной стороны");
+            }
+        } else {
+            e.setReferralReferrerDays(null);
+            e.setReferralReferredDays(null);
         }
     }
 

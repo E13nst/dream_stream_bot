@@ -72,6 +72,24 @@
                     <input class="form-check-input" id="tariffActiveNew" type="checkbox" name="active" value="true" checked>
                     <label class="form-check-label" for="tariffActiveNew">Активен</label>
                 </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" id="refEnabledNew" type="checkbox" name="referralEnabled" value="true">
+                    <label class="form-check-label" for="refEnabledNew">Участвует в реферальной программе</label>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" for="refReferrerDaysNew">Бонус дней рефереру</label>
+                        <input class="form-control" id="refReferrerDaysNew" name="referralReferrerDays" type="number" min="0" placeholder="например, 7">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" for="refReferredDaysNew">Бонус дней рефералу</label>
+                        <input class="form-control" id="refReferredDaysNew" name="referralReferredDays" type="number" min="0" placeholder="например, 7">
+                    </div>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" id="refFirstPayNew" type="checkbox" name="referralFirstPaymentOnly" value="true" checked>
+                    <label class="form-check-label" for="refFirstPayNew">Начислять только после первой оплаты</label>
+                </div>
                 <div class="form-check">
                     <input class="form-check-input" id="defPersNew" type="checkbox" name="defaultPersonal" value="true">
                     <label class="form-check-label" for="defPersNew">По умолчанию для лички этого бота</label>
@@ -136,6 +154,28 @@
                     <input class="form-check-input" id="tariffActiveEd" type="checkbox" name="active" value="true"
                            th:checked="${tariff.active}">
                     <label class="form-check-label" for="tariffActiveEd">Активен</label>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" id="refEnabledEd" type="checkbox" name="referralEnabled" value="true"
+                           th:checked="${tariff.referralEnabled}">
+                    <label class="form-check-label" for="refEnabledEd">Участвует в реферальной программе</label>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" for="refReferrerDaysEd">Бонус дней рефереру</label>
+                        <input class="form-control" id="refReferrerDaysEd" name="referralReferrerDays"
+                               type="number" min="0" th:value="${tariff.referralReferrerDays}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" for="refReferredDaysEd">Бонус дней рефералу</label>
+                        <input class="form-control" id="refReferredDaysEd" name="referralReferredDays"
+                               type="number" min="0" th:value="${tariff.referralReferredDays}">
+                    </div>
+                </div>
+                <div class="form-check mt-2">
+                    <input class="form-check-input" id="refFirstPayEd" type="checkbox" name="referralFirstPaymentOnly" value="true"
+                           th:checked="${tariff.referralFirstPaymentOnly}">
+                    <label class="form-check-label" for="refFirstPayEd">Начислять только после первой оплаты</label>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" id="defPersEd" type="checkbox" name="defaultPersonal" value="true"
