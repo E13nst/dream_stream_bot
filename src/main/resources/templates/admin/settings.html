@@ -16,7 +16,37 @@
 <th:block th:replace="~{admin/fragments/nav-sidebar :: adminNav (active='settings')}"></th:block>
 <main class="admin-app__main">
     <h1 class="admin-page-title">Settings</h1>
-    <p class="admin-section-lead">Настройки учётной записи администратора.</p>
+    <p class="admin-section-lead">Настройки учётной записи администратора и параметры сервиса (без деплоя).</p>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">Системные параметры</h2>
+                    <form th:action="@{/admin/settings/system}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <div class="mb-3">
+                            <label class="form-label" for="retentionDaysAfterExpiry">Хранение истории после окончания подписки (дней)</label>
+                            <input class="form-control" type="number" min="1" max="3650" required
+                                   id="retentionDaysAfterExpiry" name="retentionDaysAfterExpiry" th:value="${retentionDays}">
+                            <div class="form-text">По умолчанию 90. Используется ночным заданием очистки памяти диалогов.</div>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" type="checkbox" id="retentionUnlimited" name="retentionUnlimited" value="true"
+                                   th:checked="${retentionUnlimited}">
+                            <label class="form-check-label" for="retentionUnlimited">Бессрочное хранение (retention job отключён)</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="gatingDedupHours">Интервал повторных заглушек доступа (часы)</label>
+                            <input class="form-control" type="number" min="1" max="168" required
+                                   id="gatingDedupHours" name="gatingDedupHours" th:value="${gatingDedupHours}">
+                        </div>
+                        <button class="btn btn-primary" type="submit">Сохранить параметры</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-md-5">

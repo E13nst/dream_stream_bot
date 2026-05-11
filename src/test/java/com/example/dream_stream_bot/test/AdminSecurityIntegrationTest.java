@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.security.TelegramAuthenticationFilter;
 import com.example.dream_stream_bot.security.TelegramAuthenticationProvider;
 import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
 import com.example.dream_stream_bot.service.agent.AgentConfigService;
+import com.example.dream_stream_bot.service.settings.SystemSettingsService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -52,12 +55,18 @@ class AdminSecurityIntegrationTest {
     @MockBean
     private AdminUserDetailsService adminUserDetailsService;
 
+    @MockBean
+    private SystemSettingsService systemSettingsService;
+
     @BeforeEach
     void setUp() {
         when(userService.findAll()).thenReturn(List.of());
         when(userService.findByRole(UserEntity.UserRole.ADMIN)).thenReturn(List.of());
         when(botService.findAll()).thenReturn(List.of());
         when(botService.findActiveBots()).thenReturn(List.of());
+        when(systemSettingsService.getRetentionDaysAfterExpiry()).thenReturn(90);
+        when(systemSettingsService.isRetentionUnlimited()).thenReturn(false);
+        when(systemSettingsService.getInt(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
     }
 
     @Test

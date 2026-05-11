@@ -4,6 +4,7 @@ import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
 import com.example.dream_stream_bot.model.agent.AgentConfigRepository;
 import com.example.dream_stream_bot.model.agent.AgentProvider;
 import com.example.dream_stream_bot.model.agent.AgentRole;
+import com.example.dream_stream_bot.model.agent.DataLocality;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -70,8 +71,13 @@ public class AgentConfigService {
     public AgentConfigEntity update(
             Long id,
             String name,
+            String displayName,
+            String shortDescription,
             AgentRole role,
             AgentProvider provider,
+            DataLocality dataLocality,
+            boolean isPublic,
+            boolean requireAgeConfirmation,
             String model,
             Double temperature,
             Double topP,
@@ -82,8 +88,13 @@ public class AgentConfigService {
         return agentConfigRepository.findById(id)
                 .map(entity -> {
                     entity.setName(name);
+                    entity.setDisplayName(displayName);
+                    entity.setShortDescription(shortDescription);
                     entity.setRole(role);
                     entity.setProvider(provider);
+                    entity.setDataLocality(dataLocality != null ? dataLocality : DataLocality.CROSS_BORDER);
+                    entity.setPublic(isPublic);
+                    entity.setRequireAgeConfirmation(requireAgeConfirmation);
                     entity.setModel(model);
                     entity.setTemperature(temperature);
                     entity.setTopP(topP);

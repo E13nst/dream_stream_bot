@@ -29,7 +29,10 @@ public class UserEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", length = 16, nullable = false)
     private UserRole role = UserRole.USER;
-    
+
+    @Column(name = "referred_by_user_id")
+    private Long referredByUserId;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
     
@@ -66,7 +69,10 @@ public class UserEntity {
     
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
-    
+
+    public Long getReferredByUserId() { return referredByUserId; }
+    public void setReferredByUserId(Long referredByUserId) { this.referredByUserId = referredByUserId; }
+
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     

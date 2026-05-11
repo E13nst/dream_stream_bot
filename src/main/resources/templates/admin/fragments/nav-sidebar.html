@@ -9,6 +9,8 @@
             <a class="admin-nav-link" th:classappend="${active == 'users'} ? ' admin-nav-link--active'" th:href="@{/admin/users}">Users</a>
             <a class="admin-nav-link" th:classappend="${active == 'bots'} ? ' admin-nav-link--active'" th:href="@{/admin/bots}">Bots</a>
             <a class="admin-nav-link" th:classappend="${active == 'agents'} ? ' admin-nav-link--active'" th:href="@{/admin/agents}">Agents</a>
+            <a class="admin-nav-link" th:classappend="${active == 'subscriptions'} ? ' admin-nav-link--active'" th:href="@{/admin/subscriptions}">Subscriptions</a>
+            <a class="admin-nav-link" th:classappend="${active == 'consents'} ? ' admin-nav-link--active'" th:href="@{/admin/consents}">Consents</a>
             <a class="admin-nav-link" th:classappend="${active == 'settings'} ? ' admin-nav-link--active'" th:href="@{/admin/settings}">Settings</a>
         </div>
         <form th:action="@{/logout}" method="post">

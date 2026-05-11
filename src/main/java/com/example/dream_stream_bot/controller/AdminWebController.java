@@ -3,11 +3,14 @@ package com.example.dream_stream_bot.controller;
 import com.example.dream_stream_bot.model.agent.AgentConfigEntity;
 import com.example.dream_stream_bot.model.agent.AgentProvider;
 import com.example.dream_stream_bot.model.agent.AgentRole;
+import com.example.dream_stream_bot.model.agent.DataLocality;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.telegram.BotType;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.admin.AdminUserDetailsService;
 import com.example.dream_stream_bot.service.agent.AgentConfigService;
+import com.example.dream_stream_bot.service.settings.SystemSettingsService;
+import com.example.dream_stream_bot.service.access.GatingDedup;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.springframework.stereotype.Controller;
@@ -33,14 +36,17 @@ public class AdminWebController {
     private final BotService botService;
     private final AgentConfigService agentConfigService;
     private final AdminUserDetailsService adminUserDetailsService;
+    private final SystemSettingsService systemSettingsService;
 
     public AdminWebController(UserService userService, BotService botService,
                               AgentConfigService agentConfigService,
-                              AdminUserDetailsService adminUserDetailsService) {
+                              AdminUserDetailsService adminUserDetailsService,
+                              SystemSettingsService systemSettingsService) {
         this.userService = userService;
         this.botService = botService;
         this.agentConfigService = agentConfigService;
         this.adminUserDetailsService = adminUserDetailsService;
+        this.systemSettingsService = systemSettingsService;
     }
 
     @GetMapping("/login")
@@ -185,8 +191,13 @@ public class AdminWebController {
     @PostMapping("/admin/agents/new")
     public String createAgent(
             @RequestParam String name,
+            @RequestParam(required = false) String displayName,
+            @RequestParam(required = false) String shortDescription,
             @RequestParam(defaultValue = "CONVERSATION") String role,
             @RequestParam(defaultValue = "OPENAI") String provider,
+            @RequestParam(defaultValue = "CROSS_BORDER") String dataLocality,
+            @RequestParam(name = "isPublic", defaultValue = "false") boolean isPublic,
+            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam(defaultValue = "gpt-4o") String model,
             @RequestParam(required = false) Double temperature,
             @RequestParam(required = false) Double topP,
@@ -196,8 +207,13 @@ public class AdminWebController {
             @RequestParam(required = false) Integer memWindow) {
         AgentConfigEntity e = new AgentConfigEntity();
         e.setName(name.trim());
+        e.setDisplayName(blankToNull(displayName));
+        e.setShortDescription(blankToNull(shortDescription));
         e.setRole(AgentRole.valueOf(role));
         e.setProvider(AgentProvider.valueOf(provider));
+        e.setDataLocality(DataLocality.valueOf(dataLocality));
+        e.setPublic(isPublic);
+        e.setRequireAgeConfirmation(requireAgeConfirmation);
         e.setModel(model.trim());
         e.setTemperature(temperature);
         e.setTopP(topP);
@@ -213,8 +229,13 @@ public class AdminWebController {
     public String updateAgent(
             @PathVariable Long id,
             @RequestParam String name,
+            @RequestParam(required = false) String displayName,
+            @RequestParam(required = false) String shortDescription,
             @RequestParam String role,
             @RequestParam String provider,
+            @RequestParam(defaultValue = "CROSS_BORDER") String dataLocality,
+            @RequestParam(name = "isPublic", defaultValue = "false") boolean isPublic,
+            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam String model,
             @RequestParam(required = false) Double temperature,
             @RequestParam(required = false) Double topP,
@@ -225,8 +246,13 @@ public class AdminWebController {
         agentConfigService.update(
                 id,
                 name.trim(),
+                blankToNull(displayName),
+                blankToNull(shortDescription),
                 AgentRole.valueOf(role),
                 AgentProvider.valueOf(provider),
+                DataLocality.valueOf(dataLocality),
+                isPublic,
+                requireAgeConfirmation,
                 model.trim(),
                 temperature,
                 topP,
@@ -254,6 +280,7 @@ public class AdminWebController {
         model.addAttribute("selectedId", selectedId);
         model.addAttribute("roles", AgentRole.values());
         model.addAttribute("providers", AgentProvider.values());
+        model.addAttribute("dataLocalities", DataLocality.values());
 
         Optional<AgentConfigEntity> selected = selectedId == null
                 ? Optional.empty()
@@ -335,8 +362,30 @@ public class AdminWebController {
     }
 
     @GetMapping("/admin/settings")
-    public String settingsPage() {
+    public String settingsPage(Model model) {
+        model.addAttribute("retentionDays", systemSettingsService.getRetentionDaysAfterExpiry());
+        model.addAttribute("retentionUnlimited", systemSettingsService.isRetentionUnlimited());
+        model.addAttribute("gatingDedupHours",
+                systemSettingsService.getInt(GatingDedup.KEY_GATING_DEDUP_HOURS, 24));
         return "admin/settings";
+    }
+
+    @PostMapping("/admin/settings/system")
+    public String saveSystemSettings(
+            @RequestParam int retentionDaysAfterExpiry,
+            @RequestParam(name = "retentionUnlimited", defaultValue = "false") boolean retentionUnlimited,
+            @RequestParam int gatingDedupHours,
+            RedirectAttributes redirectAttributes) {
+        if (retentionDaysAfterExpiry >= 1 && retentionDaysAfterExpiry <= 3650) {
+            systemSettingsService.set(SystemSettingsService.KEY_RETENTION_DAYS_AFTER_EXPIRY,
+                    String.valueOf(retentionDaysAfterExpiry));
+        }
+        systemSettingsService.set(SystemSettingsService.KEY_RETENTION_UNLIMITED, Boolean.toString(retentionUnlimited));
+        if (gatingDedupHours >= 1 && gatingDedupHours <= 168) {
+            systemSettingsService.set(GatingDedup.KEY_GATING_DEDUP_HOURS, String.valueOf(gatingDedupHours));
+        }
+        redirectAttributes.addFlashAttribute("success", "Системные параметры сохранены");
+        return "redirect:/admin/settings";
     }
 
     @PostMapping("/admin/settings/password")
@@ -362,7 +411,7 @@ public class AdminWebController {
         return "redirect:/admin/settings";
     }
 
-        private List<UserEntity> filterUsers(String query) {
+    private List<UserEntity> filterUsers(String query) {
         List<UserEntity> users = userService.findAll();
         String normalized = query == null ? "" : query.trim().toLowerCase();
         return users.stream()

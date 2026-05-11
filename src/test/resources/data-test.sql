@@ -16,13 +16,28 @@ VALUES (
     CURRENT_TIMESTAMP
 );
 
-INSERT INTO agent_config (name, role, provider, model, system_prompt, mem_window, created_at, updated_at)
-SELECT SUBSTRING('Диалог · ' || username || ' #' || CAST(id AS VARCHAR), 1, 64),
-       'CONVERSATION', 'OPENAI', 'gpt-4o', 'Test system prompt', 100, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-FROM bot WHERE username = 'integration_test_bot';
+INSERT INTO agent_config (
+    name, display_name, short_description, role, provider, model, system_prompt, mem_window,
+    data_locality, is_public, created_at, updated_at
+)
+VALUES (
+    'Диалог · integration_test_bot',
+    'Диалог · integration_test_bot',
+    NULL,
+    'CONVERSATION',
+    'OPENAI',
+    'gpt-4o',
+    'Test system prompt',
+    100,
+    'CROSS_BORDER',
+    FALSE,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
 
 UPDATE bot
-SET agent_config_id = (SELECT id FROM agent_config WHERE name LIKE 'Диалог · integration_test_bot%' FETCH FIRST 1 ROW ONLY);
+SET agent_config_id = (SELECT id FROM agent_config WHERE name = 'Диалог · integration_test_bot' LIMIT 1)
+WHERE username = 'integration_test_bot';
 
 INSERT INTO users (telegram_id, username, first_name, last_name, role, created_at, updated_at)
 VALUES (141614461, 'E13nst', 'Andrey', 'Mitroshin', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

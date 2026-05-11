@@ -1,11 +1,11 @@
 package com.example.dream_stream_bot.service.admin;
 
+import com.example.dream_stream_bot.config.properties.AdminProperties;
 import com.example.dream_stream_bot.model.settings.SystemSetting;
 import com.example.dream_stream_bot.model.settings.SystemSettingsRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -43,12 +43,11 @@ public class AdminUserDetailsService implements UserDetailsService {
     public AdminUserDetailsService(
             SystemSettingsRepository settingsRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${admin.auth.username:admin}") String adminUsername,
-            @Value("${admin.auth.password-hash:}") String emergencyPasswordHash) {
+            AdminProperties adminProperties) {
         this.settingsRepository = settingsRepository;
         this.passwordEncoder = passwordEncoder;
-        this.adminUsername = adminUsername;
-        this.emergencyPasswordHash = emergencyPasswordHash;
+        this.adminUsername = adminProperties.getAuth().getUsername();
+        this.emergencyPasswordHash = adminProperties.getAuth().getPasswordHash();
     }
 
     @PostConstruct

@@ -2,18 +2,24 @@ package com.example.dream_stream_bot.config;
 
 import com.example.dream_stream_bot.bot.AbstractTelegramBot;
 import com.example.dream_stream_bot.bot.BotFactory;
+import com.example.dream_stream_bot.bot.EditedMessageHandler;
+import com.example.dream_stream_bot.bot.command.CallbackDispatcher;
+import com.example.dream_stream_bot.bot.command.CommandDispatcher;
+import com.example.dream_stream_bot.bot.error.BotUpdateErrorHandler;
+import com.example.dream_stream_bot.bot.message.MessageSender;
+import com.example.dream_stream_bot.config.properties.TelegramProperties;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
+import com.example.dream_stream_bot.service.access.AccessGate;
+import com.example.dream_stream_bot.service.access.GatingDedup;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.telegram.TelegramBotApiService;
 import com.example.dream_stream_bot.service.telegram.UserStateService;
 import com.example.dream_stream_bot.service.user.UserService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -30,27 +36,41 @@ public class BotInitializer {
     private final UserStateService userStateService;
     private final TelegramBotApiService telegramBotApiService;
     private final UserService userService;
+    private final MessageSender messageSender;
+    private final CommandDispatcher commandDispatcher;
+    private final CallbackDispatcher callbackDispatcher;
+    private final BotUpdateErrorHandler errorHandler;
+    private final EditedMessageHandler editedMessageHandler;
+    private final AccessGate accessGate;
+    private final GatingDedup gatingDedup;
+    private final TelegramProperties telegramProperties;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
-    @Value("${telegram.delivery-mode:long-polling}")
-    private String deliveryMode;
-
-    @Value("${telegram.webhook.base-url:}")
-    private String webhookBaseUrl;
-
-    @Value("${telegram.webhook.secret-token:}")
-    private String webhookSecretToken;
-
-    @Autowired
     public BotInitializer(BotService botService, MessageHandlerService messageHandlerService,
-                         UserStateService userStateService,
-                         TelegramBotApiService telegramBotApiService,
-                         UserService userService) {
+                          UserStateService userStateService,
+                          TelegramBotApiService telegramBotApiService,
+                          UserService userService,
+                          MessageSender messageSender,
+                          CommandDispatcher commandDispatcher,
+                          CallbackDispatcher callbackDispatcher,
+                          BotUpdateErrorHandler errorHandler,
+                          EditedMessageHandler editedMessageHandler,
+                          AccessGate accessGate,
+                          GatingDedup gatingDedup,
+                          TelegramProperties telegramProperties) {
         this.botService = botService;
         this.messageHandlerService = messageHandlerService;
         this.userStateService = userStateService;
         this.telegramBotApiService = telegramBotApiService;
         this.userService = userService;
+        this.messageSender = messageSender;
+        this.commandDispatcher = commandDispatcher;
+        this.callbackDispatcher = callbackDispatcher;
+        this.errorHandler = errorHandler;
+        this.editedMessageHandler = editedMessageHandler;
+        this.accessGate = accessGate;
+        this.gatingDedup = gatingDedup;
+        this.telegramProperties = telegramProperties;
     }
 
     @Bean
@@ -83,11 +103,13 @@ public class BotInitializer {
             List<BotEntity> bots = botService.getAllBots();
             log.info("📋 Found {} bots in database", bots.size());
 
-            String mode = (deliveryMode == null ? "long-polling" : deliveryMode.trim().toLowerCase());
+            String mode = telegramProperties.getDeliveryMode() == null
+                    ? "long-polling"
+                    : telegramProperties.getDeliveryMode().trim().toLowerCase();
             log.info("🧭 Telegram delivery mode: {}", mode);
 
             TelegramBotsApi telegramBotsApi = null;
-            if ("long-polling".equals(mode)) {
+            if (telegramProperties.isLongPolling()) {
                 telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
             }
 
@@ -112,10 +134,14 @@ public class BotInitializer {
                             log.info("📡 Bot '{}' current delivery: unknown(unavailable)", bot.getUsername());
                         }
 
-                        AbstractTelegramBot telegramBot = BotFactory.createBot(bot, botService, messageHandlerService, userStateService, userService);
+                        AbstractTelegramBot telegramBot = BotFactory.createBot(
+                                bot, botService, messageHandlerService, userStateService, userService,
+                                messageSender, commandDispatcher, callbackDispatcher,
+                                errorHandler, editedMessageHandler,
+                                accessGate, gatingDedup);
                         botRegistry.put(bot.getUsername(), telegramBot);
 
-                        if ("long-polling".equals(mode)) {
+                        if (telegramProperties.isLongPolling()) {
                             boolean deleted = telegramBotApiService.deleteWebhook(bot);
                             if (telegramBotsApi == null) {
                                 throw new IllegalStateException("TelegramBotsApi is not initialized for long-polling mode");
@@ -127,11 +153,8 @@ public class BotInitializer {
                             log.info("✅ Bot '{}' registered successfully (mode=long-polling, type={}, webhookDeleted={}, effective={})",
                                     bot.getUsername(), bot.getType(), deleted, effective);
                             successCount++;
-                        } else if ("webhook".equals(mode)) {
-                            String baseUrl = webhookBaseUrl != null ? webhookBaseUrl.trim() : "";
-                            if (baseUrl.endsWith("/")) {
-                                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-                            }
+                        } else if (telegramProperties.isWebhookMode()) {
+                            String baseUrl = telegramProperties.getWebhook().normalizedBaseUrl();
 
                             if (baseUrl.isBlank()) {
                                 log.error("❌ Webhook base URL is empty. Bot '{}' cannot be registered in webhook mode.",
@@ -141,7 +164,8 @@ public class BotInitializer {
                             }
 
                             String webhookUrl = baseUrl + "/webhook/" + bot.getUsername();
-                            boolean ok = telegramBotApiService.setWebhook(bot, webhookUrl, webhookSecretToken);
+                            boolean ok = telegramBotApiService.setWebhook(bot, webhookUrl,
+                                    telegramProperties.getWebhook().getSecretToken());
                             if (ok) {
                                 var afterInfo = telegramBotApiService.getWebhookInfo(bot);
                                 String effective = afterInfo.map(TelegramBotApiService.WebhookInfo::describeDelivery)

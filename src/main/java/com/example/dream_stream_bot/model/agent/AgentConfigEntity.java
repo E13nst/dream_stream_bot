@@ -25,6 +25,12 @@ public class AgentConfigEntity {
     @Column(nullable = false, length = 64)
     private String name;
 
+    @Column(name = "display_name", length = 128)
+    private String displayName;
+
+    @Column(name = "short_description", length = 512)
+    private String shortDescription;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private AgentRole role = AgentRole.CONVERSATION;
@@ -32,6 +38,17 @@ public class AgentConfigEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private AgentProvider provider = AgentProvider.OPENAI;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "data_locality", nullable = false, length = 32)
+    private DataLocality dataLocality = DataLocality.CROSS_BORDER;
+
+    @Column(name = "is_public", nullable = false)
+    private boolean isPublic = false;
+
+    /** Если true — в онбординге и {@link com.example.dream_stream_bot.service.access.AccessGate} требуется AGE_18. */
+    @Column(name = "require_age_confirmation", nullable = false)
+    private boolean requireAgeConfirmation = false;
 
     @Column(nullable = false, length = 64)
     private String model = "gpt-4o";
