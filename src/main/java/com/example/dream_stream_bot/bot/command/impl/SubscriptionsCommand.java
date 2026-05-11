@@ -5,6 +5,8 @@ import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Команда {@code /subscriptions} — список подписок текущего пользователя как владельца по всем ботам-помощникам.
@@ -25,10 +28,14 @@ public class SubscriptionsCommand implements BotCommand {
 
     private final SubscriptionService subscriptionService;
     private final BotService botService;
+    private final SubscriptionTariffRepository subscriptionTariffRepository;
 
-    public SubscriptionsCommand(SubscriptionService subscriptionService, BotService botService) {
+    public SubscriptionsCommand(SubscriptionService subscriptionService,
+                                BotService botService,
+                                SubscriptionTariffRepository subscriptionTariffRepository) {
         this.subscriptionService = subscriptionService;
         this.botService = botService;
+        this.subscriptionTariffRepository = subscriptionTariffRepository;
     }
 
     @Override
@@ -66,13 +73,19 @@ public class SubscriptionsCommand implements BotCommand {
         }
         List<String> lines = new ArrayList<>();
         lines.add("Ваши подписки (как владелец):");
+        Map<Long, SubscriptionTariffEntity> tariffById = subscriptionTariffRepository
+                .findAllById(mine.stream().map(SubscriptionEntity::getTariffId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(SubscriptionTariffEntity::getId, t -> t));
         for (SubscriptionEntity s : mine) {
             BotEntity b = botsById.get(s.getBotId());
             String botLabel = b != null ? "@" + b.getUsername() : "bot#" + s.getBotId();
+            SubscriptionTariffEntity t = tariffById.get(s.getTariffId());
+            String tariffLabel = t != null ? t.getCode() + ": " + t.getTitle() : "тариф#" + s.getTariffId();
             String scope = s.getScopeChatId() != null ? "группа " + s.getScopeChatId() : "личка";
             String exp = s.getExpiresAt() != null ? s.getExpiresAt().toLocalDate().toString() : "—";
             lines.add(String.format("• %s | %s | %s | до %s | %s",
-                    botLabel, s.getPlan(), scope, exp, s.getStatus()));
+                    botLabel, tariffLabel, scope, exp, s.getStatus()));
         }
         lines.add("Продление — через администратора или оплату (когда будет подключена).");
         return BotCommand.reply(OutgoingMessage.builder()

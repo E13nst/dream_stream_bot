@@ -9,6 +9,7 @@ import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.TelegramBotApiService;
 import com.example.dream_stream_bot.service.user.UserService;
+import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -32,15 +33,18 @@ public class ConsentPublicationNotifier {
     private final BotService botService;
     private final UserService userService;
     private final TelegramBotApiService telegramBotApiService;
+    private final SubscriptionTariffService subscriptionTariffService;
 
     public ConsentPublicationNotifier(SubscriptionRepository subscriptionRepository,
                                       BotService botService,
                                       UserService userService,
-                                      TelegramBotApiService telegramBotApiService) {
+                                      TelegramBotApiService telegramBotApiService,
+                                      SubscriptionTariffService subscriptionTariffService) {
         this.subscriptionRepository = subscriptionRepository;
         this.botService = botService;
         this.userService = userService;
         this.telegramBotApiService = telegramBotApiService;
+        this.subscriptionTariffService = subscriptionTariffService;
     }
 
     public void notifyPublished(ConsentDocumentEntity doc) {
@@ -67,7 +71,7 @@ public class ConsentPublicationNotifier {
             Map<String, Object> markup = inlineOpenBotUrl(un);
             telegramBotApiService.sendTextMessage(bot, owner.get().getTelegramId(), msg, markup);
 
-            if (sub.getPlan().isGroup() && sub.getScopeChatId() != null) {
+            if (subscriptionTariffService.isGroupTariff(sub.getTariffId()) && sub.getScopeChatId() != null) {
                 String gk = sub.getBotId() + ":" + sub.getScopeChatId();
                 if (groupNotified.add(gk)) {
                     String gtext = "Обновлена версия документа «" + doc.getTitle() + "». Участникам может потребоваться подтвердить согласия в личке с ботом.";

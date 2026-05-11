@@ -2,8 +2,6 @@ package com.example.dream_stream_bot.model.subscription;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -19,9 +17,11 @@ public class TrialUsageEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
-    private SubscriptionPlan plan;
+    @Column(name = "bot_id", nullable = false)
+    private Long botId;
+
+    @Column(name = "tariff_id", nullable = false)
+    private Long tariffId;
 
     @Column(name = "owner_user_id", nullable = false)
     private Long ownerUserId;
@@ -36,8 +36,11 @@ public class TrialUsageEntity {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public SubscriptionPlan getPlan() { return plan; }
-    public void setPlan(SubscriptionPlan plan) { this.plan = plan; }
+    public Long getBotId() { return botId; }
+    public void setBotId(Long botId) { this.botId = botId; }
+
+    public Long getTariffId() { return tariffId; }
+    public void setTariffId(Long tariffId) { this.tariffId = tariffId; }
 
     public Long getOwnerUserId() { return ownerUserId; }
     public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }

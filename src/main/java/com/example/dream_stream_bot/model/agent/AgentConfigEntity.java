@@ -46,10 +46,6 @@ public class AgentConfigEntity {
     @Column(name = "is_public", nullable = false)
     private boolean isPublic = false;
 
-    /** Если true — в онбординге и {@link com.example.dream_stream_bot.service.access.AccessGate} требуется AGE_18. */
-    @Column(name = "require_age_confirmation", nullable = false)
-    private boolean requireAgeConfirmation = false;
-
     @Column(nullable = false, length = 64)
     private String model = "gpt-4o";
 

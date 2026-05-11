@@ -4,9 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -27,9 +30,12 @@ public class SubscriptionEntity {
     @Column(name = "bot_id", nullable = false)
     private Long botId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
-    private SubscriptionPlan plan;
+    @Column(name = "tariff_id", nullable = false)
+    private Long tariffId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tariff_id", insertable = false, updatable = false)
+    private SubscriptionTariffEntity tariff;
 
     @Column(name = "scope_chat_id")
     private Long scopeChatId;
@@ -82,8 +88,11 @@ public class SubscriptionEntity {
     public Long getBotId() { return botId; }
     public void setBotId(Long botId) { this.botId = botId; }
 
-    public SubscriptionPlan getPlan() { return plan; }
-    public void setPlan(SubscriptionPlan plan) { this.plan = plan; }
+    public Long getTariffId() { return tariffId; }
+    public void setTariffId(Long tariffId) { this.tariffId = tariffId; }
+
+    public SubscriptionTariffEntity getTariff() { return tariff; }
+    public void setTariff(SubscriptionTariffEntity tariff) { this.tariff = tariff; }
 
     public Long getScopeChatId() { return scopeChatId; }
     public void setScopeChatId(Long scopeChatId) { this.scopeChatId = scopeChatId; }

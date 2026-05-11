@@ -25,8 +25,9 @@
             <div class="card p-3">
                 <h2 class="h5">Основные сведения</h2>
                 <dl class="row mb-0">
-                    <dt class="col-5">Plan</dt>
-                    <dd class="col-7" th:text="${subscription.plan}">PERSONAL</dd>
+                    <dt class="col-5">Тариф</dt>
+                    <dd class="col-7" th:if="${tariff != null}" th:text="${tariff.code + ' — ' + tariff.title + ' (#id ' + tariff.id + ')'}">—</dd>
+                    <dd class="col-7" th:if="${tariff == null}" th:text="${subscription.tariffId}">—</dd>
                     <dt class="col-5">Status</dt>
                     <dd class="col-7">
                         <span class="badge"

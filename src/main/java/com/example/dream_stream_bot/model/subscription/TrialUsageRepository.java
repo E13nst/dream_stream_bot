@@ -8,7 +8,7 @@ import java.util.Optional;
 @Repository
 public interface TrialUsageRepository extends JpaRepository<TrialUsageEntity, Long> {
 
-    Optional<TrialUsageEntity> findByPlanAndOwnerUserIdAndScopeChatId(SubscriptionPlan plan,
-                                                                     Long ownerUserId,
-                                                                     Long scopeChatId);
+    Optional<TrialUsageEntity> findByTariffIdAndOwnerUserIdAndScopeChatId(Long tariffId,
+                                                                          Long ownerUserId,
+                                                                          Long scopeChatId);
 }

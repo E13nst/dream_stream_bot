@@ -33,13 +33,12 @@
                     <th scope="col">Model</th>
                     <th scope="col" title="Локализация обработки данных">Locality</th>
                     <th scope="col" title="Доступен для подключения к публичным ботам">Public</th>
-                    <th scope="col" title="Требовать подтверждение возраста 18+ при онбординге">18+</th>
                     <th class="admin-table-actions" scope="col">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:if="${agents == null or #lists.isEmpty(agents)}">
-                    <td class="admin-empty-state" colspan="10">
+                    <td class="admin-empty-state" colspan="9">
                         <strong>Агентов пока нет</strong> — создайте первого кнопкой «Create Agent».
                     </td>
                 </tr>
@@ -52,7 +51,6 @@
                     <td th:text="${a.model}">gpt-4o</td>
                     <td th:text="${a.dataLocality}">CROSS_BORDER</td>
                     <td th:text="${a.public ? 'yes' : 'no'}">no</td>
-                    <td th:text="${a.requireAgeConfirmation ? 'yes' : 'no'}">no</td>
                     <td class="admin-table-actions">
                         <a class="btn btn-sm btn-outline-secondary"
                            th:href="@{/admin/agents(selectedId=${a.id})}">
@@ -117,11 +115,6 @@
                         <div class="form-check">
                             <input class="form-check-input" id="newIsPublic" name="isPublic" type="checkbox" value="true">
                             <label class="form-check-label" for="newIsPublic">Доступен для публичных ботов</label>
-                        </div>
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" id="newRequireAge" name="requireAgeConfirmation" type="checkbox" value="true">
-                            <label class="form-check-label" for="newRequireAge">Требовать подтверждение возраста 18+</label>
-                            <div class="form-text">Если включено — пользователь принимает документ «Подтверждение возраста 18+» до доступа к боту.</div>
                         </div>
                     </div>
                     <div class="col-12">
@@ -215,14 +208,6 @@
                                 <input class="form-check-input" id="editIsPublic" name="isPublic" type="checkbox" value="true"
                                        th:checked="${selectedAgent.public}">
                                 <label class="form-check-label" for="editIsPublic">Public</label>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" id="editRequireAge" name="requireAgeConfirmation" type="checkbox" value="true"
-                                       th:checked="${selectedAgent.requireAgeConfirmation}">
-                                <label class="form-check-label" for="editRequireAge">Требовать подтверждение возраста 18+</label>
-                                <div class="form-text">Распространяется на все боты, привязанные к этому агенту.</div>
                             </div>
                         </div>
                         <div class="col-12">

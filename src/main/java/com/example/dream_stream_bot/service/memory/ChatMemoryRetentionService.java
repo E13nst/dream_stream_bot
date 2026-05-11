@@ -5,6 +5,7 @@ import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.settings.SystemSettingsService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
+import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,17 +24,20 @@ public class ChatMemoryRetentionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionService subscriptionService;
+    private final SubscriptionTariffService subscriptionTariffService;
     private final PostgresChatMemoryRepository chatMemoryRepository;
     private final SystemSettingsService systemSettingsService;
     private final UserService userService;
 
     public ChatMemoryRetentionService(SubscriptionRepository subscriptionRepository,
                                       SubscriptionService subscriptionService,
+                                      SubscriptionTariffService subscriptionTariffService,
                                       PostgresChatMemoryRepository chatMemoryRepository,
                                       SystemSettingsService systemSettingsService,
                                       UserService userService) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionService = subscriptionService;
+        this.subscriptionTariffService = subscriptionTariffService;
         this.chatMemoryRepository = chatMemoryRepository;
         this.systemSettingsService = systemSettingsService;
         this.userService = userService;
@@ -59,7 +63,7 @@ public class ChatMemoryRetentionService {
             if (subscriptionService.isActive(sub)) {
                 continue;
             }
-            if (sub.getPlan().isGroup() && sub.getScopeChatId() != null) {
+            if (subscriptionTariffService.isGroupTariff(sub.getTariffId()) && sub.getScopeChatId() != null) {
                 String prefix = "bot:" + sub.getBotId() + ":chat:" + sub.getScopeChatId();
                 int rows = chatMemoryRepository.deleteByConversationIdStartingWith(prefix);
                 totalDeleted += rows;

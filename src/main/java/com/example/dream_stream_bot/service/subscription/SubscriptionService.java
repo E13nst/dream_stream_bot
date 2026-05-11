@@ -4,9 +4,11 @@ import com.example.dream_stream_bot.model.subscription.PeriodSource;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionPeriodEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionPeriodRepository;
-import com.example.dream_stream_bot.model.subscription.SubscriptionPlan;
 import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
+import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
 import com.example.dream_stream_bot.model.subscription.TrialUsageEntity;
 import com.example.dream_stream_bot.model.subscription.TrialUsageRepository;
 import org.slf4j.Logger;
@@ -23,25 +25,32 @@ import java.util.Optional;
  * продление, отмена и проверка активности.
  *
  * Срок жизни подписки — кэш {@code expires_at} в {@link SubscriptionEntity}
- * пересчитывается по {@code max(period_ends_at)} из {@link SubscriptionPeriodEntity}.
+ * пересчитывается по {@code max(period_ends_at)} из {@link SubscriptionPeriodEntity};
+ * тарифы {@link SubscriptionTariffEntity} задают персональный/групповой режим и способ доступа.
  */
 @Service
 public class SubscriptionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionService.class);
 
-    public static final int PERSONAL_TRIAL_DAYS = 3;
+    public static final int FALLBACK_TRIAL_DAYS = 3;
 
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionPeriodRepository periodRepository;
     private final TrialUsageRepository trialUsageRepository;
+    private final SubscriptionTariffRepository tariffRepository;
+    private final SubscriptionTariffService tariffService;
 
     public SubscriptionService(SubscriptionRepository subscriptionRepository,
                                SubscriptionPeriodRepository periodRepository,
-                               TrialUsageRepository trialUsageRepository) {
+                               TrialUsageRepository trialUsageRepository,
+                               SubscriptionTariffRepository tariffRepository,
+                               SubscriptionTariffService tariffService) {
         this.subscriptionRepository = subscriptionRepository;
         this.periodRepository = periodRepository;
         this.trialUsageRepository = trialUsageRepository;
+        this.tariffRepository = tariffRepository;
+        this.tariffService = tariffService;
     }
 
     /** Личная подписка пользователя на бот. */
@@ -75,19 +84,28 @@ public class SubscriptionService {
         return periodRepository.findBySubscriptionIdOrderByPeriodEndsAtDesc(subscriptionId);
     }
 
+    public boolean isGroupSubscriptionByTariff(Long tariffId) {
+        return tariffService.isGroupTariff(tariffId);
+    }
+
     /**
      * Создаёт подписку в статусе {@link SubscriptionStatus#PENDING_CONSENT}.
-     * Если подписка уже есть (personal — по owner+bot, group — по bot+chat) — возвращает существующую.
+     * Если уже есть (personal — owner+bot, group — bot+chat) — возвращает существующую (тариф уже зафиксирован).
      */
     @Transactional
-    public SubscriptionEntity createOrGet(Long ownerUserId, Long botId, SubscriptionPlan plan, Long scopeChatId) {
-        if (plan.isGroup() && scopeChatId == null) {
-            throw new IllegalArgumentException("scopeChatId is required for group plan " + plan);
+    public SubscriptionEntity createOrGet(Long ownerUserId, Long botId, Long tariffId, Long scopeChatId) {
+        SubscriptionTariffEntity tariff = tariffService.requireForBot(botId, tariffId);
+        if (!Boolean.TRUE.equals(tariff.isActive())) {
+            throw new IllegalArgumentException("Тариф неактивен: id=" + tariffId);
         }
-        if (!plan.isGroup() && scopeChatId != null) {
-            throw new IllegalArgumentException("scopeChatId must be null for personal plan");
+        boolean group = tariff.getScope().isGroup();
+        if (group && scopeChatId == null) {
+            throw new IllegalArgumentException("scopeChatId is required for group tariff " + tariff.getCode());
         }
-        Optional<SubscriptionEntity> existing = plan.isGroup()
+        if (!group && scopeChatId != null) {
+            throw new IllegalArgumentException("scopeChatId must be null for personal tariff");
+        }
+        Optional<SubscriptionEntity> existing = group
                 ? subscriptionRepository.findByBotIdAndScopeChatId(botId, scopeChatId)
                 : subscriptionRepository.findPersonal(botId, ownerUserId);
         if (existing.isPresent()) {
@@ -96,23 +114,24 @@ public class SubscriptionService {
         SubscriptionEntity entity = new SubscriptionEntity();
         entity.setOwnerUserId(ownerUserId);
         entity.setBotId(botId);
-        entity.setPlan(plan);
+        entity.setTariffId(tariffId);
         entity.setScopeChatId(scopeChatId);
-        entity.setMaxParticipants(plan.getDefaultMaxParticipants());
+        entity.setMaxParticipants(group ? tariff.getMaxParticipants() : null);
         entity.setStatus(SubscriptionStatus.PENDING_CONSENT);
         return subscriptionRepository.save(entity);
     }
 
     /**
-     * Активирует триал. Бросает {@link IllegalStateException}, если триал уже использован.
+     * Активирует триал. Бросает {@link IllegalStateException}, если триал уже использован по этому тарифу.
      */
     @Transactional
     public SubscriptionEntity activateTrial(SubscriptionEntity subscription, int days, Long grantedByUserId) {
+        SubscriptionTariffEntity tariff = tariffService.require(subscription.getTariffId());
         Long scopeKey = subscription.getScopeChatId() != null ? subscription.getScopeChatId() : 0L;
-        Optional<TrialUsageEntity> usage = trialUsageRepository.findByPlanAndOwnerUserIdAndScopeChatId(
-                subscription.getPlan(), subscription.getOwnerUserId(), scopeKey);
+        Optional<TrialUsageEntity> usage = trialUsageRepository.findByTariffIdAndOwnerUserIdAndScopeChatId(
+                subscription.getTariffId(), subscription.getOwnerUserId(), scopeKey);
         if (usage.isPresent()) {
-            throw new IllegalStateException("Trial already used for plan=" + subscription.getPlan()
+            throw new IllegalStateException("Trial already used for tariff=" + tariff.getCode()
                     + " owner=" + subscription.getOwnerUserId() + " scope=" + scopeKey);
         }
 
@@ -121,7 +140,8 @@ public class SubscriptionService {
         addPeriod(subscription, PeriodSource.TRIAL, now, endsAt, grantedByUserId, "Trial " + days + "d");
 
         TrialUsageEntity usageEntity = new TrialUsageEntity();
-        usageEntity.setPlan(subscription.getPlan());
+        usageEntity.setBotId(subscription.getBotId());
+        usageEntity.setTariffId(subscription.getTariffId());
         usageEntity.setOwnerUserId(subscription.getOwnerUserId());
         usageEntity.setScopeChatId(scopeKey);
         usageEntity.setUsedAt(now);
@@ -132,6 +152,18 @@ public class SubscriptionService {
             subscription.setStartedAt(now);
         }
         refreshExpiresAt(subscription);
+        return subscriptionRepository.save(subscription);
+    }
+
+    /** Персональный безлимит без периодов (после согласий). */
+    @Transactional
+    public SubscriptionEntity activateFreeUnlimited(SubscriptionEntity subscription) {
+        OffsetDateTime now = OffsetDateTime.now();
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        if (subscription.getStartedAt() == null) {
+            subscription.setStartedAt(now);
+        }
+        subscription.setExpiresAt(null);
         return subscriptionRepository.save(subscription);
     }
 
@@ -150,10 +182,6 @@ public class SubscriptionService {
         return extend(subscription, PeriodSource.REFERRAL_BONUS, days, grantedByUserId, note);
     }
 
-    /**
-     * Продлевает подписку на {@code months} месяцев от max(now, expiresAt).
-     * Источник — обычно {@link PeriodSource#PAYMENT} или {@link PeriodSource#MANUAL_GRANT}.
-     */
     @Transactional
     public SubscriptionEntity extendMonths(SubscriptionEntity subscription, int months, PeriodSource source,
                                            Long grantedByUserId, String note) {
@@ -195,6 +223,12 @@ public class SubscriptionService {
     public boolean isActive(SubscriptionEntity subscription) {
         if (subscription == null) {
             return false;
+        }
+        Optional<SubscriptionTariffEntity> tariffOpt = tariffRepository.findById(subscription.getTariffId());
+        if (tariffOpt.isPresent()
+                && tariffOpt.get().getAccessMode() == TariffAccessMode.FREE_UNLIMITED
+                && subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+            return true;
         }
         if (!subscription.getStatus().isAccessAllowed()) {
             return false;
@@ -254,6 +288,11 @@ public class SubscriptionService {
     }
 
     private void refreshExpiresAt(SubscriptionEntity subscription) {
+        SubscriptionTariffEntity tariff = tariffRepository.findById(subscription.getTariffId()).orElse(null);
+        if (tariff != null && tariff.getAccessMode() == TariffAccessMode.FREE_UNLIMITED) {
+            subscription.setExpiresAt(null);
+            return;
+        }
         OffsetDateTime max = periodRepository.findMaxEndsAt(subscription.getId()).orElse(null);
         subscription.setExpiresAt(max);
         if (max != null && max.isBefore(OffsetDateTime.now())

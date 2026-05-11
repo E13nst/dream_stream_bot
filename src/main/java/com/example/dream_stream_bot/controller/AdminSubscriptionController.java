@@ -3,8 +3,10 @@ package com.example.dream_stream_bot.controller;
 import com.example.dream_stream_bot.model.subscription.PeriodSource;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionPeriodEntity;
-import com.example.dream_stream_bot.model.subscription.SubscriptionPlan;
+import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
 import com.example.dream_stream_bot.service.telegram.BotService;
@@ -19,44 +21,65 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class AdminSubscriptionController {
 
     private final SubscriptionService subscriptionService;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionTariffRepository subscriptionTariffRepository;
     private final BotService botService;
     private final UserService userService;
 
     public AdminSubscriptionController(SubscriptionService subscriptionService,
+                                       SubscriptionRepository subscriptionRepository,
+                                       SubscriptionTariffRepository subscriptionTariffRepository,
                                        BotService botService,
                                        UserService userService) {
         this.subscriptionService = subscriptionService;
+        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionTariffRepository = subscriptionTariffRepository;
         this.botService = botService;
         this.userService = userService;
     }
 
     @GetMapping("/admin/subscriptions")
     public String list(@RequestParam(name = "status", required = false) String status,
-                       @RequestParam(name = "plan", required = false) String plan,
+                       @RequestParam(name = "tariffId", required = false) Long tariffId,
                        Model model) {
-        List<SubscriptionEntity> all = subscriptionService.findAll().stream()
+        List<SubscriptionEntity> all = subscriptionRepository.findAll().stream()
                 .sorted(Comparator.comparing(SubscriptionEntity::getId).reversed())
                 .toList();
         SubscriptionStatus statusFilter = parseStatus(status);
-        SubscriptionPlan planFilter = parsePlan(plan);
         List<SubscriptionEntity> filtered = all.stream()
                 .filter(s -> statusFilter == null || s.getStatus() == statusFilter)
-                .filter(s -> planFilter == null || s.getPlan() == planFilter)
+                .filter(s -> tariffId == null || tariffId.equals(s.getTariffId()))
                 .toList();
         model.addAttribute("subscriptions", filtered);
-        model.addAttribute("plans", SubscriptionPlan.values());
         model.addAttribute("statuses", SubscriptionStatus.values());
-        model.addAttribute("selectedStatus", status);
-        model.addAttribute("selectedPlan", plan);
+
+        Map<Long, SubscriptionTariffEntity> tariffById = botService.findAll().stream()
+                .flatMap(b -> subscriptionTariffRepository.findByBotIdOrderBySortOrderAscIdAsc(b.getId()).stream())
+                .collect(Collectors.toMap(SubscriptionTariffEntity::getId, t -> t, (a, b) -> a));
+        List<SubscriptionTariffEntity> allTariffs = tariffById.values().stream()
+                .sorted(Comparator.<SubscriptionTariffEntity, Long>comparing(SubscriptionTariffEntity::getBotId)
+                        .thenComparingInt(SubscriptionTariffEntity::getSortOrder))
+                .toList();
+
+        Map<Long, String> tariffLabels = tariffById.values().stream()
+                .collect(Collectors.toMap(SubscriptionTariffEntity::getId,
+                        t -> t.getCode() + ": " + t.getTitle(),
+                        (a, b) -> a));
+
         model.addAttribute("bots", botService.findAll().stream()
-                .sorted(Comparator.comparing(BotEntity::getId))
-                .toList());
+                .sorted(Comparator.comparing(BotEntity::getId)).toList());
+        model.addAttribute("tariffs", allTariffs);
+        model.addAttribute("tariffLabels", tariffLabels);
         model.addAttribute("periodSources", PeriodSource.values());
+        model.addAttribute("selectedStatus", status);
+        model.addAttribute("selectedTariffId", tariffId);
         return "admin/subscriptions";
     }
 
@@ -74,20 +97,22 @@ public class AdminSubscriptionController {
         userService.findById(subscription.getOwnerUserId()).ifPresent(u -> model.addAttribute("ownerUser", u));
         BotEntity bot = botService.findById(subscription.getBotId());
         model.addAttribute("bot", bot);
+        subscriptionTariffRepository.findById(subscription.getTariffId()).ifPresent(t -> model.addAttribute("tariff", t));
         return "admin/subscription-details";
     }
 
     @PostMapping("/admin/subscriptions/create")
     public String create(@RequestParam Long ownerUserId,
                          @RequestParam Long botId,
-                         @RequestParam String plan,
+                         @RequestParam Long tariffId,
                          @RequestParam(required = false) Long scopeChatId,
                          RedirectAttributes redirectAttributes) {
         try {
-            SubscriptionPlan planValue = SubscriptionPlan.valueOf(plan);
-            SubscriptionEntity created = subscriptionService.createOrGet(
-                    ownerUserId, botId, planValue,
-                    planValue.isGroup() ? scopeChatId : null);
+            Long scopeResolved = null;
+            if (subscriptionTariffRepository.findById(tariffId).map(t -> t.getScope().isGroup()).orElse(false)) {
+                scopeResolved = scopeChatId;
+            }
+            SubscriptionEntity created = subscriptionService.createOrGet(ownerUserId, botId, tariffId, scopeResolved);
             redirectAttributes.addFlashAttribute("success",
                     "Подписка #" + created.getId() + " создана/найдена");
             return "redirect:/admin/subscriptions/" + created.getId();
@@ -156,10 +181,5 @@ public class AdminSubscriptionController {
     private static SubscriptionStatus parseStatus(String value) {
         if (value == null || value.isBlank()) return null;
         try { return SubscriptionStatus.valueOf(value); } catch (IllegalArgumentException e) { return null; }
-    }
-
-    private static SubscriptionPlan parsePlan(String value) {
-        if (value == null || value.isBlank()) return null;
-        try { return SubscriptionPlan.valueOf(value); } catch (IllegalArgumentException e) { return null; }
     }
 }

@@ -6,6 +6,7 @@ import com.example.dream_stream_bot.model.telegram.BotKeywordEntity;
 import com.example.dream_stream_bot.model.telegram.BotKeywordRepository;
 import com.example.dream_stream_bot.model.telegram.BotRepository;
 import com.example.dream_stream_bot.service.agent.AgentConfigService;
+import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
@@ -30,16 +31,19 @@ public class BotService {
     private final BotKeywordRepository botKeywordRepository;
     private final AgentConfigService agentConfigService;
     private final CacheManager cacheManager;
+    private final SubscriptionTariffService subscriptionTariffService;
 
     @Autowired
     public BotService(BotRepository botRepository,
                       BotKeywordRepository botKeywordRepository,
                       AgentConfigService agentConfigService,
-                      CacheManager cacheManager) {
+                      CacheManager cacheManager,
+                      SubscriptionTariffService subscriptionTariffService) {
         this.botRepository = botRepository;
         this.botKeywordRepository = botKeywordRepository;
         this.agentConfigService = agentConfigService;
         this.cacheManager = cacheManager;
+        this.subscriptionTariffService = subscriptionTariffService;
     }
 
     public List<BotEntity> getAllBots() {
@@ -69,12 +73,16 @@ public class BotService {
 
     @Transactional
     public BotEntity save(BotEntity bot) {
-        if (bot.getId() == null) {
+        boolean isNew = bot.getId() == null;
+        if (isNew) {
             bot.setCreatedAt(LocalDateTime.now());
         }
         bot.setUpdatedAt(LocalDateTime.now());
         assertAssistantHasAgent(bot);
         BotEntity saved = botRepository.save(bot);
+        if (isNew) {
+            subscriptionTariffService.ensureDefaultTariffsForBot(saved.getId());
+        }
         evictBotCache(saved.getId());
         return saved;
     }

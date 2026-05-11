@@ -3,6 +3,9 @@ package com.example.dream_stream_bot.service.access;
 import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
+import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.consent.ConsentService;
@@ -51,19 +54,22 @@ public class AccessGate {
     private final GroupTriggerMatcher triggerMatcher;
     private final ConsentService consentService;
     private final OwnerParticipantLimitNotifier ownerParticipantLimitNotifier;
+    private final SubscriptionTariffRepository subscriptionTariffRepository;
 
     public AccessGate(SubscriptionService subscriptionService,
                       SubscriptionParticipantService participantService,
                       UserService userService,
                       GroupTriggerMatcher triggerMatcher,
                       ConsentService consentService,
-                      OwnerParticipantLimitNotifier ownerParticipantLimitNotifier) {
+                      OwnerParticipantLimitNotifier ownerParticipantLimitNotifier,
+                      SubscriptionTariffRepository subscriptionTariffRepository) {
         this.subscriptionService = subscriptionService;
         this.participantService = participantService;
         this.userService = userService;
         this.triggerMatcher = triggerMatcher;
         this.consentService = consentService;
         this.ownerParticipantLimitNotifier = ownerParticipantLimitNotifier;
+        this.subscriptionTariffRepository = subscriptionTariffRepository;
     }
 
     public AccessDecision evaluate(BotEntity bot, Message message, ChatScope scope, String botUsername) {
@@ -169,6 +175,19 @@ public class AccessGate {
             case BLOCKED_CONSENT -> AccessDecision.deny(AccessReason.BLOCKED_CONSENT, STUB_BLOCKED_CONSENT);
             case EXPIRED -> AccessDecision.deny(AccessReason.EXPIRED, STUB_EXPIRED);
             case TRIAL, ACTIVE -> {
+                Optional<SubscriptionTariffEntity> tariffOpt = subscriptionTariffRepository.findById(sub.getTariffId());
+                if (tariffOpt.isPresent()
+                        && tariffOpt.get().getAccessMode() == TariffAccessMode.FREE_UNLIMITED
+                        && sub.getStatus() == SubscriptionStatus.ACTIVE) {
+                    if (sub.getRequiresConsentReacceptanceUntil() != null
+                            && sub.getRequiresConsentReacceptanceUntil().isAfter(OffsetDateTime.now())) {
+                        yield AccessDecision.allowWithReminder(sub, AccessReason.CONSENT_GRACE,
+                                "📝 Условия обновились — подтвердите принятие новой версии до "
+                                        + sub.getRequiresConsentReacceptanceUntil().toLocalDate());
+                    }
+                    yield AccessDecision.allow(sub);
+                }
+
                 OffsetDateTime expiresAt = sub.getExpiresAt();
                 if (expiresAt == null || !expiresAt.isAfter(OffsetDateTime.now())) {
                     LOGGER.info("Subscription #{} status={} but expired at {}", sub.getId(), sub.getStatus(), expiresAt);

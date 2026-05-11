@@ -77,7 +77,6 @@ public class AgentConfigService {
             AgentProvider provider,
             DataLocality dataLocality,
             boolean isPublic,
-            boolean requireAgeConfirmation,
             String model,
             Double temperature,
             Double topP,
@@ -94,7 +93,6 @@ public class AgentConfigService {
                     entity.setProvider(provider);
                     entity.setDataLocality(dataLocality != null ? dataLocality : DataLocality.CROSS_BORDER);
                     entity.setPublic(isPublic);
-                    entity.setRequireAgeConfirmation(requireAgeConfirmation);
                     entity.setModel(model);
                     entity.setTemperature(temperature);
                     entity.setTopP(topP);

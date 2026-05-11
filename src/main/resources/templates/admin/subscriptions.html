@@ -17,17 +17,20 @@
             New Subscription
         </button>
     </div>
-    <p class="admin-section-lead">Подписки: персональные и групповые. Триал и продления — вручную из карточки.</p>
+    <p class="admin-section-lead">Подписки пользователей. Тарифы — в <a th:href="@{/admin/tariffs}">Tariffs</a>. Триал и продления из карточки.</p>
 
     <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
     <form method="get" class="row g-2 align-items-end mb-3" th:action="@{/admin/subscriptions}">
         <div class="col-auto">
-            <label class="form-label" for="filterPlan">Plan</label>
-            <select class="form-select form-select-sm" id="filterPlan" name="plan">
+            <label class="form-label" for="filterTariff">Тариф</label>
+            <select class="form-select form-select-sm" id="filterTariff" name="tariffId">
                 <option value="">Все</option>
-                <option th:each="p : ${plans}" th:text="${p}" th:value="${p}" th:selected="${p.name() == selectedPlan}"></option>
+                <option th:each="t : ${tariffs}"
+                        th:value="${t.id}"
+                        th:selected="${selectedTariffId != null and selectedTariffId == t.id}"
+                        th:text="'#' + ${t.botId} + ' · ' + ${t.code} + ': ' + ${t.title}"></option>
             </select>
         </div>
         <div class="col-auto">
@@ -49,7 +52,7 @@
                 <thead>
                 <tr>
                     <th class="admin-num" scope="col">ID</th>
-                    <th scope="col">Plan</th>
+                    <th scope="col">Тариф</th>
                     <th scope="col">Bot</th>
                     <th scope="col">Owner</th>
                     <th scope="col">Scope chat</th>
@@ -64,7 +67,7 @@
                 </tr>
                 <tr th:each="s : ${subscriptions}">
                     <td class="admin-num" th:text="${s.id}">1</td>
-                    <td th:text="${s.plan}">PERSONAL</td>
+                    <td th:text="${tariffLabels[s.tariffId]}">PERSONAL</td>
                     <td th:text="${s.botId}">1</td>
                     <td th:text="${s.ownerUserId}">1</td>
                     <td th:text="${s.scopeChatId ?: '—'}">—</td>
@@ -105,14 +108,16 @@
                             <option th:each="b : ${bots}" th:text="${b.id} + ' · ' + ${b.name}" th:value="${b.id}"></option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="newPlan">Plan</label>
-                        <select class="form-select" id="newPlan" name="plan" required>
-                            <option th:each="p : ${plans}" th:text="${p}" th:value="${p}"></option>
+                    <div class="col-12">
+                        <label class="form-label" for="newTariff">Тариф</label>
+                        <select class="form-select" id="newTariff" name="tariffId" required>
+                            <option th:each="t : ${tariffs}"
+                                    th:value="${t.id}"
+                                    th:text="'#' + ${t.botId} + ' · ' + ${t.code} + ': ' + ${t.title}"></option>
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="newScope">Scope chat_id (для GROUP_*)</label>
+                        <label class="form-label" for="newScope">Scope chat_id (для групповых)</label>
                         <input class="form-control" id="newScope" name="scopeChatId" type="number">
                     </div>
                 </div>
