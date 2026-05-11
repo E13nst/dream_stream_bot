@@ -98,6 +98,9 @@ public class ConsentService {
      */
     @Transactional
     public ConsentDocumentEntity publish(Long documentId, boolean publishToTelegraph) {
+        if (documentId == null) {
+            throw new IllegalArgumentException("Consent document id is required");
+        }
         ConsentDocumentEntity doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new IllegalArgumentException("Consent document not found: " + documentId));
 
@@ -170,14 +173,10 @@ public class ConsentService {
     }
 
     /**
-     * То же множество согласий, что использует {@link com.example.dream_stream_bot.service.access.AccessGate}
-     * для допуска владельца/участника.
+     * Согласия для доступа к боту. Оферта принимается отдельно в покупательском сценарии.
      */
     public boolean hasRequiredConsents(BotEntity bot, Long appUserId) {
         if (bot == null || appUserId == null) {
-            return false;
-        }
-        if (!hasAcceptedCurrent(appUserId, ConsentCode.OFFER)) {
             return false;
         }
         if (!hasAcceptedCurrent(appUserId, ConsentCode.PRIVACY_POLICY)) {

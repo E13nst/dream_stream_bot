@@ -183,6 +183,7 @@ public class BotService {
         BotEntity bot = botRepository.findById(botId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Бот не найден"));
         bot.getKeywords().clear();
+        botKeywordRepository.flush();
         if (rawList == null || rawList.isEmpty()) {
             return save(bot);
         }

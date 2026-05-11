@@ -53,7 +53,7 @@ public class BotEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @Column(length = 256)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @OneToMany(mappedBy = "bot", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)

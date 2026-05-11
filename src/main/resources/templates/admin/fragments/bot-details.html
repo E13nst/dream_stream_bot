@@ -64,7 +64,8 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="botDetailDescription">Description</label>
-                    <input class="form-control form-control-sm" id="botDetailDescription" name="description" th:value="${selectedBot.description}">
+                    <textarea class="form-control form-control-sm" id="botDetailDescription" name="description" rows="5"
+                              th:text="${selectedBot.description}"></textarea>
                 </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" id="selectedBotActive" name="isActive" th:checked="${selectedBot.isActive}" type="checkbox" value="true">

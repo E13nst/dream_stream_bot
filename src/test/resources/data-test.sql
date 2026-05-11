@@ -11,7 +11,7 @@ DELETE FROM bot_keyword;
 DELETE FROM bot;
 DELETE FROM agent_config;
 
-INSERT INTO bot (name, username, token, type, is_active, require_age_confirmation, created_at, updated_at)
+INSERT INTO bot (name, username, token, type, is_active, require_age_confirmation, description, created_at, updated_at)
 VALUES (
     'IntegrationTestBot',
     'integration_test_bot',
@@ -19,6 +19,7 @@ VALUES (
     'assistant',
     true,
     false,
+    'Привет! Я тестовый бот. Нажмите «Начать», чтобы активировать доступ.',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 );

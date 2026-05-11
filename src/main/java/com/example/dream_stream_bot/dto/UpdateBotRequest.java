@@ -25,7 +25,7 @@ public class UpdateBotRequest {
     
     private BotType type;
     
-    @Size(max = 256, message = "Описание не должно превышать 256 символов")
+    @Size(max = 2048, message = "Описание не должно превышать 2048 символов")
     private String description;
     
     /**

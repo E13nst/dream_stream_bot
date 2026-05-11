@@ -35,6 +35,7 @@ public class OnboardingService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OnboardingService.class);
 
+    public static final String CALLBACK_START = "onboarding_start";
     public static final String CALLBACK_ACCEPT = "consent_accept";
     public static final String CALLBACK_DECLINE = "consent_decline";
 
@@ -80,12 +81,44 @@ public class OnboardingService {
 
         applyReferralPayload(user, payload);
 
+        return showBotIntro(bot, chatId);
+    }
+
+    public List<OutgoingMessage> startPersonalAccess(UserEntity user, BotEntity bot, Long chatId) {
+        if (user == null) {
+            return List.of(OutgoingMessage.of(chatId,
+                    "Не удалось определить ваш профиль. Попробуйте позже."));
+        }
+        if (bot == null) {
+            return List.of(OutgoingMessage.of(chatId, "Бот не настроен. Обратитесь в поддержку."));
+        }
+
         SubscriptionEntity sub = subscriptionService.createOrGet(
                 user.getId(), bot.getId(), subscriptionTariffService.resolveDefaultPersonal(bot.getId()).getId(), null);
 
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
         return continueOnboardingPersonal(user, bot, chatId, sub);
+    }
+
+    private List<OutgoingMessage> showBotIntro(BotEntity bot, Long chatId) {
+        String text = botIntroText(bot);
+
+        List<InlineKeyboardButton> row = new ArrayList<>();
+        row.add(InlineKeyboardButton.builder()
+                .text("Начать")
+                .callbackData(CALLBACK_START)
+                .build());
+
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .keyboardRow(row)
+                .build();
+
+        return List.of(OutgoingMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .replyMarkup(keyboard)
+                .build());
     }
 
     private List<OutgoingMessage> startParticipantConsent(BotEntity bot, Long chatId, UserEntity user, String subscriptionIdTail) {
@@ -213,6 +246,12 @@ public class OnboardingService {
     }
 
     public List<OutgoingMessage> recordDecline(Long chatId, ConsentCode code) {
+        if (code == ConsentCode.OFFER) {
+            return List.of(OutgoingMessage.of(chatId, """
+                    Без согласия с документом «%s» оплатить подписку невозможно.
+                    Когда будете готовы — вернитесь к оплате или нажмите /start.
+                    """.formatted(code.getDefaultTitle())));
+        }
         return List.of(OutgoingMessage.of(chatId, """
                 Без согласия с документом «%s» доступ к боту невозможен.
                 Когда будете готовы — нажмите /start ещё раз.
@@ -241,6 +280,10 @@ public class OnboardingService {
                         /forget_me — стереть всю историю"""));
             }
             if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM) {
+                ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner());
+                if (nextPurchaseConsent != null) {
+                    return promptConsent(chatId, nextPurchaseConsent);
+                }
                 SubscriptionEntity awaiting = subscriptionService.markAwaitingActivation(subscription);
                 LOGGER.info("Personal subscription awaiting activation | sub={} | user={}", awaiting.getId(), user.getId());
                 return List.of(OutgoingMessage.of(chatId,
@@ -280,12 +323,18 @@ public class OnboardingService {
 
     private List<OutgoingMessage> finalizeGroupOwnerAfterConsents(UserEntity user, BotEntity bot, Long chatId,
                                                                   SubscriptionEntity subscription) {
-        scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         if (subscription.getStatus() == SubscriptionStatus.TRIAL
                 || subscription.getStatus() == SubscriptionStatus.ACTIVE) {
+            scopeHolder.clearPendingGroup(bot.getId(), user.getId());
             return List.of(OutgoingMessage.of(chatId, activeGreeting(subscription)));
         }
 
+        ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner());
+        if (nextPurchaseConsent != null) {
+            return promptConsent(chatId, nextPurchaseConsent);
+        }
+
+        scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         SubscriptionEntity awaiting = subscriptionService.markAwaitingActivation(subscription);
 
         Optional<Long> sc = subscription.getScopeChatId() != null
@@ -372,7 +421,6 @@ public class OnboardingService {
         if (bot.requiresAgeConfirmation()) {
             codes.add(ConsentCode.AGE_18);
         }
-        codes.add(ConsentCode.OFFER);
         codes.add(ConsentCode.PRIVACY_POLICY);
         codes.add(ConsentCode.PERSONAL_DATA);
         AgentConfigEntity agent = bot.getAgentConfig();
@@ -380,6 +428,10 @@ public class OnboardingService {
             codes.add(ConsentCode.CROSS_BORDER);
         }
         return codes;
+    }
+
+    private List<ConsentCode> requiredPurchaseConsentsOwner() {
+        return List.of(ConsentCode.OFFER);
     }
 
     /** Участник группы не подписывает оферту (покупает ведущий). */
@@ -424,6 +476,20 @@ public class OnboardingService {
         user.setReferredByUserId(referrerId);
         userService.save(user);
         LOGGER.info("🤝 Referral attached | user={} | referrer={}", user.getId(), referrerId);
+    }
+
+    private static String botIntroText(BotEntity bot) {
+        String description = bot.getDescription();
+        if (description != null && !description.isBlank()) {
+            return description.trim();
+        }
+        String name = bot.getBotName();
+        String label = name != null && !name.isBlank() ? name.trim() : "этот бот";
+        return """
+                Привет! Я %s.
+
+                Нажмите «Начать», чтобы активировать доступ, или просто пришлите сообщение, если доступ уже подключён.
+                """.formatted(label).trim();
     }
 
     private static String activeGreeting(SubscriptionEntity subscription) {
