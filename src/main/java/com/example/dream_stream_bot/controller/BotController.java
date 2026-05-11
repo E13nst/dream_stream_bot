@@ -301,6 +301,8 @@ public class BotController {
             newBot.setDescription(request.getDescription());
             newBot.setMiniapp(request.getMiniapp());
             newBot.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
+            newBot.setRequireAgeConfirmation(request.getRequireAgeConfirmation() != null
+                    ? request.getRequireAgeConfirmation() : false);
             if (request.getType() == BotType.ASSISTANT) {
                 if (request.getAgentConfigId() == null) {
                     return ResponseEntity.badRequest().build();
@@ -392,6 +394,9 @@ public class BotController {
             }
             if (request.getIsActive() != null) {
                 existingBot.setIsActive(request.getIsActive());
+            }
+            if (request.getRequireAgeConfirmation() != null) {
+                existingBot.setRequireAgeConfirmation(request.getRequireAgeConfirmation());
             }
 
             BotEntity updatedBot = botService.save(existingBot);

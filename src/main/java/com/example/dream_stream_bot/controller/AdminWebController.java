@@ -111,6 +111,7 @@ public class AdminWebController {
             @RequestParam String username,
             @RequestParam String token,
             @RequestParam String type,
+            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam(required = false) Long agentConfigId,
             @RequestParam(required = false) String webhookUrl,
             @RequestParam(required = false) String description,
@@ -130,6 +131,7 @@ public class AdminWebController {
         bot.setDescription(blankToNull(description));
         bot.setMiniapp(blankToNull(miniapp));
         bot.setIsActive(isActive);
+        bot.setRequireAgeConfirmation(requireAgeConfirmation);
         if (agentConfigId != null) {
             bot.setAgentConfig(agentConfigService.requireById(agentConfigId));
         }
@@ -144,6 +146,7 @@ public class AdminWebController {
             @RequestParam String name,
             @RequestParam String username,
             @RequestParam String type,
+            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam(required = false) Long agentConfigId,
             @RequestParam(required = false) String webhookUrl,
             @RequestParam(required = false) String description,
@@ -160,6 +163,7 @@ public class AdminWebController {
             bot.setDescription(blankToNull(description));
             bot.setMiniapp(blankToNull(miniapp));
             bot.setIsActive(isActive);
+            bot.setRequireAgeConfirmation(requireAgeConfirmation);
 
             if (BotType.COPYCAT.getValue().equalsIgnoreCase(typeValue)) {
                 bot.setAgentConfig(null);
@@ -197,7 +201,6 @@ public class AdminWebController {
             @RequestParam(defaultValue = "OPENAI") String provider,
             @RequestParam(defaultValue = "CROSS_BORDER") String dataLocality,
             @RequestParam(name = "isPublic", defaultValue = "false") boolean isPublic,
-            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam(defaultValue = "gpt-4o") String model,
             @RequestParam(required = false) Double temperature,
             @RequestParam(required = false) Double topP,
@@ -213,7 +216,6 @@ public class AdminWebController {
         e.setProvider(AgentProvider.valueOf(provider));
         e.setDataLocality(DataLocality.valueOf(dataLocality));
         e.setPublic(isPublic);
-        e.setRequireAgeConfirmation(requireAgeConfirmation);
         e.setModel(model.trim());
         e.setTemperature(temperature);
         e.setTopP(topP);
@@ -235,7 +237,6 @@ public class AdminWebController {
             @RequestParam String provider,
             @RequestParam(defaultValue = "CROSS_BORDER") String dataLocality,
             @RequestParam(name = "isPublic", defaultValue = "false") boolean isPublic,
-            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam String model,
             @RequestParam(required = false) Double temperature,
             @RequestParam(required = false) Double topP,
@@ -252,7 +253,6 @@ public class AdminWebController {
                 AgentProvider.valueOf(provider),
                 DataLocality.valueOf(dataLocality),
                 isPublic,
-                requireAgeConfirmation,
                 model.trim(),
                 temperature,
                 topP,

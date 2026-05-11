@@ -67,6 +67,9 @@ public class BotEntity {
     @Column(name = "miniapp", length = 512)
     private String miniapp; // ссылка на миниприложение Telegram
 
+    @Column(name = "require_age_confirmation", nullable = false)
+    private boolean requireAgeConfirmation = false;
+
     public java.util.List<String> getBotAliasesList() {
         if (name == null) return java.util.Collections.emptyList();
         return java.util.Arrays.stream(name.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
@@ -86,9 +89,9 @@ public class BotEntity {
         return name;
     }
 
-    /** Подтверждение 18+ включено в настройках привязанного агента. */
+    /** Подтверждение 18+ включено в настройках этого бота. */
     public boolean requiresAgeConfirmation() {
-        return agentConfig != null && agentConfig.isRequireAgeConfirmation();
+        return requireAgeConfirmation;
     }
 
     /**

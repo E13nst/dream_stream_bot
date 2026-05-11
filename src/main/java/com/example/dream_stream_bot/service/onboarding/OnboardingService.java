@@ -6,12 +6,14 @@ import com.example.dream_stream_bot.model.agent.DataLocality;
 import com.example.dream_stream_bot.model.consent.ConsentCode;
 import com.example.dream_stream_bot.model.consent.ConsentDocumentEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
-import com.example.dream_stream_bot.model.subscription.SubscriptionPlan;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
+import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
+import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.consent.ConsentService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
+import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
 import com.example.dream_stream_bot.service.telegram.TelegramGroupAdminService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.slf4j.Logger;
@@ -38,17 +40,20 @@ public class OnboardingService {
 
     private final UserService userService;
     private final SubscriptionService subscriptionService;
+    private final SubscriptionTariffService subscriptionTariffService;
     private final ConsentService consentService;
     private final OnboardingScopeHolder scopeHolder;
     private final TelegramGroupAdminService telegramGroupAdminService;
 
     public OnboardingService(UserService userService,
                              SubscriptionService subscriptionService,
+                             SubscriptionTariffService subscriptionTariffService,
                              ConsentService consentService,
                              OnboardingScopeHolder scopeHolder,
                              TelegramGroupAdminService telegramGroupAdminService) {
         this.userService = userService;
         this.subscriptionService = subscriptionService;
+        this.subscriptionTariffService = subscriptionTariffService;
         this.consentService = consentService;
         this.scopeHolder = scopeHolder;
         this.telegramGroupAdminService = telegramGroupAdminService;
@@ -76,7 +81,7 @@ public class OnboardingService {
         applyReferralPayload(user, payload);
 
         SubscriptionEntity sub = subscriptionService.createOrGet(
-                user.getId(), bot.getId(), SubscriptionPlan.PERSONAL, null);
+                user.getId(), bot.getId(), subscriptionTariffService.resolveDefaultPersonal(bot.getId()).getId(), null);
 
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
@@ -91,7 +96,8 @@ public class OnboardingService {
             return List.of(OutgoingMessage.of(chatId, "Некорректная ссылка на подписку."));
         }
         Optional<SubscriptionEntity> opt = subscriptionService.findById(subId);
-        if (opt.isEmpty() || opt.get().getPlan() == SubscriptionPlan.PERSONAL || opt.get().getScopeChatId() == null) {
+        if (opt.isEmpty() || !subscriptionService.isGroupSubscriptionByTariff(opt.get().getTariffId())
+                || opt.get().getScopeChatId() == null) {
             return List.of(OutgoingMessage.of(chatId, "Подписка группы не найдена."));
         }
         SubscriptionEntity subscription = opt.get();
@@ -116,7 +122,7 @@ public class OnboardingService {
         }
 
         SubscriptionEntity sub = subscriptionService.createOrGet(
-                user.getId(), bot.getId(), SubscriptionPlan.GROUP_S, tgChatId);
+                user.getId(), bot.getId(), subscriptionTariffService.resolveDefaultGroup(bot.getId()).getId(), tgChatId);
         scopeHolder.setPendingGroupChat(bot.getId(), user.getId(), tgChatId);
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
         LOGGER.info("Group owner onboarding | user={} | bot={} | chat={} | subscription={}",
@@ -155,7 +161,7 @@ public class OnboardingService {
             return List.of(OutgoingMessage.of(chatId,
                     "Сессия истекла. Откройте ссылку из группы заново."));
         }
-        SubscriptionEntity subscription = subscriptionService.requireById(subId.get());
+        subscriptionService.requireById(subId.get());
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
         return List.of(OutgoingMessage.of(chatId,
                 """
@@ -168,7 +174,8 @@ public class OnboardingService {
         if (g.isPresent()) {
             return continueOnboardingGroupOwner(user, bot, chatId, subscription);
         }
-        if (subscription.getPlan().isGroup() && subscription.getScopeChatId() != null && subscription.getOwnerUserId().equals(user.getId())) {
+        if (subscriptionService.isGroupSubscriptionByTariff(subscription.getTariffId())
+                && subscription.getScopeChatId() != null && subscription.getOwnerUserId().equals(user.getId())) {
             return continueOnboardingGroupOwner(user, bot, chatId, subscription);
         }
         return continueOnboardingPersonal(user, bot, chatId, subscription);
@@ -198,10 +205,11 @@ public class OnboardingService {
         if (gc.isPresent()) {
             return subscriptionService.findGroup(bot.getId(), gc.get())
                     .orElseGet(() -> subscriptionService.createOrGet(
-                            user.getId(), bot.getId(), SubscriptionPlan.GROUP_S, gc.get()));
+                            user.getId(), bot.getId(), subscriptionTariffService.resolveDefaultGroup(bot.getId()).getId(), gc.get()));
         }
         return subscriptionService.findPersonal(bot.getId(), user.getId())
-                .orElseGet(() -> subscriptionService.createOrGet(user.getId(), bot.getId(), SubscriptionPlan.PERSONAL, null));
+                .orElseGet(() -> subscriptionService.createOrGet(user.getId(), bot.getId(),
+                        subscriptionTariffService.resolveDefaultPersonal(bot.getId()).getId(), null));
     }
 
     public List<OutgoingMessage> recordDecline(Long chatId, ConsentCode code) {
@@ -219,28 +227,52 @@ public class OnboardingService {
         }
 
         if (subscription.getStatus() == SubscriptionStatus.PENDING_CONSENT) {
-            try {
-                SubscriptionEntity activated = subscriptionService.activateTrial(
-                        subscription, SubscriptionService.PERSONAL_TRIAL_DAYS, null);
-                LOGGER.info("🎉 Trial activated for user={} bot={} expires={}",
-                        user.getId(), bot.getId(), activated.getExpiresAt());
+            SubscriptionTariffEntity tariff = subscriptionTariffService.require(subscription.getTariffId());
+            if (tariff.getAccessMode() == TariffAccessMode.FREE_UNLIMITED) {
+                subscriptionService.activateFreeUnlimited(subscription);
+                LOGGER.info("🎉 Free unlimited activated for user={} bot={}", user.getId(), bot.getId());
                 return List.of(OutgoingMessage.of(chatId,
                         """
-                        🎉 Все согласия приняты. Активирован пробный период на %d дня (до %s).
+                        ✅ Все согласия приняты. Доступ бесплатный и без ограничения срока.
                         Просто пришлите сообщение — и мы начнём.
                         Полезные команды:
-                        /subscriptions — статус и продление
+                        /subscriptions — статус
                         /forget_last — удалить последнее сообщение
-                        /forget_me — стереть всю историю""".formatted(
-                                SubscriptionService.PERSONAL_TRIAL_DAYS,
-                                formatExpiry(activated.getExpiresAt()))));
-            } catch (IllegalStateException e) {
-                LOGGER.info("Trial already used for user={} bot={}", user.getId(), bot.getId());
+                        /forget_me — стереть всю историю"""));
+            }
+            if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM) {
+                SubscriptionEntity awaiting = subscriptionService.markAwaitingActivation(subscription);
+                LOGGER.info("Personal subscription awaiting activation | sub={} | user={}", awaiting.getId(), user.getId());
                 return List.of(OutgoingMessage.of(chatId,
                         """
-                        Пробный период вы уже использовали ранее.
-                        Чтобы продолжить — оплатите подписку командой /subscriptions
-                        или свяжитесь с поддержкой."""));
+                        Спасибо! Согласия приняты. Подписка ожидает активации или оплаты администратором.
+                        Если у вас уже была оплаченная запись — обратитесь в поддержку.
+                        Напоминаем команду статуса: /subscriptions."""));
+            }
+            if (tariff.getAccessMode() == TariffAccessMode.TRIAL_ONBOARDING) {
+                int days = tariff.getTrialDays() != null ? tariff.getTrialDays() : SubscriptionService.FALLBACK_TRIAL_DAYS;
+                try {
+                    SubscriptionEntity activated = subscriptionService.activateTrial(subscription, days, null);
+                    LOGGER.info("🎉 Trial activated for user={} bot={} expires={}",
+                            user.getId(), bot.getId(), activated.getExpiresAt());
+                    return List.of(OutgoingMessage.of(chatId,
+                            """
+                            🎉 Все согласия приняты. Активирован пробный период на %d дня (до %s).
+                            Просто пришлите сообщение — и мы начнём.
+                            Полезные команды:
+                            /subscriptions — статус и продление
+                            /forget_last — удалить последнее сообщение
+                            /forget_me — стереть всю историю""".formatted(
+                                    days,
+                                    formatExpiry(activated.getExpiresAt()))));
+                } catch (IllegalStateException e) {
+                    LOGGER.info("Trial already used for user={} bot={}", user.getId(), bot.getId());
+                    return List.of(OutgoingMessage.of(chatId,
+                            """
+                            Пробный период вы уже использовали ранее.
+                            Чтобы продолжить — оплатите подписку командой /subscriptions
+                            или свяжитесь с поддержкой."""));
+                }
             }
         }
         return genericStatus(chatId, subscription);

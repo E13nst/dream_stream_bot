@@ -44,6 +44,9 @@ public class UpdateBotRequest {
 
     /** When set, switches or attaches the bot to this agent (assistant bots). */
     private Long agentConfigId;
+
+    /** Если задано — включает/выключает требование подтверждения возраста 18+. */
+    private Boolean requireAgeConfirmation;
     
     private Boolean isActive;
     
@@ -121,6 +124,14 @@ public class UpdateBotRequest {
 
     public void setAgentConfigId(Long agentConfigId) {
         this.agentConfigId = agentConfigId;
+    }
+
+    public Boolean getRequireAgeConfirmation() {
+        return requireAgeConfirmation;
+    }
+
+    public void setRequireAgeConfirmation(Boolean requireAgeConfirmation) {
+        this.requireAgeConfirmation = requireAgeConfirmation;
     }
     
     public Boolean getIsActive() {

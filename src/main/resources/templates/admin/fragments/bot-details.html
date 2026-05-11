@@ -70,6 +70,11 @@
                     <input class="form-check-input" id="selectedBotActive" name="isActive" th:checked="${selectedBot.isActive}" type="checkbox" value="true">
                     <label class="form-check-label" for="selectedBotActive">Active</label>
                 </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" id="selectedBotRequireAge" name="requireAgeConfirmation"
+                           th:checked="${selectedBot.requireAgeConfirmation}" type="checkbox" value="true">
+                    <label class="form-check-label" for="selectedBotRequireAge">Требовать подтверждение возраста 18+</label>
+                </div>
                 <button class="btn btn-primary btn-sm" type="submit">Save Parameters</button>
             </form>
         </div>
