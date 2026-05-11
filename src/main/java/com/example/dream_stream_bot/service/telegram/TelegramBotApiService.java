@@ -157,6 +157,41 @@ public class TelegramBotApiService {
         }
     }
 
+    /**
+     * Отправка произвольного сообщения через {@code sendMessage} (чат = личка или id группы).
+     */
+    public boolean sendTextMessage(BotEntity bot, long chatId, String text, Map<String, Object> replyMarkup) {
+        String token = bot.getToken();
+        if (token == null || token.isBlank()) {
+            LOGGER.warn("❌ sendTextMessage skipped: empty token for bot '{}'", bot.getUsername());
+            return false;
+        }
+        if (text == null || text.isBlank()) {
+            return false;
+        }
+        String url = TELEGRAM_API_URL + token + "/sendMessage";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("chat_id", chatId);
+        payload.put("text", text);
+        if (replyMarkup != null && !replyMarkup.isEmpty()) {
+            payload.put("reply_markup", replyMarkup);
+        }
+        try {
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            boolean ok = isTelegramOk(response);
+            if (!ok) {
+                LOGGER.warn("❌ sendTextMessage failed for bot '{}' chatId={} | {}", bot.getUsername(), chatId, safeBody(response));
+            }
+            return ok;
+        } catch (RestClientException e) {
+            LOGGER.warn("❌ sendTextMessage exception bot '{}' chatId={}: {}", bot.getUsername(), chatId, e.getMessage());
+            return false;
+        }
+    }
+
     private boolean isTelegramOk(ResponseEntity<String> response) {
         if (response == null || response.getBody() == null) return false;
         try {
