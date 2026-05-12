@@ -17,6 +17,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import com.example.dream_stream_bot.model.telegram.BotEntity;
 
 @Controller
 public class AdminTariffController {
@@ -31,19 +36,20 @@ public class AdminTariffController {
 
     @GetMapping("/admin/tariffs")
     public String list(@RequestParam(name = "botId", required = false) Long botId, Model model) {
-        model.addAttribute("bots", botService.findAll().stream()
-                .sorted(Comparator.comparing(com.example.dream_stream_bot.model.telegram.BotEntity::getId))
-                .toList());
+        java.util.List<BotEntity> botListSorted = botService.findAll().stream()
+                .sorted(Comparator.comparing(BotEntity::getId))
+                .toList();
+        model.addAttribute("bots", botListSorted);
+        model.addAttribute("botById", botListSorted.stream()
+                .collect(Collectors.toMap(BotEntity::getId, Function.identity())));
         if (botId == null) {
-            model.addAttribute("tariffs", botService.findAll().stream().flatMap(b ->
+            model.addAttribute("tariffs", botListSorted.stream().flatMap(b ->
                     tariffService.listByBot(b.getId()).stream()).sorted(Comparator
                     .comparing(SubscriptionTariffEntity::getBotId).thenComparingInt(SubscriptionTariffEntity::getSortOrder)).toList());
         } else {
             model.addAttribute("tariffs", tariffService.listByBot(botId));
         }
         model.addAttribute("filterBotId", botId);
-        model.addAttribute("scopes", TariffScope.values());
-        model.addAttribute("modes", TariffAccessMode.values());
         return "admin/tariffs";
     }
 
@@ -54,7 +60,7 @@ public class AdminTariffController {
             return "redirect:/admin/tariffs";
         }
         model.addAttribute("bots", botService.findAll().stream()
-                .sorted(Comparator.comparing(com.example.dream_stream_bot.model.telegram.BotEntity::getId)).toList());
+                .sorted(Comparator.comparing(BotEntity::getId)).toList());
         model.addAttribute("scopes", TariffScope.values());
         model.addAttribute("modes", TariffAccessMode.values());
         model.addAttribute("presetBotId", botId);
@@ -74,7 +80,7 @@ public class AdminTariffController {
         try {
             SubscriptionTariffEntity tariff = tariffService.requireForBot(botId, id);
             model.addAttribute("bots", botService.findAll().stream()
-                    .sorted(Comparator.comparing(com.example.dream_stream_bot.model.telegram.BotEntity::getId)).toList());
+                    .sorted(Comparator.comparing(BotEntity::getId)).toList());
             model.addAttribute("scopes", TariffScope.values());
             model.addAttribute("modes", TariffAccessMode.values());
             model.addAttribute("tariff", tariff);

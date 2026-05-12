@@ -454,6 +454,11 @@ body:has(> .admin-app) {
   border-bottom-color: var(--color-border);
 }
 
+/* Единая ширина длинных форм (тарифы, настройки) */
+.admin-app .admin-form-panel {
+  max-width: 720px;
+}
+
 /* --- HTMX --- */
 .htmx-indicator {
   max-height: 0;

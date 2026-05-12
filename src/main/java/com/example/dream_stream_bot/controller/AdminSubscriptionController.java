@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
+import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
 import com.example.dream_stream_bot.service.telegram.BotService;
@@ -22,6 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Controller
@@ -60,7 +62,20 @@ public class AdminSubscriptionController {
         model.addAttribute("subscriptions", filtered);
         model.addAttribute("statuses", SubscriptionStatus.values());
 
-        Map<Long, SubscriptionTariffEntity> tariffById = botService.findAll().stream()
+        List<BotEntity> botList = botService.findAll().stream()
+                .sorted(Comparator.comparing(BotEntity::getId))
+                .toList();
+        Map<Long, BotEntity> botById = botList.stream()
+                .collect(Collectors.toMap(BotEntity::getId, Function.identity()));
+        model.addAttribute("botById", botById);
+
+        java.util.Set<Long> ownerIds = filtered.stream()
+                .map(SubscriptionEntity::getOwnerUserId)
+                .collect(Collectors.toSet());
+        Map<Long, UserEntity> ownerById = userService.findByIdsMapped(ownerIds);
+        model.addAttribute("ownerById", ownerById);
+
+        Map<Long, SubscriptionTariffEntity> tariffById = botList.stream()
                 .flatMap(b -> subscriptionTariffRepository.findByBotIdOrderBySortOrderAscIdAsc(b.getId()).stream())
                 .collect(Collectors.toMap(SubscriptionTariffEntity::getId, t -> t, (a, b) -> a));
         List<SubscriptionTariffEntity> allTariffs = tariffById.values().stream()
@@ -73,11 +88,9 @@ public class AdminSubscriptionController {
                         t -> t.getCode() + ": " + t.getTitle(),
                         (a, b) -> a));
 
-        model.addAttribute("bots", botService.findAll().stream()
-                .sorted(Comparator.comparing(BotEntity::getId)).toList());
+        model.addAttribute("bots", botList);
         model.addAttribute("tariffs", allTariffs);
         model.addAttribute("tariffLabels", tariffLabels);
-        model.addAttribute("periodSources", PeriodSource.values());
         model.addAttribute("selectedStatus", status);
         model.addAttribute("selectedTariffId", tariffId);
         return "admin/subscriptions";
@@ -97,7 +110,10 @@ public class AdminSubscriptionController {
         userService.findById(subscription.getOwnerUserId()).ifPresent(u -> model.addAttribute("ownerUser", u));
         BotEntity bot = botService.findById(subscription.getBotId());
         model.addAttribute("bot", bot);
-        subscriptionTariffRepository.findById(subscription.getTariffId()).ifPresent(t -> model.addAttribute("tariff", t));
+        java.util.Optional<SubscriptionTariffEntity> tariffOpt =
+                subscriptionTariffRepository.findById(subscription.getTariffId());
+        tariffOpt.ifPresent(t -> model.addAttribute("tariff", t));
+        model.addAttribute("isGroupTariff", tariffOpt.map(t -> t.getScope().isGroup()).orElse(false));
         return "admin/subscription-details";
     }
 
@@ -176,6 +192,19 @@ public class AdminSubscriptionController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/admin/subscriptions/" + id;
+    }
+
+    @PostMapping("/admin/subscriptions/{id}/delete")
+    public String deleteFully(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            subscriptionService.deleteFullyForAdmin(id);
+            redirectAttributes.addFlashAttribute("success",
+                    "Подписка удалена. Учёт триала по этому тарифу сброшен — пользователь сможет снова пройти онбординг с триалом.");
+            return "redirect:/admin/subscriptions";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/admin/subscriptions";
+        }
     }
 
     private static SubscriptionStatus parseStatus(String value) {

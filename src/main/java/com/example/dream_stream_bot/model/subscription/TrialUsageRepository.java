@@ -13,4 +13,6 @@ public interface TrialUsageRepository extends JpaRepository<TrialUsageEntity, Lo
                                                                           Long scopeChatId);
 
     long deleteByTariffId(Long tariffId);
+
+    long deleteByTariffIdAndOwnerUserIdAndScopeChatId(Long tariffId, Long ownerUserId, Long scopeChatId);
 }

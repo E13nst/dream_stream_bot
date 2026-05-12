@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Subscriptions</title>
+    <title>Подписки · админка</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/admin.css}">
 </head>
@@ -12,12 +12,12 @@
 <th:block th:replace="~{admin/fragments/nav-sidebar :: adminNav (active='subscriptions')}"></th:block>
 <main class="admin-app__main">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-2">
-        <h1 class="admin-page-title mb-0">Subscriptions</h1>
+        <h1 class="admin-page-title mb-0">Подписки</h1>
         <button class="btn btn-primary btn-sm" data-bs-target="#createSubscriptionModal" data-bs-toggle="modal" type="button">
-            New Subscription
+            Новая подписка
         </button>
     </div>
-    <p class="admin-section-lead">Подписки пользователей. Тарифы — в <a th:href="@{/admin/tariffs}">Tariffs</a>. Триал и продления из карточки.</p>
+    <p class="admin-section-lead">Активные и прошлые подписки пользователей. Шаблоны тарифов — в разделе <a th:href="@{/admin/tariffs}">Тарифы</a>. Управление сроком и удаление — в карточке подписки.</p>
 
     <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -34,7 +34,7 @@
             </select>
         </div>
         <div class="col-auto">
-            <label class="form-label" for="filterStatus">Status</label>
+            <label class="form-label" for="filterStatus">Статус</label>
             <select class="form-select form-select-sm" id="filterStatus" name="status">
                 <option value="">Все</option>
                 <option th:each="s : ${statuses}" th:text="${s}" th:value="${s}" th:selected="${s.name() == selectedStatus}"></option>
@@ -53,12 +53,12 @@
                 <tr>
                     <th class="admin-num" scope="col">ID</th>
                     <th scope="col">Тариф</th>
-                    <th scope="col">Bot</th>
-                    <th scope="col">Owner</th>
-                    <th scope="col">Scope chat</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Expires</th>
-                    <th class="admin-table-actions" scope="col">Actions</th>
+                    <th scope="col">Бот</th>
+                    <th scope="col">Пользователь</th>
+                    <th scope="col">Чат</th>
+                    <th scope="col">Статус</th>
+                    <th scope="col">Окончание</th>
+                    <th class="admin-table-actions" scope="col">Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -67,18 +67,30 @@
                 </tr>
                 <tr th:each="s : ${subscriptions}">
                     <td class="admin-num" th:text="${s.id}">1</td>
-                    <td th:text="${tariffLabels[s.tariffId]}">PERSONAL</td>
-                    <td th:text="${s.botId}">1</td>
-                    <td th:text="${s.ownerUserId}">1</td>
-                    <td th:text="${s.scopeChatId ?: '—'}">—</td>
+                    <td class="small" th:text="${tariffLabels[s.tariffId]}">PERSONAL</td>
+                    <td th:with="bot=${botById.get(s.botId)}">
+                        <span class="text-nowrap" th:if="${bot != null}" th:text="'@' + ${bot.username}">@bot</span>
+                        <span class="text-muted small" th:if="${bot == null}" th:text="${s.botId}">1</span>
+                    </td>
+                    <td th:with="owner=${ownerById.get(s.ownerUserId)}">
+                        <div class="small" th:if="${owner != null}">
+                            <span th:if="${owner.username != null}" th:text="'@' + ${owner.username}">@u</span>
+                            <span th:if="${owner.username == null}" class="text-muted">без username</span>
+                            <br>
+                            <span class="text-muted">tg</span>
+                            <span class="font-monospace" th:text="${owner.telegramId}">0</span>
+                        </div>
+                        <span class="text-muted small" th:if="${owner == null}">user id <span class="font-monospace" th:text="${s.ownerUserId}">0</span></span>
+                    </td>
+                    <td class="font-monospace small" th:text="${s.scopeChatId != null ? s.scopeChatId : '—'}">—</td>
                     <td>
                         <span class="badge"
                               th:classappend="${s.status.name() == 'ACTIVE' or s.status.name() == 'TRIAL'} ? ' bg-success' : (${s.status.name() == 'EXPIRED' or s.status.name() == 'CANCELLED'} ? ' bg-secondary' : ' bg-warning text-dark')"
                               th:text="${s.status}">ACTIVE</span>
                     </td>
-                    <td th:text="${s.expiresAt}">—</td>
-                    <td class="admin-table-actions">
-                        <a class="btn btn-sm btn-outline-secondary" th:href="@{'/admin/subscriptions/' + ${s.id}}">Open</a>
+                    <td class="font-monospace small" th:text="${s.expiresAt != null ? s.expiresAt : '—'}">—</td>
+                    <td class="admin-table-actions text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary" th:href="@{'/admin/subscriptions/' + ${s.id}}">Открыть</a>
                     </td>
                 </tr>
                 </tbody>
@@ -88,42 +100,45 @@
 </main>
 </div>
 
-<div class="modal fade" id="createSubscriptionModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="createSubscriptionModal" tabindex="-1" aria-labelledby="createSubscriptionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title fs-5">New Subscription</h2>
-                <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Close"></button>
+                <h2 class="modal-title fs-6" id="createSubscriptionModalLabel">Новая подписка</h2>
+                <button class="btn-close" data-bs-dismiss="modal" type="button" aria-label="Закрыть"></button>
             </div>
             <form method="post" th:action="@{/admin/subscriptions/create}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <div class="modal-body row g-3">
                     <div class="col-md-6">
-                        <label class="form-label" for="newOwner">Owner user_id</label>
-                        <input class="form-control" id="newOwner" name="ownerUserId" type="number" required>
+                        <label class="form-label" for="newOwner">Владелец (user id в БД)</label>
+                        <input class="form-control form-control-sm" id="newOwner" name="ownerUserId" type="number" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="newBot">Bot</label>
-                        <select class="form-select" id="newBot" name="botId" required>
-                            <option th:each="b : ${bots}" th:text="${b.id} + ' · ' + ${b.name}" th:value="${b.id}"></option>
+                        <label class="form-label" for="newBot">Бот</label>
+                        <select class="form-select form-select-sm" id="newBot" name="botId" required>
+                            <option th:each="b : ${bots}"
+                                    th:value="${b.id}"
+                                    th:text="${b.id} + ' · @' + ${b.username} + ' · ' + ${b.name}"></option>
                         </select>
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="newTariff">Тариф</label>
-                        <select class="form-select" id="newTariff" name="tariffId" required>
+                        <select class="form-select form-select-sm" id="newTariff" name="tariffId" required>
                             <option th:each="t : ${tariffs}"
                                     th:value="${t.id}"
                                     th:text="'#' + ${t.botId} + ' · ' + ${t.code} + ': ' + ${t.title}"></option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="newScope">Scope chat_id (для групповых)</label>
-                        <input class="form-control" id="newScope" name="scopeChatId" type="number">
+                    <div class="col-12">
+                        <label class="form-label" for="newScope">Чат группы (Telegram chat id)</label>
+                        <input class="form-control form-control-sm" id="newScope" name="scopeChatId" type="number" placeholder="только для группового тарифа">
+                        <p class="form-text mb-0">Для личного тарифа оставьте пустым.</p>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-                    <button class="btn btn-primary" type="submit">Create</button>
+                    <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" type="button">Отмена</button>
+                    <button class="btn btn-primary btn-sm" type="submit">Создать</button>
                 </div>
             </form>
         </div>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Tariffs</title>
+    <title>Тарифы · админка</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/admin.css}">
 </head>
@@ -18,7 +18,7 @@
             Новый тариф
         </a>
     </div>
-    <p class="admin-section-lead">Шаблоны доступа для ботов: безлимит, триал после согласий, оплатной срок. Один тариф можно привязать только к своему боту.</p>
+    <p class="admin-section-lead">Шаблоны доступа по ботам. Редактирование открывается на отдельной странице.</p>
 
     <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -29,7 +29,7 @@
             <select class="form-select form-select-sm" id="filterBot" name="botId" onchange="this.form.submit()">
                 <option value="">Все</option>
                 <option th:each="b : ${bots}" th:value="${b.id}" th:selected="${filterBotId != null and filterBotId == b.id}"
-                        th:text="${b.id} + ' · ' + ${b.name}"></option>
+                        th:text="${b.id} + ' · @' + ${b.username} + ' · ' + ${b.name}"></option>
             </select>
         </div>
         <div class="col-auto">
@@ -64,7 +64,10 @@
                 </tr>
                 <tr th:each="t : ${tariffs}">
                     <td class="admin-num" th:text="${t.id}">1</td>
-                    <td th:text="${t.botId}">1</td>
+                    <td th:with="b=${botById.get(t.botId)}">
+                        <span class="text-nowrap" th:if="${b != null}" th:text="'@' + ${b.username}">@bot</span>
+                        <span class="text-muted" th:if="${b == null}" th:text="${t.botId}">1</span>
+                    </td>
                     <td th:text="${t.code}"></td>
                     <td th:text="${t.title}"></td>
                     <td th:text="${t.scope}"></td>
@@ -90,8 +93,9 @@
                         <span th:unless="${t.referralEnabled}">—</span>
                     </td>
                     <td th:text="${t.active}"></td>
-                    <td class="admin-table-actions">
-                        <a class="btn btn-sm btn-outline-secondary" th:href="@{'/admin/tariffs/' + ${t.id} + '/edit?botId=' + ${t.botId}}">Изменить</a>
+                    <td class="admin-table-actions text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary"
+                           th:href="@{'/admin/tariffs/' + ${t.id} + '/edit?botId=' + ${t.botId}}">Изменить</a>
                         <form class="d-inline" method="post" th:action="@{'/admin/tariffs/' + ${t.id} + '/delete'}"
                               onsubmit="return confirm('Удалить тариф? Если есть подписки — операция будет отклонена.');">
                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

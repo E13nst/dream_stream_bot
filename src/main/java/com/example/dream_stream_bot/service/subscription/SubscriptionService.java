@@ -258,6 +258,19 @@ public class SubscriptionService {
         return subscriptionRepository.save(subscription);
     }
 
+    /**
+     * Полное удаление подписки: строка подписки, каскадно периоды/участники/платежи,
+     * плюс сброс учёта триала по этому тарифу и владельцу (можно снова выдать триал).
+     */
+    @Transactional
+    public void deleteFullyForAdmin(Long subscriptionId) {
+        SubscriptionEntity sub = requireById(subscriptionId);
+        Long scopeKey = sub.getScopeChatId() != null ? sub.getScopeChatId() : 0L;
+        trialUsageRepository.deleteByTariffIdAndOwnerUserIdAndScopeChatId(
+                sub.getTariffId(), sub.getOwnerUserId(), scopeKey);
+        subscriptionRepository.delete(sub);
+    }
+
     private SubscriptionEntity extend(SubscriptionEntity subscription, PeriodSource source, int days,
                                       Long grantedByUserId, String note) {
         OffsetDateTime now = OffsetDateTime.now();

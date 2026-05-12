@@ -9,8 +9,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -92,6 +95,17 @@ public class UserService {
      */
     public Optional<UserEntity> findById(Long id) {
         return userRepository.findById(id);
+    }
+
+    /**
+     * Пакетная загрузка по внутренним id (для админки и отчётов).
+     */
+    public Map<Long, UserEntity> findByIdsMapped(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(UserEntity::getId, Function.identity()));
     }
     
     /**
