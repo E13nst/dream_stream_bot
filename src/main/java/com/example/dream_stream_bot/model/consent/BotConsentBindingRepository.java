@@ -13,6 +13,8 @@ public interface BotConsentBindingRepository extends JpaRepository<BotConsentBin
 
     Optional<BotConsentBindingEntity> findFirstByBotIdAndConsentCodeAndActiveTrue(Long botId, ConsentCode consentCode);
 
+    List<BotConsentBindingEntity> findAllByBotIdAndConsentCodeAndActiveTrue(Long botId, ConsentCode consentCode);
+
     List<BotConsentBindingEntity> findByBotIdAndConsentCodeOrderByCreatedAtDesc(Long botId, ConsentCode consentCode);
 
     List<BotConsentBindingEntity> findByDocumentIdAndActiveTrue(Long documentId);

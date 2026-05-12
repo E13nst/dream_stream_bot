@@ -162,7 +162,7 @@ public class OnboardingService {
     private List<OutgoingMessage> continueOnboardingPersonal(UserEntity user, BotEntity bot, Long chatId,
                                                           SubscriptionEntity subscription) {
         List<ConsentCode> required = requiredConsentsOwner(bot);
-        ConsentCode next = nextMissingConsent(user.getId(), required);
+        ConsentCode next = nextMissingConsent(user.getId(), bot.getId(), required);
         if (next != null) {
             return promptConsent(bot.getId(), chatId, next);
         }
@@ -172,7 +172,7 @@ public class OnboardingService {
     private List<OutgoingMessage> continueOnboardingGroupOwner(UserEntity user, BotEntity bot, Long chatId,
                                                               SubscriptionEntity subscription) {
         List<ConsentCode> required = requiredConsentsOwner(bot);
-        ConsentCode next = nextMissingConsent(user.getId(), required);
+        ConsentCode next = nextMissingConsent(user.getId(), bot.getId(), required);
         if (next != null) {
             return promptConsent(bot.getId(), chatId, next);
         }
@@ -181,7 +181,7 @@ public class OnboardingService {
 
     private List<OutgoingMessage> continueParticipantOnboarding(UserEntity user, BotEntity bot, Long chatId) {
         List<ConsentCode> required = requiredConsentsParticipant(bot);
-        ConsentCode next = nextMissingConsent(user.getId(), required);
+        ConsentCode next = nextMissingConsent(user.getId(), bot.getId(), required);
         if (next != null) {
             return promptConsent(bot.getId(), chatId, next);
         }
@@ -273,7 +273,8 @@ public class OnboardingService {
                         🌙 Рассказать сон, 📖 Мой дневник, ⚙️ Настройки, 💎 Подписка."""));
             }
             if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM) {
-                ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner(bot.getId()));
+                ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), bot.getId(),
+                        requiredPurchaseConsentsOwner(bot.getId()));
                 if (nextPurchaseConsent != null) {
                     return promptConsent(bot.getId(), chatId, nextPurchaseConsent);
                 }
@@ -342,7 +343,8 @@ public class OnboardingService {
             return List.of(mainMenuMessage(chatId, activeGreeting(subscription)));
         }
 
-        ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), requiredPurchaseConsentsOwner(bot.getId()));
+        ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), bot.getId(),
+                requiredPurchaseConsentsOwner(bot.getId()));
         if (nextPurchaseConsent != null) {
             return promptConsent(bot.getId(), chatId, nextPurchaseConsent);
         }
@@ -431,9 +433,9 @@ public class OnboardingService {
                 .build());
     }
 
-    private ConsentCode nextMissingConsent(Long userId, List<ConsentCode> required) {
+    private ConsentCode nextMissingConsent(Long userId, Long botId, List<ConsentCode> required) {
         for (ConsentCode code : required) {
-            if (!consentService.hasAcceptedCurrent(userId, code)) {
+            if (!consentService.hasAcceptedBotBoundDocument(userId, botId, code)) {
                 return code;
             }
         }

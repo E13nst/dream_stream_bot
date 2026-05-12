@@ -16,6 +16,8 @@ import com.example.dream_stream_bot.service.settings.SystemSettingsService;
 import com.example.dream_stream_bot.service.access.GatingDedup;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.user.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +36,8 @@ import static java.util.Comparator.comparing;
 
 @Controller
 public class AdminWebController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AdminWebController.class);
 
     private final UserService userService;
     private final BotService botService;
@@ -211,18 +215,27 @@ public class AdminWebController {
             return "redirect:/admin/bots";
         }
         try {
+            java.util.Map<String, String> nonEmptyBindings = new java.util.LinkedHashMap<>();
             for (ConsentCode code : ConsentCode.values()) {
-                String raw = params.get("binding_" + code.name());
+                String key = "binding_" + code.name();
+                String raw = params.get(key);
                 if (raw == null || raw.isBlank()) {
                     consentService.clearBindingForBot(id, code);
                     continue;
                 }
+                nonEmptyBindings.put(code.name(), raw);
                 Long documentId = Long.parseLong(raw);
                 consentService.bindDocumentToBot(id, code, documentId);
             }
+            LOGGER.info(
+                    "Bot consent bindings saved | botId={} | botUsername={} | nonEmptyBindings={} | paramKeys={}",
+                    id, bot.getUsername(), nonEmptyBindings, params.keySet());
             redirectAttributes.addFlashAttribute("success", "Привязки документов сохранены");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            LOGGER.warn("Bot consent bindings update failed | botId={} | paramsKeys={}",
+                    id, params.keySet(), e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Не удалось сохранить привязки: " + e.getMessage());
         }
         return "redirect:/admin/bots?selectedId=" + id;
     }
@@ -396,9 +409,21 @@ public class AdminWebController {
         }
         model.addAttribute("consentCodes", ConsentCode.values());
         model.addAttribute("consentDocumentsByCode", documentsByCode);
-        model.addAttribute("selectedBotConsentBindings", selectedBot
+        // String keys: Thymeleaf map[enum] lookup is unreliable (see consentDocumentsByCode above).
+        Map<String, ConsentDocumentEntity> bindingsByCodeKey = new LinkedHashMap<>();
+        Map<ConsentCode, ConsentDocumentEntity> activeByCode = selectedBot
                 .map(bot -> consentService.activeDocumentsByBot(bot.getId()))
-                .orElseGet(Map::of));
+                .orElseGet(Map::of);
+        for (ConsentCode code : ConsentCode.values()) {
+            bindingsByCodeKey.put(code.name(), activeByCode.get(code));
+        }
+        model.addAttribute("selectedBotConsentBindings", bindingsByCodeKey);
+        Map<String, Long> bindingDocIdByCodeKey = new LinkedHashMap<>();
+        for (ConsentCode code : ConsentCode.values()) {
+            ConsentDocumentEntity d = activeByCode.get(code);
+            bindingDocIdByCodeKey.put(code.name(), d != null ? d.getId() : null);
+        }
+        model.addAttribute("selectedBotBindingDocumentIds", bindingDocIdByCodeKey);
         model.addAttribute("openBotDetailsModal", selectedId != null && selectedBot.isPresent());
     }
 

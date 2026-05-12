@@ -11,8 +11,11 @@ import com.example.dream_stream_bot.model.user.UserRepository;
 import com.example.dream_stream_bot.service.consent.ConsentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -20,12 +23,19 @@ import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
 class ConsentBindingsIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
 
     @Autowired
     private ConsentService consentService;
@@ -35,6 +45,41 @@ class ConsentBindingsIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private ConsentDocumentRepository consentDocumentRepository;
+
+    @Test
+    void createDraftRejectsSameNormalizedTitleForAnotherConsentCode() {
+        consentService.createDraft(
+                ConsentCode.PRIVACY_POLICY,
+                "Политика X",
+                "x",
+                null,
+                ConsentChangeType.MINOR);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                consentService.createDraft(
+                        ConsentCode.PERSONAL_DATA,
+                        "  политика  x  ",
+                        "y",
+                        null,
+                        ConsentChangeType.MINOR));
+        assertTrue(ex.getMessage().contains("занят"));
+    }
+
+    @Test
+    void createDraftAllowsSameTitleForTwoVersionsOfSameCode() {
+        ConsentDocumentEntity v1 = consentService.createDraft(
+                ConsentCode.PERSONAL_DATA,
+                "Одинаковый заголовок",
+                "a",
+                null,
+                ConsentChangeType.MINOR);
+        ConsentDocumentEntity v2 = consentService.createDraft(
+                ConsentCode.PERSONAL_DATA,
+                "Одинаковый заголовок",
+                "b",
+                null,
+                ConsentChangeType.MINOR);
+        assertTrue(v2.getVersion() > v1.getVersion());
+    }
 
     @Test
     void requiresReacceptWhenBindingSwitchedToNewVersion() {
@@ -102,6 +147,55 @@ class ConsentBindingsIntegrationTest {
                         .findFirst()
                         .orElseThrow()
                         .getId());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminPostPersistsPersonalDataBinding() throws Exception {
+        BotEntity bot = createBot("pd-admin-binding-bot");
+        ConsentDocumentEntity doc = consentService.createDraft(
+                ConsentCode.PERSONAL_DATA,
+                "PD admin bind",
+                "body",
+                null,
+                ConsentChangeType.MINOR);
+        consentService.publish(doc.getId(), false);
+
+        mockMvc.perform(post("/admin/bots/" + bot.getId() + "/consents")
+                        .param("binding_OFFER", "")
+                        .param("binding_PRIVACY_POLICY", "")
+                        .param("binding_PERSONAL_DATA", String.valueOf(doc.getId()))
+                        .param("binding_CROSS_BORDER", "")
+                        .param("binding_AGE_18", ""))
+                .andExpect(status().is3xxRedirection());
+
+        assertTrue(consentService.getActiveForBot(bot.getId(), ConsentCode.PERSONAL_DATA).isPresent());
+        assertEquals(doc.getId(), consentService.getActiveForBot(bot.getId(), ConsentCode.PERSONAL_DATA).get().getId());
+    }
+
+    @Test
+    void onboardingProgressUsesBotBoundDocumentNotGlobalCurrent() {
+        BotEntity bot = createBot("bound-pd-noncurrent-bot");
+        UserEntity user = createUser(910099L);
+
+        ConsentDocumentEntity v1 = consentService.createDraft(
+                ConsentCode.PERSONAL_DATA,
+                "PD v1",
+                "b1",
+                null,
+                ConsentChangeType.MINOR);
+        consentService.publish(v1.getId(), false);
+        ConsentDocumentEntity v2Draft = consentService.createDraftFrom(
+                v1.getId(), "PD v2", "b2", null, ConsentChangeType.MINOR);
+        consentService.publish(v2Draft.getId(), false);
+
+        consentService.bindDocumentToBot(bot.getId(), ConsentCode.PERSONAL_DATA, v1.getId());
+        consentService.recordAcceptance(user.getId(), v1.getId(), null, null, null, "test");
+
+        assertTrue(consentService.hasAcceptedBotBoundDocument(user.getId(), bot.getId(), ConsentCode.PERSONAL_DATA),
+                "user accepted the version bound to the bot");
+        assertFalse(consentService.hasAcceptedCurrent(user.getId(), ConsentCode.PERSONAL_DATA),
+                "global current is v2; user only accepted v1 bound to bot");
     }
 
     private BotEntity createBot(String username) {

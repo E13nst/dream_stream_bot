@@ -119,7 +119,16 @@ public class TelegramAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
-        
+
+        // Веб-админка и admin API: session + form login. Заголовок X-Telegram-Init-Data часто прилетает
+        // от расширений/окружения на localhost — не трогаем его (избегаем лишних запросов к БД и WARN в логах).
+        if (path.startsWith("/admin/")
+                || path.startsWith("/api/admin/")
+                || path.equals("/login")
+                || path.equals("/logout")) {
+            return true;
+        }
+
         // Не фильтруем запросы к статическим ресурсам и некоторым системным эндпоинтам
         return path.startsWith("/actuator/") || 
                path.startsWith("/error") ||

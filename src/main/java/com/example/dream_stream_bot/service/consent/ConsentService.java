@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -156,15 +157,15 @@ public class ConsentService {
             throw new IllegalArgumentException("Document code mismatch: expected " + code + ", got " + doc.getCode());
         }
 
-        Optional<BotConsentBindingEntity> existing = botConsentBindingRepository
-                .findFirstByBotIdAndConsentCodeAndActiveTrue(botId, code);
-        if (existing.isPresent() && existing.get().getDocumentId().equals(documentId)) {
-            return existing.get();
+        List<BotConsentBindingEntity> activeRows = botConsentBindingRepository
+                .findAllByBotIdAndConsentCodeAndActiveTrue(botId, code);
+        if (activeRows.size() == 1 && documentId.equals(activeRows.get(0).getDocumentId())) {
+            return activeRows.get(0);
         }
-        existing.ifPresent(binding -> {
+        for (BotConsentBindingEntity binding : activeRows) {
             binding.setActive(false);
             botConsentBindingRepository.save(binding);
-        });
+        }
 
         BotConsentBindingEntity newBinding = new BotConsentBindingEntity();
         newBinding.setBotId(botId);
@@ -184,12 +185,12 @@ public class ConsentService {
         if (botId == null || code == null) {
             return;
         }
-        Optional<BotConsentBindingEntity> existing = botConsentBindingRepository
-                .findFirstByBotIdAndConsentCodeAndActiveTrue(botId, code);
-        existing.ifPresent(binding -> {
+        List<BotConsentBindingEntity> activeRows = botConsentBindingRepository
+                .findAllByBotIdAndConsentCodeAndActiveTrue(botId, code);
+        for (BotConsentBindingEntity binding : activeRows) {
             binding.setActive(false);
             botConsentBindingRepository.save(binding);
-        });
+        }
     }
 
     /**
@@ -203,15 +204,52 @@ public class ConsentService {
                 .max(Integer::compareTo)
                 .orElse(0) + 1;
 
+        String resolvedTitle = title != null && !title.isBlank() ? title.trim() : code.getDefaultTitle();
+        assertTitleNotSharedWithOtherConsentCode(code, resolvedTitle);
+
         ConsentDocumentEntity entity = new ConsentDocumentEntity();
         entity.setCode(code);
         entity.setVersion(nextVersion);
-        entity.setTitle(title != null && !title.isBlank() ? title : code.getDefaultTitle());
+        entity.setTitle(resolvedTitle);
         entity.setBodyMarkdown(bodyMarkdown);
         entity.setExternalUrl(externalUrl);
         entity.setChangeType(changeType != null ? changeType : ConsentChangeType.MINOR);
         entity.setCurrent(false);
         return documentRepository.save(entity);
+    }
+
+    /**
+     * Одинаковые заголовки у документов с разными {@link ConsentCode}
+     * делают строки в привязках к боту неотличимыми (один текст — разный юридический смысл).
+     * Версии одного кода с одинаковым названием по-прежнему разрешены.
+     */
+    private static String normalizeConsentTitleKey(String t) {
+        if (t == null) {
+            return "";
+        }
+        return t.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    private void assertTitleNotSharedWithOtherConsentCode(ConsentCode code, String resolvedTitle) {
+        if (resolvedTitle == null || resolvedTitle.isBlank()) {
+            return;
+        }
+        String key = normalizeConsentTitleKey(resolvedTitle);
+        if (key.isEmpty()) {
+            return;
+        }
+        for (ConsentDocumentEntity row : documentRepository.findAll()) {
+            if (row.getCode() == code) {
+                continue;
+            }
+            if (normalizeConsentTitleKey(row.getTitle()).equals(key)) {
+                throw new IllegalArgumentException(
+                        "Заголовок «" + resolvedTitle.trim() + "» уже занят документом с кодом "
+                                + row.getCode().name() + " (id=" + row.getId() + "). "
+                                + "Задайте разные названия для разных кодов (OFFER, PRIVACY_POLICY, PERSONAL_DATA, …), "
+                                + "чтобы в привязках к боту не перепутать документы.");
+            }
+        }
     }
 
     @Transactional
@@ -378,6 +416,17 @@ public class ConsentService {
         }
         return userConsentRepository.findFirstByUserIdAndDocumentIdAndRevokedAtIsNull(userId, active.get().getId())
                 .isPresent();
+    }
+
+    /**
+     * Принята ли пользователем именно та версия документа, которая привязана к боту
+     * ({@link #getActiveForBot(Long, ConsentCode)}), а не глобально текущая ({@link #getCurrent(ConsentCode)}).
+     */
+    public boolean hasAcceptedBotBoundDocument(Long userId, Long botId, ConsentCode code) {
+        if (userId == null || botId == null || code == null) {
+            return false;
+        }
+        return hasAcceptedActiveDocument(userId, botId, code);
     }
 
     /**
