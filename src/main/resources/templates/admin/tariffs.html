@@ -49,6 +49,8 @@
                     <th scope="col">Название</th>
                     <th scope="col">Область</th>
                     <th scope="col">Режим</th>
+                    <th class="admin-num" scope="col">Цена</th>
+                    <th class="admin-num" scope="col">Дней за оплату</th>
                     <th scope="col">Порядок</th>
                     <th scope="col">По умолч.</th>
                     <th scope="col">Рефералка</th>
@@ -58,7 +60,7 @@
                 </thead>
                 <tbody>
                 <tr th:if="${#lists.isEmpty(tariffs)}">
-                    <td colspan="11" class="admin-empty-state">Тарифов нет.</td>
+                    <td colspan="13" class="admin-empty-state">Тарифов нет.</td>
                 </tr>
                 <tr th:each="t : ${tariffs}">
                     <td class="admin-num" th:text="${t.id}">1</td>
@@ -67,6 +69,15 @@
                     <td th:text="${t.title}"></td>
                     <td th:text="${t.scope}"></td>
                     <td th:text="${t.accessMode}"></td>
+                    <td class="admin-num text-nowrap">
+                        <span th:if="${t.priceAmountMinor != null}"
+                              th:text="${#numbers.formatDecimal(t.priceAmountMinor / 100.0, 1, 2) + ' ' + t.currency}">299.00 RUB</span>
+                        <span th:if="${t.priceAmountMinor == null}">—</span>
+                    </td>
+                    <td class="admin-num">
+                        <span th:if="${t.paidTermDays != null}" th:text="${t.paidTermDays}">30</span>
+                        <span th:if="${t.paidTermDays == null}">—</span>
+                    </td>
                     <td th:text="${t.sortOrder}"></td>
                     <td>
                         <span th:if="${t.defaultPersonal}" class="badge bg-info text-dark me-1">личка</span>

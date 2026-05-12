@@ -123,7 +123,10 @@ public class AdminWebController {
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String miniapp,
             @RequestParam(required = false) String keywords,
-            @RequestParam(name = "isActive", defaultValue = "false") boolean isActive) {
+            @RequestParam(name = "isActive", defaultValue = "false") boolean isActive,
+            @RequestParam(required = false) String yookassaShopId,
+            @RequestParam(required = false) String yookassaSecretKey,
+            @RequestParam(name = "yookassaReceiptEnabled", defaultValue = "false") boolean yookassaReceiptEnabled) {
         String typeValue = BotType.fromString(type).getValue();
         if (BotType.ASSISTANT.getValue().equalsIgnoreCase(typeValue) && agentConfigId == null) {
             return "redirect:/admin/bots?error=assistantNeedsAgent";
@@ -138,6 +141,11 @@ public class AdminWebController {
         bot.setMiniapp(blankToNull(miniapp));
         bot.setIsActive(isActive);
         bot.setRequireAgeConfirmation(requireAgeConfirmation);
+        bot.setYookassaShopId(blankToNull(yookassaShopId));
+        if (yookassaSecretKey != null && !yookassaSecretKey.isBlank()) {
+            bot.setYookassaSecretKey(yookassaSecretKey.trim());
+        }
+        bot.setYookassaReceiptEnabled(yookassaReceiptEnabled);
         if (agentConfigId != null) {
             bot.setAgentConfig(agentConfigService.requireById(agentConfigId));
         }
@@ -158,7 +166,10 @@ public class AdminWebController {
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String miniapp,
             @RequestParam(required = false) String keywords,
-            @RequestParam(name = "isActive", defaultValue = "false") boolean isActive) {
+            @RequestParam(name = "isActive", defaultValue = "false") boolean isActive,
+            @RequestParam(required = false) String yookassaShopId,
+            @RequestParam(required = false) String yookassaSecretKey,
+            @RequestParam(name = "yookassaReceiptEnabled", defaultValue = "false") boolean yookassaReceiptEnabled) {
         BotEntity bot = botService.findById(id);
         if (bot != null) {
             String typeValue = BotType.fromString(type).getValue();
@@ -170,6 +181,11 @@ public class AdminWebController {
             bot.setMiniapp(blankToNull(miniapp));
             bot.setIsActive(isActive);
             bot.setRequireAgeConfirmation(requireAgeConfirmation);
+            bot.setYookassaShopId(blankToNull(yookassaShopId));
+            if (yookassaSecretKey != null && !yookassaSecretKey.isBlank()) {
+                bot.setYookassaSecretKey(yookassaSecretKey.trim());
+            }
+            bot.setYookassaReceiptEnabled(yookassaReceiptEnabled);
 
             if (BotType.COPYCAT.getValue().equalsIgnoreCase(typeValue)) {
                 bot.setAgentConfig(null);

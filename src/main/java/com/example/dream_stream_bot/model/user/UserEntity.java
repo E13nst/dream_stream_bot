@@ -33,6 +33,10 @@ public class UserEntity {
     @Column(name = "referred_by_user_id")
     private Long referredByUserId;
 
+    /** Email для чека ЮKassa (54‑ФЗ), если включено у бота. */
+    @Column(name = "billing_email", length = 255)
+    private String billingEmail;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
     
@@ -72,6 +76,9 @@ public class UserEntity {
 
     public Long getReferredByUserId() { return referredByUserId; }
     public void setReferredByUserId(Long referredByUserId) { this.referredByUserId = referredByUserId; }
+
+    public String getBillingEmail() { return billingEmail; }
+    public void setBillingEmail(String billingEmail) { this.billingEmail = billingEmail; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

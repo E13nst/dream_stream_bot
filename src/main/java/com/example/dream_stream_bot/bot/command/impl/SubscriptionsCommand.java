@@ -110,7 +110,7 @@ public class SubscriptionsCommand implements BotCommand {
             lines.add(String.format("• %s | %s | %s | до %s | %s",
                     botLabel, tariffLabel, scope, exp, s.getStatus()));
         }
-        lines.add("Продление — через администратора или оплату (когда будет подключена).");
+        lines.add("Продление: после принятия документов используйте «💳 Оплатить подписку» в ⚙ Настройки или кнопку с экрана онбординга. Команда /billing_email — email для чека (если включено у бота).");
         return BotCommand.reply(OutgoingMessage.builder()
                 .chatId(message.getChatId())
                 .messageThreadId(ctx.getMessageThreadId())

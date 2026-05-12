@@ -119,7 +119,9 @@ public class SubscriptionTariffService {
                                              Integer maxParticipants, int sortOrder, boolean active,
                                              boolean defaultPersonal, boolean defaultGroup,
                                              boolean referralEnabled, Integer referralReferrerDays,
-                                             Integer referralReferredDays, boolean referralFirstPaymentOnly) {
+                                             Integer referralReferredDays, boolean referralFirstPaymentOnly,
+                                             Long priceAmountMinor, String currency, Integer paidTermDays,
+                                             String checkoutDescription) {
         SubscriptionTariffEntity e = new SubscriptionTariffEntity();
         e.setBotId(botId);
         e.setCode(normalizeCode(code));
@@ -134,6 +136,7 @@ public class SubscriptionTariffService {
         e.setReferralReferrerDays(referralReferrerDays);
         e.setReferralReferredDays(referralReferredDays);
         e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
+        applyCommerceFields(e, priceAmountMinor, currency, paidTermDays, checkoutDescription);
         applyDefaultFlags(e, defaultPersonal, defaultGroup);
         validate(e);
         return tariffRepository.save(e);
@@ -145,7 +148,9 @@ public class SubscriptionTariffService {
                                              Integer maxParticipants, int sortOrder, boolean active,
                                              boolean defaultPersonal, boolean defaultGroup,
                                              boolean referralEnabled, Integer referralReferrerDays,
-                                             Integer referralReferredDays, boolean referralFirstPaymentOnly) {
+                                             Integer referralReferredDays, boolean referralFirstPaymentOnly,
+                                             Long priceAmountMinor, String currency, Integer paidTermDays,
+                                             String checkoutDescription) {
         SubscriptionTariffEntity e = requireForBot(botId, id);
         e.setCode(normalizeCode(code));
         e.setTitle(title.trim());
@@ -159,6 +164,7 @@ public class SubscriptionTariffService {
         e.setReferralReferrerDays(referralReferrerDays);
         e.setReferralReferredDays(referralReferredDays);
         e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
+        applyCommerceFields(e, priceAmountMinor, currency, paidTermDays, checkoutDescription);
         applyDefaultFlags(e, defaultPersonal, defaultGroup);
         validate(e);
         return tariffRepository.save(e);
@@ -254,6 +260,40 @@ public class SubscriptionTariffService {
         } else {
             e.setReferralReferrerDays(null);
             e.setReferralReferredDays(null);
+        }
+
+        if (e.getPriceAmountMinor() != null) {
+            if (e.getPriceAmountMinor() <= 0) {
+                throw new IllegalArgumentException("Цена должна быть положительной (в копейках)");
+            }
+            if (e.getAccessMode() != TariffAccessMode.PAID_TERM) {
+                throw new IllegalArgumentException("Цена задаётся только для тарифов PAID_TERM");
+            }
+            if (e.getPaidTermDays() == null || e.getPaidTermDays() < 1) {
+                throw new IllegalArgumentException("Укажите «дней за оплату» ≥ 1 для платного тарифа");
+            }
+        } else if (e.getPaidTermDays() != null) {
+            throw new IllegalArgumentException("Нельзя задать «дней за оплату» без цены");
+        }
+        if (e.getCurrency() == null || e.getCurrency().isBlank()) {
+            e.setCurrency("RUB");
+        }
+        if (e.getCurrency().length() > 8) {
+            throw new IllegalArgumentException("Код валюты не длиннее 8 символов");
+        }
+    }
+
+    private static void applyCommerceFields(SubscriptionTariffEntity e, Long priceAmountMinor, String currency,
+                                           Integer paidTermDays, String checkoutDescription) {
+        e.setPriceAmountMinor(priceAmountMinor);
+        if (currency != null && !currency.isBlank()) {
+            e.setCurrency(currency.trim().toUpperCase());
+        }
+        e.setPaidTermDays(paidTermDays);
+        if (checkoutDescription != null && !checkoutDescription.isBlank()) {
+            e.setCheckoutDescription(checkoutDescription.trim());
+        } else {
+            e.setCheckoutDescription(null);
         }
     }
 

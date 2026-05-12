@@ -3,6 +3,7 @@
 DELETE FROM trial_usage;
 DELETE FROM subscription_participant;
 DELETE FROM subscription_period;
+DELETE FROM subscription_payment;
 DELETE FROM subscription;
 DELETE FROM subscription_tariff;
 
@@ -11,7 +12,8 @@ DELETE FROM bot_keyword;
 DELETE FROM bot;
 DELETE FROM agent_config;
 
-INSERT INTO bot (name, username, token, type, is_active, require_age_confirmation, description, created_at, updated_at)
+INSERT INTO bot (name, username, token, type, is_active, require_age_confirmation, description, created_at, updated_at,
+                 yookassa_receipt_enabled)
 VALUES (
     'IntegrationTestBot',
     'integration_test_bot',
@@ -21,7 +23,8 @@ VALUES (
     false,
     'Привет! Я тестовый бот. Нажмите «Начать», чтобы активировать доступ.',
     CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
+    CURRENT_TIMESTAMP,
+    FALSE
 );
 
 INSERT INTO agent_config (
@@ -47,20 +50,20 @@ UPDATE bot
 SET agent_config_id = (SELECT id FROM agent_config WHERE name = 'Диалог · integration_test_bot' LIMIT 1)
 WHERE username = 'integration_test_bot';
 
-INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, created_at, updated_at)
-SELECT b.id, 'PERSONAL_TRIAL', 'Персональный (пробный период)', 'PERSONAL', 'TRIAL_ONBOARDING', 3, NULL, 0, TRUE, TRUE, FALSE, FALSE, NULL, NULL, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, price_amount_minor, currency, paid_term_days, checkout_description, created_at, updated_at)
+SELECT b.id, 'PERSONAL_TRIAL', 'Персональный (пробный период)', 'PERSONAL', 'TRIAL_ONBOARDING', 3, NULL, 0, TRUE, TRUE, FALSE, FALSE, NULL, NULL, TRUE, NULL, 'RUB', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM bot b WHERE b.username = 'integration_test_bot';
-INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, created_at, updated_at)
-SELECT b.id, 'PERSONAL_FREE', 'Персональный (бесплатно)', 'PERSONAL', 'FREE_UNLIMITED', NULL, NULL, 1, TRUE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, price_amount_minor, currency, paid_term_days, checkout_description, created_at, updated_at)
+SELECT b.id, 'PERSONAL_FREE', 'Персональный (бесплатно)', 'PERSONAL', 'FREE_UNLIMITED', NULL, NULL, 1, TRUE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, 'RUB', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM bot b WHERE b.username = 'integration_test_bot';
-INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, created_at, updated_at)
-SELECT b.id, 'GROUP_S', 'Группа (до 10)', 'GROUP', 'PAID_TERM', NULL, 10, 10, TRUE, FALSE, TRUE, FALSE, NULL, NULL, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, price_amount_minor, currency, paid_term_days, checkout_description, created_at, updated_at)
+SELECT b.id, 'GROUP_S', 'Группа (до 10)', 'GROUP', 'PAID_TERM', NULL, 10, 10, TRUE, FALSE, TRUE, FALSE, NULL, NULL, TRUE, NULL, 'RUB', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM bot b WHERE b.username = 'integration_test_bot';
-INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, created_at, updated_at)
-SELECT b.id, 'GROUP_M', 'Группа (до 25)', 'GROUP', 'PAID_TERM', NULL, 25, 20, TRUE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, price_amount_minor, currency, paid_term_days, checkout_description, created_at, updated_at)
+SELECT b.id, 'GROUP_M', 'Группа (до 25)', 'GROUP', 'PAID_TERM', NULL, 25, 20, TRUE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, 'RUB', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM bot b WHERE b.username = 'integration_test_bot';
-INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, created_at, updated_at)
-SELECT b.id, 'GROUP_L', 'Группа (до 50)', 'GROUP', 'PAID_TERM', NULL, 50, 30, TRUE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO subscription_tariff (bot_id, code, title, scope, access_mode, trial_days, max_participants, sort_order, active, default_personal, default_group, referral_enabled, referral_referrer_days, referral_referred_days, referral_first_payment_only, price_amount_minor, currency, paid_term_days, checkout_description, created_at, updated_at)
+SELECT b.id, 'GROUP_L', 'Группа (до 50)', 'GROUP', 'PAID_TERM', NULL, 50, 30, TRUE, FALSE, FALSE, FALSE, NULL, NULL, TRUE, NULL, 'RUB', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM bot b WHERE b.username = 'integration_test_bot';
 
 INSERT INTO users (telegram_id, username, first_name, last_name, role, created_at, updated_at)

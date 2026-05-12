@@ -10,6 +10,7 @@ import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.consent.ConsentService;
+import com.example.dream_stream_bot.service.payment.SubscriptionCheckoutService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
@@ -45,6 +46,7 @@ public class OnboardingService {
     private final OnboardingScopeHolder scopeHolder;
     private final TelegramGroupAdminService telegramGroupAdminService;
     private final BotNavigationService botNavigationService;
+    private final SubscriptionCheckoutService subscriptionCheckoutService;
 
     public OnboardingService(UserService userService,
                              SubscriptionService subscriptionService,
@@ -52,7 +54,8 @@ public class OnboardingService {
                              ConsentService consentService,
                              OnboardingScopeHolder scopeHolder,
                              TelegramGroupAdminService telegramGroupAdminService,
-                             BotNavigationService botNavigationService) {
+                             BotNavigationService botNavigationService,
+                             SubscriptionCheckoutService subscriptionCheckoutService) {
         this.userService = userService;
         this.subscriptionService = subscriptionService;
         this.subscriptionTariffService = subscriptionTariffService;
@@ -60,6 +63,7 @@ public class OnboardingService {
         this.scopeHolder = scopeHolder;
         this.telegramGroupAdminService = telegramGroupAdminService;
         this.botNavigationService = botNavigationService;
+        this.subscriptionCheckoutService = subscriptionCheckoutService;
     }
 
     /** /start payload в личке. */
@@ -275,6 +279,29 @@ public class OnboardingService {
                 }
                 SubscriptionEntity awaiting = subscriptionService.markAwaitingActivation(subscription);
                 LOGGER.info("Personal subscription awaiting activation | sub={} | user={}", awaiting.getId(), user.getId());
+
+                if (subscriptionCheckoutService.isPaidCheckoutAvailable(bot, tariff)) {
+                    String receiptHint = bot.isYookassaReceiptEnabled()
+                            ? "\n\nДля чека по 54‑ФЗ укажите email командой:\n/billing_email ваш@example.ru"
+                            : "";
+                    InlineKeyboardMarkup payKb = InlineKeyboardMarkup.builder()
+                            .keyboardRow(List.of(InlineKeyboardButton.builder()
+                                    .text("💳 Оплатить в Telegram")
+                                    .callbackData(BotNavigationService.CALLBACK_PAY + ":list")
+                                    .build()))
+                            .build();
+                    return List.of(OutgoingMessage.builder()
+                            .chatId(chatId)
+                            .text("""
+                                    Спасибо! Согласия приняты. Оплатите подписку, чтобы активировать доступ.%s
+
+                                    После успешной оплаты доступ откроется автоматически (обычно в течение минуты).
+                                    Статус: /subscriptions
+                                    """.formatted(receiptHint))
+                            .replyMarkup(payKb)
+                            .build());
+                }
+
                 return List.of(mainMenuMessage(chatId,
                         """
                         Спасибо! Согласия приняты. Подписка ожидает активации или оплаты администратором.

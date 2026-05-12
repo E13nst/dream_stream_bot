@@ -70,6 +70,17 @@ public class BotEntity {
     @Column(name = "require_age_confirmation", nullable = false)
     private boolean requireAgeConfirmation = false;
 
+    /** Переопределение shopId ЮKassa для этого бота; если пусто — из application properties. */
+    @Column(name = "yookassa_shop_id", length = 64)
+    private String yookassaShopId;
+
+    /** Переопределение секретного ключа ЮKassa; хранится как в token (осторожно в проде). */
+    @Column(name = "yookassa_secret_key", length = 512)
+    private String yookassaSecretKey;
+
+    @Column(name = "yookassa_receipt_enabled", nullable = false)
+    private boolean yookassaReceiptEnabled;
+
     public java.util.List<String> getBotAliasesList() {
         if (name == null) return java.util.Collections.emptyList();
         return java.util.Arrays.stream(name.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();

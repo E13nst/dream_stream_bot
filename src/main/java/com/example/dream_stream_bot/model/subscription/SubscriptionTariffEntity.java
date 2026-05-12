@@ -68,6 +68,20 @@ public class SubscriptionTariffEntity {
     @Column(name = "referral_first_payment_only", nullable = false)
     private boolean referralFirstPaymentOnly = true;
 
+    /** Цена в минимальных единицах валюты (копейки); null — не продаётся через бота. */
+    @Column(name = "price_amount_minor")
+    private Long priceAmountMinor;
+
+    @Column(nullable = false, length = 8)
+    private String currency = "RUB";
+
+    /** Дней доступа за одну успешную оплату по этому тарифу. */
+    @Column(name = "paid_term_days")
+    private Integer paidTermDays;
+
+    @Column(name = "checkout_description", columnDefinition = "TEXT")
+    private String checkoutDescription;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -135,6 +149,18 @@ public class SubscriptionTariffEntity {
 
     public boolean isReferralFirstPaymentOnly() { return referralFirstPaymentOnly; }
     public void setReferralFirstPaymentOnly(boolean referralFirstPaymentOnly) { this.referralFirstPaymentOnly = referralFirstPaymentOnly; }
+
+    public Long getPriceAmountMinor() { return priceAmountMinor; }
+    public void setPriceAmountMinor(Long priceAmountMinor) { this.priceAmountMinor = priceAmountMinor; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public Integer getPaidTermDays() { return paidTermDays; }
+    public void setPaidTermDays(Integer paidTermDays) { this.paidTermDays = paidTermDays; }
+
+    public String getCheckoutDescription() { return checkoutDescription; }
+    public void setCheckoutDescription(String checkoutDescription) { this.checkoutDescription = checkoutDescription; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

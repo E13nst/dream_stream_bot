@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 
 @Controller
@@ -100,6 +102,10 @@ public class AdminTariffController {
                          @RequestParam(required = false) Integer referralReferrerDays,
                          @RequestParam(required = false) Integer referralReferredDays,
                          @RequestParam(required = false) Boolean referralFirstPaymentOnly,
+                         @RequestParam(required = false) String priceRubles,
+                         @RequestParam(required = false) String currency,
+                         @RequestParam(required = false) Integer paidTermDays,
+                         @RequestParam(required = false) String checkoutDescription,
                          RedirectAttributes ra) {
         try {
             boolean activeEffective = !Boolean.FALSE.equals(active);
@@ -107,9 +113,11 @@ public class AdminTariffController {
             boolean defG = Boolean.TRUE.equals(defaultGroup);
             boolean refEnabled = Boolean.TRUE.equals(referralEnabled);
             boolean firstPaymentOnly = !Boolean.FALSE.equals(referralFirstPaymentOnly);
+            Long priceMinor = parsePriceMinor(priceRubles);
             SubscriptionTariffEntity t = tariffService.create(botId, code.trim(), title, scope,
                     accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG,
-                    refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly);
+                    refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly,
+                    priceMinor, blankToNull(currency), paidTermDays, checkoutDescription);
             ra.addFlashAttribute("success", "Тариф «" + t.getCode() + "» создан");
             return "redirect:/admin/tariffs?botId=" + botId;
         } catch (Exception e) {
@@ -135,6 +143,10 @@ public class AdminTariffController {
                          @RequestParam(required = false) Integer referralReferrerDays,
                          @RequestParam(required = false) Integer referralReferredDays,
                          @RequestParam(required = false) Boolean referralFirstPaymentOnly,
+                         @RequestParam(required = false) String priceRubles,
+                         @RequestParam(required = false) String currency,
+                         @RequestParam(required = false) Integer paidTermDays,
+                         @RequestParam(required = false) String checkoutDescription,
                          RedirectAttributes ra) {
         try {
             boolean activeEffective = Boolean.TRUE.equals(active);
@@ -142,9 +154,11 @@ public class AdminTariffController {
             boolean defG = Boolean.TRUE.equals(defaultGroup);
             boolean refEnabled = Boolean.TRUE.equals(referralEnabled);
             boolean firstPaymentOnly = !Boolean.FALSE.equals(referralFirstPaymentOnly);
+            Long priceMinor = parsePriceMinor(priceRubles);
             tariffService.update(id, botId, code.trim(), title, scope,
                     accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG,
-                    refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly);
+                    refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly,
+                    priceMinor, blankToNull(currency), paidTermDays, checkoutDescription);
             ra.addFlashAttribute("success", "Тариф обновлён");
             return "redirect:/admin/tariffs?botId=" + botId;
         } catch (Exception e) {
@@ -165,5 +179,34 @@ public class AdminTariffController {
             ra.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/admin/tariffs?botId=" + botId;
+    }
+
+    private static String blankToNull(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        return s.trim();
+    }
+
+    /**
+     * Цена в рублях с не более чем 2 знаками после запятой; {@code null} если поле пустое.
+     */
+    private static Long parsePriceMinor(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String normalized = raw.trim()
+                .replace('\u00A0', ' ')
+                .replace(" ", "")
+                .replace(',', '.');
+        BigDecimal v = new BigDecimal(normalized).setScale(2, RoundingMode.UNNECESSARY);
+        if (v.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Цена должна быть положительной");
+        }
+        try {
+            return v.movePointRight(2).longValueExact();
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("В цене допускается не более двух знаков после запятой");
+        }
     }
 }

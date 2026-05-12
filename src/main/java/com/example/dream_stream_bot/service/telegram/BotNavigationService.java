@@ -19,6 +19,9 @@ public class BotNavigationService {
 
     public static final String CALLBACK_NAV = "nav";
 
+    /** Префикс callback для оплаты ЮKassa ({@code pay:list}, {@code pay:open:tariffId}). */
+    public static final String CALLBACK_PAY = "pay";
+
     public ReplyKeyboard privateMainKeyboard() {
         return new ReplyCommandKeyboard()
                 .addKey(BTN_START)
@@ -33,6 +36,7 @@ public class BotNavigationService {
     public InlineKeyboardMarkup privateSettingsInlineKeyboard() {
         return InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(button("💎 Моя подписка", navPayload("subscriptions"))))
+                .keyboardRow(List.of(button("💳 Оплатить подписку", CALLBACK_PAY + ":list")))
                 .keyboardRow(List.of(button("\uD83D\uDD17 Пригласить друга", navPayload("referral"))))
                 .keyboardRow(List.of(
                         button("\uD83D\uDDD1 Забыть последний обмен", navPayload("forget_last")),

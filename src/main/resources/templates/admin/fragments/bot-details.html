@@ -76,6 +76,23 @@
                            th:checked="${selectedBot.requireAgeConfirmation}" type="checkbox" value="true">
                     <label class="form-check-label" for="selectedBotRequireAge">Требовать подтверждение возраста 18+</label>
                 </div>
+                <p class="admin-section-heading small text-muted">ЮKassa (переопределяет env YOOKASSA_* если заполнено)</p>
+                <div class="mb-3">
+                    <label class="form-label" for="yooShopId">YooKassa shop id</label>
+                    <input class="form-control form-control-sm" id="yooShopId" name="yookassaShopId"
+                           autocomplete="off" th:value="${selectedBot.yookassaShopId}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="yooSecret">YooKassa secret key</label>
+                    <input class="form-control form-control-sm" id="yooSecret" name="yookassaSecretKey"
+                           type="password" autocomplete="new-password"
+                           placeholder="Оставьте пустым при сохранении, чтобы не менять ключ">
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" id="yooReceipt" name="yookassaReceiptEnabled" type="checkbox" value="true"
+                           th:checked="${selectedBot.yookassaReceiptEnabled}">
+                    <label class="form-check-label" for="yooReceipt">Формировать чек 54‑ФЗ (нужен email пользователя: /billing_email)</label>
+                </div>
                 <button class="btn btn-primary btn-sm" type="submit">Save Parameters</button>
             </form>
 

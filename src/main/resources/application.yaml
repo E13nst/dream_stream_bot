@@ -85,6 +85,10 @@ springdoc:
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
 
+yookassa:
+  shop-id: ${YOOKASSA_SHOP_ID:}
+  secret-key: ${YOOKASSA_SECRET_KEY:}
+  return-url-template: ${YOOKASSA_RETURN_URL_TEMPLATE:https://t.me/{botUsername}}
 
 # Подробное логирование для диагностики
 logging:

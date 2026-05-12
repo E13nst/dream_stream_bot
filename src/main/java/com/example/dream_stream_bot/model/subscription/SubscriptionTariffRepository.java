@@ -21,4 +21,7 @@ public interface SubscriptionTariffRepository extends JpaRepository<Subscription
     Optional<SubscriptionTariffEntity> findByBotIdAndDefaultPersonalTrue(Long botId);
 
     Optional<SubscriptionTariffEntity> findByBotIdAndDefaultGroupTrue(Long botId);
+
+    List<SubscriptionTariffEntity> findByBotIdAndActiveTrueAndScopeAndPriceAmountMinorIsNotNullOrderBySortOrderAscIdAsc(
+            Long botId, TariffScope scope);
 }

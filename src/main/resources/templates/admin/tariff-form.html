@@ -18,6 +18,9 @@
 
     <h1 class="admin-page-title" th:text="${isNew} ? 'Новый тариф' : 'Редактирование тарифа'">Тариф</h1>
 
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}">Ошибка</div>
+    <div th:if="${success}" class="alert alert-success" th:text="${success}">Успех</div>
+
     <div class="alert alert-info small">
         <strong>FREE_UNLIMITED</strong> — бессрочно после согласий (личка). 
         <strong>TRIAL_ONBOARDING</strong> — нужен срок пробного периода (дни).
@@ -98,6 +101,23 @@
                     <input class="form-check-input" id="defGrpNew" type="checkbox" name="defaultGroup" value="true">
                     <label class="form-check-label" for="defGrpNew">По умолчанию для группы этого бота</label>
                 </div>
+            </div>
+            <div class="col-12"><hr class="my-2"><p class="small text-muted mb-2">Оплата в Telegram (ЮKassa): цена и «дней за оплату» задаются вместе, только при режиме <strong>PAID_TERM</strong>.</p></div>
+            <div class="col-md-6">
+                <label class="form-label">Цена (руб., например 299 или 299.50)</label>
+                <input class="form-control" name="priceRubles" type="text" placeholder="пусто — без оплаты в боте" inputmode="decimal">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Валюта (ISO)</label>
+                <input class="form-control" name="currency" maxlength="8" placeholder="RUB">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Дней доступа за одну оплату</label>
+                <input class="form-control" name="paidTermDays" type="number" min="1" placeholder="например, 30">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Текст позиции в чеке (необязательно)</label>
+                <input class="form-control" name="checkoutDescription" maxlength="500" placeholder="по умолчанию — название тарифа">
             </div>
             <div class="col-12">
                 <button type="submit" class="btn btn-primary">Создать</button>
@@ -187,6 +207,25 @@
                            th:checked="${tariff.defaultGroup}">
                     <label class="form-check-label" for="defGrpEd">По умолчанию для группы</label>
                 </div>
+            </div>
+            <div class="col-12"><hr class="my-2"><p class="small text-muted mb-2">Оплата в Telegram (ЮKassa): если указана цена — обязательно укажите «Дней за одну оплату»; режим доступа должен быть <strong>PAID_TERM</strong>.</p></div>
+            <div class="col-md-6">
+                <label class="form-label">Цена (руб.)</label>
+                <input class="form-control" name="priceRubles" type="text" inputmode="decimal"
+                       th:value="${tariff.priceAmountMinor != null ? #numbers.formatDecimal(tariff.priceAmountMinor / 100.0, 1, 2) : ''}"
+                       placeholder="пусто — без оплаты в боте">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Валюта</label>
+                <input class="form-control" name="currency" maxlength="8" th:value="${tariff.currency}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Дней за одну оплату</label>
+                <input class="form-control" name="paidTermDays" type="number" min="1" th:value="${tariff.paidTermDays}">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Текст в чеке</label>
+                <input class="form-control" name="checkoutDescription" maxlength="500" th:value="${tariff.checkoutDescription}">
             </div>
             <div class="col-12">
                 <button type="submit" class="btn btn-primary">Сохранить</button>

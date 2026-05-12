@@ -139,6 +139,16 @@ public class UserService {
     }
     
     /**
+     * Email для чека ЮKassa (54‑ФЗ).
+     */
+    public UserEntity updateBillingEmail(Long userId, String email) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        user.setBillingEmail(email.trim().toLowerCase());
+        return userRepository.save(user);
+    }
+
+    /**
      * Найти пользователей по роли
      */
     public List<UserEntity> findByRole(UserEntity.UserRole role) {
