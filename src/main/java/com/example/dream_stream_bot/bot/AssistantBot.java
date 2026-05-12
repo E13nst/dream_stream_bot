@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.bot.command.CommandDispatcher;
 import com.example.dream_stream_bot.bot.command.PrivateReplyNavigationRouter;
 import com.example.dream_stream_bot.bot.error.BotUpdateErrorHandler;
 import com.example.dream_stream_bot.bot.message.MessageSender;
+import com.example.dream_stream_bot.bot.message.MessageSender.TypingKeepAliveHandle;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.access.AccessDecision;
@@ -18,6 +19,8 @@ import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+
+import java.util.List;
 
 public class AssistantBot extends AbstractTelegramBot {
 
@@ -74,9 +77,13 @@ public class AssistantBot extends AbstractTelegramBot {
         }
 
         String conversationId = buildConversationId(msg);
-        var responses = scope.isGroupLike()
-                ? messageHandlerService.handleReplyToBotMessage(msg, conversationId, botEntity)
-                : messageHandlerService.handlePersonalMessage(msg, conversationId, botEntity);
+        Integer threadId = Boolean.TRUE.equals(msg.getIsTopicMessage()) ? msg.getMessageThreadId() : null;
+        List<OutgoingMessage> responses;
+        try (TypingKeepAliveHandle typing = messageSender.startTypingKeepAlive(this, msg.getChatId(), threadId)) {
+            responses = scope.isGroupLike()
+                    ? messageHandlerService.handleReplyToBotMessage(msg, conversationId, botEntity)
+                    : messageHandlerService.handlePersonalMessage(msg, conversationId, botEntity);
+        }
         messageSender.sendAll(this, responses);
 
         if (decision.hasUserMessage()) {

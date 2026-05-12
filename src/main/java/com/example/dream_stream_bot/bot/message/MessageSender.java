@@ -9,6 +9,10 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Единая точка отправки сообщений в Telegram. Проксирует {@link OutgoingMessage}
  * через {@link AbsSender} с правильным проставлением {@code message_thread_id}
@@ -19,16 +23,68 @@ public class MessageSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MessageSender.class);
 
-    private static final int TYPING_MAX_SECONDS = 5;
-    private static final int TYPING_MIN_SECONDS = 1;
-    private static final int CHARS_PER_SECOND = 20;
+    /** Ручка keep-alive «печатает»: {@link #close()} не бросает checked-исключения. */
+    @FunctionalInterface
+    public interface TypingKeepAliveHandle extends AutoCloseable {
+        @Override
+        void close();
+    }
+
+    /** Telegram держит статус «печатает» около 5 секунд — обновляем чуть раньше. */
+    private static final int TYPING_REFRESH_SECONDS = 4;
+
+    /**
+     * Периодически отправляет {@code typing}, пока не вызван {@link TypingKeepAliveHandle#close()} —
+     * для ожидания ответа LLM. Команды и меню должны отправляться через {@link #send}
+     * без этой сессии.
+     */
+    public TypingKeepAliveHandle startTypingKeepAlive(AbsSender bot, Long chatId, Integer messageThreadId) {
+        if (chatId == null) {
+            return () -> { };
+        }
+        sendTyping(bot, chatId, messageThreadId);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "telegram-typing-keepalive");
+            t.setDaemon(true);
+            return t;
+        });
+        Runnable refresh = () -> {
+            try {
+                sendTyping(bot, chatId, messageThreadId);
+            } catch (Exception e) {
+                LOGGER.warn("⚠️ Typing refresh failed | chat={} | error={}", chatId, e.getMessage());
+            }
+        };
+        scheduler.scheduleAtFixedRate(refresh, TYPING_REFRESH_SECONDS, TYPING_REFRESH_SECONDS, TimeUnit.SECONDS);
+        return () -> {
+            scheduler.shutdownNow();
+            try {
+                scheduler.awaitTermination(2, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+    }
+
+    private void sendTyping(AbsSender bot, Long chatId, Integer messageThreadId) {
+        SendChatAction action = new SendChatAction();
+        action.setChatId(chatId.toString());
+        action.setAction(ActionType.TYPING);
+        if (messageThreadId != null) {
+            action.setMessageThreadId(messageThreadId);
+        }
+        try {
+            bot.execute(action);
+        } catch (TelegramApiException e) {
+            LOGGER.warn("⚠️ Typing action failed | chat={} | error={}", chatId, e.getMessage());
+        }
+    }
 
     /**
      * Отправка одного сообщения. Telegram-исключения логируются, не пробрасываются —
      * бизнес-поток не должен падать из-за неудачной доставки.
      */
     public void send(AbsSender bot, OutgoingMessage message) {
-        sendTypingActionWithDuration(bot, message);
         SendMessage sm = toSendMessage(message);
         try {
             bot.execute(sm);
@@ -71,29 +127,6 @@ public class MessageSender {
             b.disableWebPagePreview(true);
         }
         return b.build();
-    }
-
-    private void sendTypingActionWithDuration(AbsSender bot, OutgoingMessage m) {
-        String text = m.getText();
-        int duration = Math.max(TYPING_MIN_SECONDS,
-                Math.min(TYPING_MAX_SECONDS, text != null ? text.length() / CHARS_PER_SECOND : TYPING_MIN_SECONDS));
-        SendChatAction action = new SendChatAction();
-        action.setChatId(m.getChatId().toString());
-        action.setAction(ActionType.TYPING);
-        if (m.getMessageThreadId() != null) {
-            action.setMessageThreadId(m.getMessageThreadId());
-        }
-        try {
-            for (int i = 0; i < duration; i++) {
-                bot.execute(action);
-                Thread.sleep(1000);
-            }
-            Thread.sleep(500);
-        } catch (TelegramApiException e) {
-            LOGGER.warn("⚠️ Typing action failed | chat={} | error={}", m.getChatId(), e.getMessage());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private static String truncate(String text, int max) {
