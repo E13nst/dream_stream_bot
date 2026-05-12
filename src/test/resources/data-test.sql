@@ -12,7 +12,7 @@ DELETE FROM bot_keyword;
 DELETE FROM bot;
 DELETE FROM agent_config;
 
-INSERT INTO bot (name, username, token, type, is_active, require_age_confirmation, description, created_at, updated_at,
+INSERT INTO bot (name, username, token, type, is_active, description, created_at, updated_at,
                  yookassa_receipt_enabled)
 VALUES (
     'IntegrationTestBot',
@@ -20,7 +20,6 @@ VALUES (
     '123456789:AAIntegrationTestTokenForHmacSigningOnly',
     'assistant',
     true,
-    false,
     'Привет! Я тестовый бот. Нажмите «Начать», чтобы активировать доступ.',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP,

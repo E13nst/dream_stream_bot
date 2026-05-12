@@ -71,11 +71,6 @@
                     <input class="form-check-input" id="selectedBotActive" name="isActive" th:checked="${selectedBot.isActive}" type="checkbox" value="true">
                     <label class="form-check-label" for="selectedBotActive">Active</label>
                 </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" id="selectedBotRequireAge" name="requireAgeConfirmation"
-                           th:checked="${selectedBot.requireAgeConfirmation}" type="checkbox" value="true">
-                    <label class="form-check-label" for="selectedBotRequireAge">Требовать подтверждение возраста 18+</label>
-                </div>
                 <p class="admin-section-heading small text-muted">ЮKassa (переопределяет env YOOKASSA_* если заполнено)</p>
                 <div class="mb-3">
                     <label class="form-label" for="yooShopId">YooKassa shop id</label>
@@ -99,8 +94,8 @@
             <p class="admin-section-heading">Consent bindings</p>
             <p class="small text-muted mb-2">
                 Создание документа в разделе <a th:href="@{/admin/consents}">Consents</a> не привязывает его к боту автоматически.
-                Для каждого кода выберите версию (или «не требовать») и нажмите <strong>Save consent bindings</strong>.
-                Для новых ботов или новых кодов привязку нужно задать вручную один раз.
+                Для бота задаются версии только для <strong>политики</strong> и <strong>оферты</strong> (оферта — для платежного шага).
+                Нажмите <strong>Save consent bindings</strong>.
             </p>
             <form class="mb-2" method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/consents'}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

@@ -24,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +39,12 @@ public class OnboardingService {
     public static final String CALLBACK_START = "onboarding_start";
     public static final String CALLBACK_ACCEPT = "consent_accept";
     public static final String CALLBACK_DECLINE = "consent_decline";
+
+    /** Inline «Начать» после текста про политику (одно сообщение с reply-клавиатурой вводится первым сообщением /start отдельно). */
+    public static final String CALLBACK_PRIVACY_ACCEPT = "onboarding_privacy_accept";
+
+    /** Выбор персонального триала/free тарифа на онбординге. */
+    public static final String CALLBACK_TARIFF_PICK = "onboarding_tariff_pick";
 
     private final UserService userService;
     private final SubscriptionService subscriptionService;
@@ -87,7 +94,7 @@ public class OnboardingService {
 
         applyReferralPayload(user, payload);
 
-        return showBotIntro(bot, chatId);
+        return showBotIntro(bot, user, chatId);
     }
 
     public List<OutgoingMessage> startPersonalAccess(UserEntity user, BotEntity bot, Long chatId) {
@@ -99,22 +106,216 @@ public class OnboardingService {
             return List.of(OutgoingMessage.of(chatId, "Бот не настроен. Обратитесь в поддержку."));
         }
 
-        SubscriptionEntity sub = subscriptionService.createOrGet(
-                user.getId(), bot.getId(), subscriptionTariffService.resolveDefaultPersonal(bot.getId()).getId(), null);
-
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
+
+        if (!personalPrivacySatisfied(bot.getId(), user.getId())) {
+            return privacyGateReminderOrBanner(bot.getId(), chatId);
+        }
+        Optional<SubscriptionEntity> existing = subscriptionService.findPersonal(bot.getId(), user.getId());
+        if (existing.isPresent()) {
+            return continueOnboardingPersonal(user, bot, chatId, existing.get());
+        }
+        return proceedPersonalTariffSelection(user, bot, chatId);
+    }
+
+    /** Callback: принятие активной версии политики с шлюза перед выбором тарифа/активацией. */
+    public List<OutgoingMessage> acceptPrivacyGateAndContinue(UserEntity user, BotEntity bot, Long chatId,
+                                                               long privacyDocumentId, Integer telegramMessageId) {
+        if (user == null || bot == null) {
+            return List.of();
+        }
+        Optional<ConsentDocumentEntity> active =
+                consentService.getActiveForBot(bot.getId(), ConsentCode.PRIVACY_POLICY);
+        if (active.isEmpty() || !active.get().getId().equals(privacyDocumentId)) {
+            return List.of(OutgoingMessage.of(chatId,
+                    "Версия политики устарела или не найдена. Нажмите /start ещё раз."));
+        }
+        consentService.recordAcceptance(user.getId(), privacyDocumentId, null, chatId,
+                telegramMessageId, "privacy_gate");
+        scopeHolder.clearPendingGroup(bot.getId(), user.getId());
+        scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
+        Optional<SubscriptionEntity> existing = subscriptionService.findPersonal(bot.getId(), user.getId());
+        if (existing.isPresent()) {
+            return continueOnboardingPersonal(user, bot, chatId, existing.get());
+        }
+        return proceedPersonalTariffSelection(user, bot, chatId);
+    }
+
+    /** Callback: выбор персонального free/trial после политики. */
+    public List<OutgoingMessage> pickPersonalTrialOrFreeTariff(UserEntity user, BotEntity bot, Long chatId,
+                                                                long tariffId) {
+        if (user == null || bot == null) {
+            return List.of();
+        }
+        if (!personalPrivacySatisfied(bot.getId(), user.getId())) {
+            return List.of(OutgoingMessage.of(chatId,
+                    "Подтвердите политику конфиденциальности — нажмите «Начать» во втором сообщении после /start или откройте /start заново."));
+        }
+        boolean allowed = subscriptionTariffService.listPersonalTrialAndFreeEligible(bot.getId(), user.getId())
+                .stream()
+                .anyMatch(t -> t.getId().equals(tariffId));
+        if (!allowed) {
+            return List.of(OutgoingMessage.of(chatId,
+                    "Этот вариант сейчас недоступен. Откройте /start или раздел 💎 Подписка."));
+        }
+        SubscriptionEntity sub =
+                subscriptionService.createOrGet(user.getId(), bot.getId(), tariffId, null);
         return continueOnboardingPersonal(user, bot, chatId, sub);
     }
 
-    private List<OutgoingMessage> showBotIntro(BotEntity bot, Long chatId) {
+    /**
+     * {@code false}, если для бота задана привязка PRIVACY_POLICY и пользователь ещё не принял активную версию.
+     */
+    private boolean personalPrivacySatisfied(Long botId, Long userId) {
+        Optional<ConsentDocumentEntity> privacy = consentService.getActiveForBot(botId, ConsentCode.PRIVACY_POLICY);
+        if (privacy.isEmpty()) {
+            return true;
+        }
+        return consentService.hasAcceptedBotBoundDocument(userId, botId, ConsentCode.PRIVACY_POLICY);
+    }
+
+    private List<OutgoingMessage> proceedPersonalTariffSelection(UserEntity user, BotEntity bot, Long chatId) {
+        List<SubscriptionTariffEntity> eligible =
+                subscriptionTariffService.listPersonalTrialAndFreeEligible(bot.getId(), user.getId());
+        if (eligible.isEmpty()) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("Бесплатный доступ сейчас недоступен. Обратитесь в поддержку или проверьте настройки бота.")
+                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .build());
+        }
+        if (eligible.size() == 1) {
+            SubscriptionTariffEntity t = eligible.get(0);
+            SubscriptionEntity sub = subscriptionService.createOrGet(user.getId(), bot.getId(), t.getId(), null);
+            return continueOnboardingPersonal(user, bot, chatId, sub);
+        }
+        return List.of(tariffPickerMessage(chatId, eligible));
+    }
+
+    private OutgoingMessage tariffPickerMessage(Long chatId, List<SubscriptionTariffEntity> tariffs) {
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+        for (SubscriptionTariffEntity t : tariffs) {
+            keyboard.add(List.of(InlineKeyboardButton.builder()
+                    .text(truncateInlineButtonText(t.getTitle()))
+                    .callbackData(CALLBACK_TARIFF_PICK + ":" + t.getId())
+                    .build()));
+        }
+        return OutgoingMessage.builder()
+                .chatId(chatId)
+                .text("Выберите вариант бесплатного доступа:")
+                .replyMarkup(InlineKeyboardMarkup.builder()
+                        .keyboard(keyboard)
+                        .build())
+                .build();
+    }
+
+    /** Telegram inline-кнопка: до 64 символов. */
+    private static String truncateInlineButtonText(String title) {
+        if (title == null || title.isBlank()) {
+            return "Тариф";
+        }
+        if (title.length() <= 64) {
+            return title;
+        }
+        return title.substring(0, 61) + "…";
+    }
+
+    /**
+     * Повтор шлюза или напоминание, если пользователь жмёт нижнее «Начать» до принятия политики,
+     * либо неопубликованный документ.
+     */
+    private List<OutgoingMessage> privacyGateReminderOrBanner(Long botId, Long chatId) {
+        Optional<ConsentDocumentEntity> privacy = consentService.getActiveForBot(botId, ConsentCode.PRIVACY_POLICY);
+        if (privacy.isEmpty()) {
+            return List.of(OutgoingMessage.of(chatId, "Откройте /start для продолжения."));
+        }
+        ConsentDocumentEntity doc = privacy.get();
+        String url = doc.getExternalUrl();
+        if (url == null || url.isBlank()) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("""
+                            Политика конфиденциальности ещё не опубликована администратором.
+
+                            Пока это не исправят, активировать пробный доступ нельзя.""")
+                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .build());
+        }
+        List<OutgoingMessage> out = new LinkedList<>();
+        out.add(OutgoingMessage.of(chatId,
+                "Подтвердите ознакомление с политикой — нажмите «Начать» во втором сообщении после команды /start."));
+        out.add(privacyConsentInlineMessage(chatId, doc));
+        return out;
+    }
+
+    private List<OutgoingMessage> showBotIntro(BotEntity bot, UserEntity user, Long chatId) {
         String text = botIntroText(bot);
-        // В одном сообщении нельзя совместить inline- и reply-клавиатуру; /start показывает нижнее меню.
-        return List.of(OutgoingMessage.builder()
+        List<OutgoingMessage> messages = new ArrayList<>();
+        messages.add(OutgoingMessage.builder()
                 .chatId(chatId)
                 .text(text)
                 .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
+        messages.addAll(privacyGateOutgoingIfNeeded(bot, user, chatId));
+        return messages;
+    }
+
+    /**
+     * Второе сообщение после /start: политика + inline «Начать». Пустой список, если политика не привязана или уже принята.
+     */
+    private List<OutgoingMessage> privacyGateOutgoingIfNeeded(BotEntity bot, UserEntity user, Long chatId) {
+        Optional<ConsentDocumentEntity> privacy =
+                consentService.getActiveForBot(bot.getId(), ConsentCode.PRIVACY_POLICY);
+        if (privacy.isEmpty()) {
+            return List.of();
+        }
+        if (consentService.hasAcceptedBotBoundDocument(user.getId(), bot.getId(), ConsentCode.PRIVACY_POLICY)) {
+            return List.of();
+        }
+        ConsentDocumentEntity doc = privacy.get();
+        String url = doc.getExternalUrl();
+        if (url == null || url.isBlank()) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("""
+                            Документ «%s» ещё не опубликован администратором (нет ссылки).
+
+                            После публикации нажмите /start ещё раз.""".formatted(ConsentCode.PRIVACY_POLICY.getDefaultTitle()).trim())
+                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .build());
+        }
+        return List.of(privacyConsentInlineMessage(chatId, doc));
+    }
+
+    private OutgoingMessage privacyConsentInlineMessage(Long chatId, ConsentDocumentEntity doc) {
+        String url = markdownEscapeTelegram(doc.getExternalUrl());
+        String text = """
+                Нажимая кнопку «Начать», вы подтверждаете, что ознакомились с [Политикой конфиденциальности](%s) и даёте согласие на обработку персональных данных."""
+                .formatted(url);
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(InlineKeyboardButton.builder()
+                        .text(BotNavigationService.BTN_START)
+                        .callbackData(CALLBACK_PRIVACY_ACCEPT + ":" + doc.getId())
+                        .build()))
+                .build();
+        return OutgoingMessage.builder()
+                .chatId(chatId)
+                .text(text)
+                .parseMode("Markdown")
+                .disableWebPagePreview(true)
+                .replyMarkup(keyboard)
+                .build();
+    }
+
+    /**
+     * Экранирование URL для Telegram legacy Markdown ({@code (...)} может ломаться на символах вроде {@code )}).
+     */
+    private static String markdownEscapeTelegram(String u) {
+        if (u == null) {
+            return "";
+        }
+        return u.replace("\\", "\\\\").replace(")", "\\)");
     }
 
     private List<OutgoingMessage> startParticipantConsent(BotEntity bot, Long chatId, UserEntity user, String subscriptionIdTail) {

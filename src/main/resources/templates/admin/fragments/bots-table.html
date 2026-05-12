@@ -11,14 +11,13 @@
                     <th scope="col">Name</th>
                     <th scope="col">Username</th>
                     <th scope="col">Type</th>
-                    <th scope="col">18+</th>
                     <th scope="col">Status</th>
                     <th class="admin-table-actions" scope="col">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:if="${bots == null or #lists.isEmpty(bots)}">
-                    <td class="admin-empty-state" colspan="7">
+                    <td class="admin-empty-state" colspan="6">
                         <strong>Ботов пока нет</strong>
                         Создайте первого бота кнопкой «Create Bot», чтобы он появился в таблице.
                     </td>
@@ -28,7 +27,6 @@
                     <td th:text="${bot.name}">Bot</td>
                     <td th:text="${bot.username}">bot_username</td>
                     <td th:text="${bot.type}">assistant</td>
-                    <td th:text="${bot.requireAgeConfirmation ? 'yes' : 'no'}">no</td>
                     <td>
                     <span class="badge" th:classappend="${bot.isActive} ? ' bg-success' : ' bg-secondary'"
                           th:text="${bot.isActive} ? 'ACTIVE' : 'INACTIVE'">ACTIVE</span>

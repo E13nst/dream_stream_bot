@@ -39,6 +39,14 @@ public class AdminWebController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminWebController.class);
 
+    /** Привязка документов к боту в админке: только продуктовые коды. */
+    private static final List<ConsentCode> BOT_CONSENT_BINDING_CODES =
+            List.of(ConsentCode.PRIVACY_POLICY, ConsentCode.OFFER);
+
+    /** Старые коды формы привязок — снимаем при каждом сохранении карточки бота. */
+    private static final List<ConsentCode> DEPRECATED_BOT_CONSENT_BINDING_CODES =
+            List.of(ConsentCode.PERSONAL_DATA, ConsentCode.CROSS_BORDER, ConsentCode.AGE_18);
+
     private final UserService userService;
     private final BotService botService;
     private final AgentConfigService agentConfigService;
@@ -121,7 +129,6 @@ public class AdminWebController {
             @RequestParam String username,
             @RequestParam String token,
             @RequestParam String type,
-            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam(required = false) Long agentConfigId,
             @RequestParam(required = false) String webhookUrl,
             @RequestParam(required = false) String description,
@@ -144,7 +151,6 @@ public class AdminWebController {
         bot.setDescription(blankToNull(description));
         bot.setMiniapp(blankToNull(miniapp));
         bot.setIsActive(isActive);
-        bot.setRequireAgeConfirmation(requireAgeConfirmation);
         bot.setYookassaShopId(blankToNull(yookassaShopId));
         if (yookassaSecretKey != null && !yookassaSecretKey.isBlank()) {
             bot.setYookassaSecretKey(yookassaSecretKey.trim());
@@ -164,7 +170,6 @@ public class AdminWebController {
             @RequestParam String name,
             @RequestParam String username,
             @RequestParam String type,
-            @RequestParam(name = "requireAgeConfirmation", defaultValue = "false") boolean requireAgeConfirmation,
             @RequestParam(required = false) Long agentConfigId,
             @RequestParam(required = false) String webhookUrl,
             @RequestParam(required = false) String description,
@@ -184,7 +189,6 @@ public class AdminWebController {
             bot.setDescription(blankToNull(description));
             bot.setMiniapp(blankToNull(miniapp));
             bot.setIsActive(isActive);
-            bot.setRequireAgeConfirmation(requireAgeConfirmation);
             bot.setYookassaShopId(blankToNull(yookassaShopId));
             if (yookassaSecretKey != null && !yookassaSecretKey.isBlank()) {
                 bot.setYookassaSecretKey(yookassaSecretKey.trim());
@@ -215,8 +219,11 @@ public class AdminWebController {
             return "redirect:/admin/bots";
         }
         try {
-            java.util.Map<String, String> nonEmptyBindings = new java.util.LinkedHashMap<>();
-            for (ConsentCode code : ConsentCode.values()) {
+            for (ConsentCode code : DEPRECATED_BOT_CONSENT_BINDING_CODES) {
+                consentService.clearBindingForBot(id, code);
+            }
+            Map<String, String> nonEmptyBindings = new LinkedHashMap<>();
+            for (ConsentCode code : BOT_CONSENT_BINDING_CODES) {
                 String key = "binding_" + code.name();
                 String raw = params.get(key);
                 if (raw == null || raw.isBlank()) {
@@ -404,22 +411,22 @@ public class AdminWebController {
                 .orElse(""));
         // String keys: Thymeleaf map[enum] lookup is unreliable; template uses .get(code.name()).
         Map<String, List<ConsentDocumentEntity>> documentsByCode = new LinkedHashMap<>();
-        for (ConsentCode code : ConsentCode.values()) {
+        for (ConsentCode code : BOT_CONSENT_BINDING_CODES) {
             documentsByCode.put(code.name(), consentService.listVersions(code));
         }
-        model.addAttribute("consentCodes", ConsentCode.values());
+        model.addAttribute("consentCodes", BOT_CONSENT_BINDING_CODES);
         model.addAttribute("consentDocumentsByCode", documentsByCode);
         // String keys: Thymeleaf map[enum] lookup is unreliable (see consentDocumentsByCode above).
         Map<String, ConsentDocumentEntity> bindingsByCodeKey = new LinkedHashMap<>();
         Map<ConsentCode, ConsentDocumentEntity> activeByCode = selectedBot
                 .map(bot -> consentService.activeDocumentsByBot(bot.getId()))
                 .orElseGet(Map::of);
-        for (ConsentCode code : ConsentCode.values()) {
+        for (ConsentCode code : BOT_CONSENT_BINDING_CODES) {
             bindingsByCodeKey.put(code.name(), activeByCode.get(code));
         }
         model.addAttribute("selectedBotConsentBindings", bindingsByCodeKey);
         Map<String, Long> bindingDocIdByCodeKey = new LinkedHashMap<>();
-        for (ConsentCode code : ConsentCode.values()) {
+        for (ConsentCode code : BOT_CONSENT_BINDING_CODES) {
             ConsentDocumentEntity d = activeByCode.get(code);
             bindingDocIdByCodeKey.put(code.name(), d != null ? d.getId() : null);
         }

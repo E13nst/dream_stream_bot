@@ -50,9 +50,6 @@ public class CreateBotRequest {
     /** Required for {@link BotType#ASSISTANT}; ignored for non-AI bots. */
     private Long agentConfigId;
 
-    /** Требовать подтверждение возраста 18+ в онбординге этого бота. */
-    private Boolean requireAgeConfirmation;
-    
     private Boolean isActive;
     
     // Конструкторы
@@ -129,14 +126,6 @@ public class CreateBotRequest {
 
     public void setAgentConfigId(Long agentConfigId) {
         this.agentConfigId = agentConfigId;
-    }
-
-    public Boolean getRequireAgeConfirmation() {
-        return requireAgeConfirmation;
-    }
-
-    public void setRequireAgeConfirmation(Boolean requireAgeConfirmation) {
-        this.requireAgeConfirmation = requireAgeConfirmation;
     }
     
     public Boolean getIsActive() {

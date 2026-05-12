@@ -23,7 +23,6 @@ public class BotEntityDto {
     private String description;
     private List<String> keywords = new ArrayList<>();
     private String miniapp;
-    private Boolean requireAgeConfirmation;
 
     private Long agentConfigId;
     /** Denormalized from agent for convenience (single source of truth is agent_config). */
@@ -36,7 +35,7 @@ public class BotEntityDto {
     public BotEntityDto(Long id, String name, String username, String token,
                         String webhookUrl, String type, Boolean isActive, LocalDateTime createdAt,
                         LocalDateTime updatedAt, String description, List<String> keywords,
-                        String miniapp, Boolean requireAgeConfirmation,
+                        String miniapp,
                         Long agentConfigId, String systemPrompt, Integer memWindow) {
         this.id = id;
         this.name = name;
@@ -50,7 +49,6 @@ public class BotEntityDto {
         this.description = description;
         this.keywords = keywords != null ? new ArrayList<>(keywords) : new ArrayList<>();
         this.miniapp = miniapp;
-        this.requireAgeConfirmation = requireAgeConfirmation;
         this.agentConfigId = agentConfigId;
         this.systemPrompt = systemPrompt;
         this.memWindow = memWindow;
@@ -152,14 +150,6 @@ public class BotEntityDto {
         this.miniapp = miniapp;
     }
 
-    public Boolean getRequireAgeConfirmation() {
-        return requireAgeConfirmation;
-    }
-
-    public void setRequireAgeConfirmation(Boolean requireAgeConfirmation) {
-        this.requireAgeConfirmation = requireAgeConfirmation;
-    }
-
     public Long getAgentConfigId() {
         return agentConfigId;
     }
@@ -213,7 +203,6 @@ public class BotEntityDto {
                 entity.getDescription(),
                 entity.getBotTriggersList(),
                 entity.getMiniapp(),
-                entity.isRequireAgeConfirmation(),
                 agentId,
                 sysPrompt,
                 mw
@@ -238,7 +227,6 @@ public class BotEntityDto {
                 ", username='" + username + '\'' +
                 ", type='" + type + '\'' +
                 ", isActive=" + isActive +
-                ", requireAgeConfirmation=" + requireAgeConfirmation +
                 ", agentConfigId=" + agentConfigId +
                 ", miniapp='" + miniapp + '\'' +
                 ", createdAt=" + createdAt +

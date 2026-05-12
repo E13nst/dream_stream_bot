@@ -3,8 +3,8 @@ package com.example.dream_stream_bot.model.consent;
 /**
  * Коды документов согласий.
  *
- * <p>OFFER + PRIVACY_POLICY + PERSONAL_DATA + AGE_18 — обязательные для всех пользователей.
- * CROSS_BORDER — требуется только если агент бота имеет {@code data_locality=CROSS_BORDER}.</p>
+ * <p>OFFER и PRIVACY_POLICY — типичные коды для бота.</p>
+ * <p>PERSONAL_DATA, CROSS_BORDER, AGE_18 — сохранены для истории документов; привязка к боту в админке не предлагается.</p>
  */
 public enum ConsentCode {
     OFFER("Публичная оферта"),

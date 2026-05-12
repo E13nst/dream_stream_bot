@@ -246,7 +246,7 @@ public class ConsentService {
                 throw new IllegalArgumentException(
                         "Заголовок «" + resolvedTitle.trim() + "» уже занят документом с кодом "
                                 + row.getCode().name() + " (id=" + row.getId() + "). "
-                                + "Задайте разные названия для разных кодов (OFFER, PRIVACY_POLICY, PERSONAL_DATA, …), "
+                                + "Задайте разные названия для разных кодов согласия (политика, оферта, …), "
                                 + "чтобы в привязках к боту не перепутать документы.");
             }
         }

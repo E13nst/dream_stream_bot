@@ -67,9 +67,6 @@ public class BotEntity {
     @Column(name = "miniapp", length = 512)
     private String miniapp; // ссылка на миниприложение Telegram
 
-    @Column(name = "require_age_confirmation", nullable = false)
-    private boolean requireAgeConfirmation = false;
-
     /** Переопределение shopId ЮKassa для этого бота; если пусто — из application properties. */
     @Column(name = "yookassa_shop_id", length = 64)
     private String yookassaShopId;
@@ -98,11 +95,6 @@ public class BotEntity {
 
     public String getBotName() {
         return name;
-    }
-
-    /** Подтверждение 18+ включено в настройках этого бота. */
-    public boolean requiresAgeConfirmation() {
-        return requireAgeConfirmation;
     }
 
     /**

@@ -151,11 +151,11 @@ class ConsentBindingsIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void adminPostPersistsPersonalDataBinding() throws Exception {
-        BotEntity bot = createBot("pd-admin-binding-bot");
+    void adminPostPersistsPrivacyBinding() throws Exception {
+        BotEntity bot = createBot("privacy-admin-binding-bot");
         ConsentDocumentEntity doc = consentService.createDraft(
-                ConsentCode.PERSONAL_DATA,
-                "PD admin bind",
+                ConsentCode.PRIVACY_POLICY,
+                "Privacy admin bind",
                 "body",
                 null,
                 ConsentChangeType.MINOR);
@@ -163,14 +163,12 @@ class ConsentBindingsIntegrationTest {
 
         mockMvc.perform(post("/admin/bots/" + bot.getId() + "/consents")
                         .param("binding_OFFER", "")
-                        .param("binding_PRIVACY_POLICY", "")
-                        .param("binding_PERSONAL_DATA", String.valueOf(doc.getId()))
-                        .param("binding_CROSS_BORDER", "")
-                        .param("binding_AGE_18", ""))
+                        .param("binding_PRIVACY_POLICY", String.valueOf(doc.getId())))
                 .andExpect(status().is3xxRedirection());
 
-        assertTrue(consentService.getActiveForBot(bot.getId(), ConsentCode.PERSONAL_DATA).isPresent());
-        assertEquals(doc.getId(), consentService.getActiveForBot(bot.getId(), ConsentCode.PERSONAL_DATA).get().getId());
+        assertTrue(consentService.getActiveForBot(bot.getId(), ConsentCode.PRIVACY_POLICY).isPresent());
+        assertEquals(doc.getId(),
+                consentService.getActiveForBot(bot.getId(), ConsentCode.PRIVACY_POLICY).get().getId());
     }
 
     @Test

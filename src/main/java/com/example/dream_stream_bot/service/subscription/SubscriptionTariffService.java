@@ -12,6 +12,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -43,6 +44,28 @@ public class SubscriptionTariffService {
 
     public List<SubscriptionTariffEntity> listByBot(Long botId) {
         return tariffRepository.findByBotIdOrderBySortOrderAscIdAsc(botId);
+    }
+
+    /** Персональные активные тарифы: FREE_UNLIMITED и TRIAL_ONBOARDING без израсходованного триала для владельца. */
+    public List<SubscriptionTariffEntity> listPersonalTrialAndFreeEligible(long botId, long ownerUserId) {
+        List<SubscriptionTariffEntity> tariffs = tariffRepository.findByBotIdOrderBySortOrderAscIdAsc(botId);
+        List<SubscriptionTariffEntity> out = new ArrayList<>();
+        for (SubscriptionTariffEntity t : tariffs) {
+            if (!Boolean.TRUE.equals(t.isActive())) {
+                continue;
+            }
+            if (t.getScope() != TariffScope.PERSONAL) {
+                continue;
+            }
+            if (t.getAccessMode() == TariffAccessMode.FREE_UNLIMITED) {
+                out.add(t);
+            } else if (t.getAccessMode() == TariffAccessMode.TRIAL_ONBOARDING) {
+                if (trialUsageRepository.findByTariffIdAndOwnerUserIdAndScopeChatId(t.getId(), ownerUserId, 0L).isEmpty()) {
+                    out.add(t);
+                }
+            }
+        }
+        return out;
     }
 
     public SubscriptionTariffEntity requireForBot(Long botId, Long tariffId) {
