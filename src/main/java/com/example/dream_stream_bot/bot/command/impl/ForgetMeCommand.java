@@ -45,7 +45,7 @@ public class ForgetMeCommand implements BotCommand {
 
     @Override
     public Optional<String> menuDescription() {
-        return Optional.of("Отозвать согласия и удалить мои данные");
+        return Optional.empty();
     }
 
     @Override

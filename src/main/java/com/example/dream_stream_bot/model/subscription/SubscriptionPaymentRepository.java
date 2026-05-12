@@ -6,9 +6,12 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface SubscriptionPaymentRepository extends JpaRepository<SubscriptionPaymentEntity, Long> {
+
+    List<SubscriptionPaymentEntity> findTop15ByBotIdAndOwnerUserIdOrderByCreatedAtDesc(Long botId, Long ownerUserId);
 
     Optional<SubscriptionPaymentEntity> findByProviderPaymentId(String providerPaymentId);
 

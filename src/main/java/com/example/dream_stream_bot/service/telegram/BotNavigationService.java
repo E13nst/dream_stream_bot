@@ -12,8 +12,6 @@ import java.util.List;
 public class BotNavigationService {
 
     public static final String BTN_START = "▶ Начать";
-    public static final String BTN_DREAM = "\uD83C\uDF19 Рассказать сон";
-    public static final String BTN_DIARY = "\uD83D\uDCD6 Мой дневник";
     public static final String BTN_SETTINGS = "⚙\uFE0F Настройки";
     public static final String BTN_SUBSCRIPTION = "\uD83D\uDC8E Подписка";
 
@@ -24,10 +22,6 @@ public class BotNavigationService {
 
     public ReplyKeyboard privateMainKeyboard() {
         return new ReplyCommandKeyboard()
-                .addKey(BTN_START)
-                .nextRow()
-                .addKey(BTN_DREAM)
-                .addKey(BTN_DIARY)
                 .addKey(BTN_SETTINGS)
                 .addKey(BTN_SUBSCRIPTION)
                 .build();
@@ -35,12 +29,9 @@ public class BotNavigationService {
 
     public InlineKeyboardMarkup privateSettingsInlineKeyboard() {
         return InlineKeyboardMarkup.builder()
-                .keyboardRow(List.of(button("💎 Моя подписка", navPayload("subscriptions"))))
+                .keyboardRow(List.of(button(BTN_SUBSCRIPTION, navPayload("subscriptions"))))
                 .keyboardRow(List.of(button("💳 Оплатить подписку", CALLBACK_PAY + ":list")))
                 .keyboardRow(List.of(button("\uD83D\uDD17 Пригласить друга", navPayload("referral"))))
-                .keyboardRow(List.of(
-                        button("\uD83D\uDDD1 Забыть последний обмен", navPayload("forget_last")),
-                        button("\uD83D\uDEAA Удалить аккаунт", navPayload("forget_me"))))
                 .keyboardRow(List.of(button("⬅ В главное меню", navPayload("main"))))
                 .build();
     }
@@ -58,6 +49,21 @@ public class BotNavigationService {
 
     public String navPayload(String action) {
         return CALLBACK_NAV + ":" + action;
+    }
+
+    /** Кнопки под карточкой подписки: оплата, история, возврат в настройки. */
+    public InlineKeyboardMarkup subscriptionManageInlineKeyboard() {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(button("💳 Продлить или оплатить", CALLBACK_PAY + ":list")))
+                .keyboardRow(List.of(button("📊 История платежей", CALLBACK_PAY + ":history")))
+                .keyboardRow(List.of(button("⬅ Настройки", navPayload("settings"))))
+                .build();
+    }
+
+    public InlineKeyboardMarkup subscriptionHistoryBackKeyboard() {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(button("⬅ К подписке", navPayload("subscriptions"))))
+                .build();
     }
 
     private static InlineKeyboardButton button(String text, String callbackData) {

@@ -32,7 +32,7 @@ public class SettingsCommand implements BotCommand {
 
     @Override
     public Optional<String> menuDescription() {
-        return Optional.of("Настройки и профиль");
+        return Optional.empty();
     }
 
     @Override
@@ -48,7 +48,7 @@ public class SettingsCommand implements BotCommand {
                 .text("""
                         ⚙️ Настройки
 
-                        Здесь личные действия: подписка, реферальная ссылка и управление данными.
+                        Здесь подписка, оплата и реферальная ссылка.
                         """.trim())
                 .replyMarkup(botNavigationService.privateSettingsInlineKeyboard())
                 .build());

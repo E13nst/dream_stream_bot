@@ -3,6 +3,9 @@ package com.example.dream_stream_bot.bot.command.impl;
 import com.example.dream_stream_bot.bot.command.CallbackContext;
 import com.example.dream_stream_bot.bot.command.CallbackHandler;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
+import com.example.dream_stream_bot.model.subscription.SubscriptionPaymentEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionPaymentRepository;
+import com.example.dream_stream_bot.model.subscription.SubscriptionPaymentStatus;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
 import com.example.dream_stream_bot.model.subscription.TariffScope;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
@@ -23,15 +26,18 @@ public class PaymentCallback implements CallbackHandler {
     private final SubscriptionTariffRepository tariffRepository;
     private final SubscriptionCheckoutService checkoutService;
     private final SubscriptionPaymentCompletionService completionService;
+    private final SubscriptionPaymentRepository paymentRepository;
     private final BotNavigationService botNavigationService;
 
     public PaymentCallback(SubscriptionTariffRepository tariffRepository,
                            SubscriptionCheckoutService checkoutService,
                            SubscriptionPaymentCompletionService completionService,
+                           SubscriptionPaymentRepository paymentRepository,
                            BotNavigationService botNavigationService) {
         this.tariffRepository = tariffRepository;
         this.checkoutService = checkoutService;
         this.completionService = completionService;
+        this.paymentRepository = paymentRepository;
         this.botNavigationService = botNavigationService;
     }
 
@@ -59,6 +65,9 @@ public class PaymentCallback implements CallbackHandler {
         if ("list".equals(payload)) {
             return listTariffs(chatId, botId);
         }
+        if ("history".equals(payload)) {
+            return paymentHistory(chatId, botId, ownerUserId);
+        }
         if (payload.startsWith("open:")) {
             long tariffId = Long.parseLong(payload.substring("open:".length()));
             return openCheckout(chatId, botId, ownerUserId, tariffId);
@@ -68,6 +77,45 @@ public class PaymentCallback implements CallbackHandler {
             return checkStatus(chatId, paymentRecordId, ownerUserId);
         }
         return CallbackHandler.silent();
+    }
+
+    private List<OutgoingMessage> paymentHistory(Long chatId, long botId, long ownerUserId) {
+        List<SubscriptionPaymentEntity> rows =
+                paymentRepository.findTop15ByBotIdAndOwnerUserIdOrderByCreatedAtDesc(botId, ownerUserId);
+        if (rows.isEmpty()) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("Пока нет сохранённых платежей по этому боту.")
+                    .replyMarkup(botNavigationService.subscriptionHistoryBackKeyboard())
+                    .build());
+        }
+        StringBuilder sb = new StringBuilder("История платежей (последние записи):\n\n");
+        for (SubscriptionPaymentEntity p : rows) {
+            String date = p.getCreatedAt() != null
+                    ? p.getCreatedAt().toLocalDate().toString()
+                    : "—";
+            sb.append("• ").append(date)
+                    .append(" · ").append(formatRub(p.getAmountMinor())).append(" ₽")
+                    .append(" · ").append(statusRu(p.getStatus()))
+                    .append("\n");
+        }
+        return List.of(OutgoingMessage.builder()
+                .chatId(chatId)
+                .text(sb.toString().trim())
+                .replyMarkup(botNavigationService.subscriptionHistoryBackKeyboard())
+                .build());
+    }
+
+    private static String statusRu(SubscriptionPaymentStatus s) {
+        if (s == null) {
+            return "—";
+        }
+        return switch (s) {
+            case PENDING -> "в обработке";
+            case SUCCEEDED -> "успешно";
+            case FAILED -> "ошибка";
+            case CANCELLED -> "отменён";
+        };
     }
 
     private List<OutgoingMessage> listTariffs(Long chatId, long botId) {

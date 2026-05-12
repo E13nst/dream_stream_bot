@@ -222,8 +222,8 @@ public class OnboardingService {
     }
 
     /**
-     * Повтор шлюза или напоминание, если пользователь жмёт нижнее «Начать» до принятия политики,
-     * либо неопубликованный документ.
+     * Напоминание о непринятой политике или неопубликованном документе (inline «Начать» во втором сообщении после /start).
+     * Также срабатывает, если пользователь жмёт устаревшую reply-кнопку «Начать» до принятия политики.
      */
     private List<OutgoingMessage> privacyGateReminderOrBanner(Long botId, Long chatId) {
         Optional<ConsentDocumentEntity> privacy = consentService.getActiveForBot(botId, ConsentCode.PRIVACY_POLICY);
@@ -470,8 +470,11 @@ public class OnboardingService {
                 return List.of(mainMenuMessage(chatId,
                         """
                         ✅ Все согласия приняты. Доступ бесплатный и без ограничения срока.
-                        Используйте кнопки ниже для навигации:
-                        🌙 Рассказать сон, 📖 Мой дневник, ⚙️ Настройки, 💎 Подписка."""));
+                        На нижней клавиатуре — «%s» и «%s». Дополнительные действия открываются в «%s».
+                        Сон можно отправить одним сообщением в этот чат.""".formatted(
+                                BotNavigationService.BTN_SETTINGS,
+                                BotNavigationService.BTN_SUBSCRIPTION,
+                                BotNavigationService.BTN_SETTINGS)));
             }
             if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM) {
                 ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), bot.getId(),
@@ -519,10 +522,13 @@ public class OnboardingService {
                     return List.of(mainMenuMessage(chatId,
                             """
                             🎉 Все согласия приняты. Активирован пробный период на %d дня (до %s).
-                            Используйте кнопки ниже для навигации:
-                            🌙 Рассказать сон, 📖 Мой дневник, ⚙️ Настройки, 💎 Подписка.""".formatted(
+                            На нижней клавиатуре — «%s» и «%s». Дополнительные действия — в «%s».
+                            Сон можно отправить одним сообщением в этот чат.""".formatted(
                                     days,
-                                    formatExpiry(activated.getExpiresAt()))));
+                                    formatExpiry(activated.getExpiresAt()),
+                                    BotNavigationService.BTN_SETTINGS,
+                                    BotNavigationService.BTN_SUBSCRIPTION,
+                                    BotNavigationService.BTN_SETTINGS)));
                 } catch (IllegalStateException e) {
                     LOGGER.info("Trial already used for user={} bot={}", user.getId(), bot.getId());
                     return List.of(OutgoingMessage.of(chatId,
@@ -705,15 +711,18 @@ public class OnboardingService {
         return """
                 Привет! Я %s.
 
-                Нажмите «%s» в меню внизу, чтобы активировать доступ, или просто пришлите сообщение, если доступ уже подключён.
-                """.formatted(label, BotNavigationService.BTN_START).trim();
+                Если доступ ещё не подключён — следуйте следующим сообщениям: там политика и кнопка «Начать» под текстом.
+                Можно также нажать /start ещё раз.
+                Если доступ уже есть — просто напишите в этот чат.""".formatted(label).trim();
     }
 
     private static String activeGreeting(SubscriptionEntity subscription) {
         return """
                 Подписка активна (%s).
-                Главное меню доступно в кнопках внизу: 🌙, 📖, ⚙️, 💎.""".formatted(
-                formatExpiry(subscription.getExpiresAt()));
+                Внизу — «%s» и «%s». Опишите сон обычным сообщением в этот чат.""".formatted(
+                formatExpiry(subscription.getExpiresAt()),
+                BotNavigationService.BTN_SETTINGS,
+                BotNavigationService.BTN_SUBSCRIPTION);
     }
 
     private OutgoingMessage mainMenuMessage(Long chatId, String text) {

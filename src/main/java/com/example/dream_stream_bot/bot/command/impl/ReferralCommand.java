@@ -37,7 +37,7 @@ public class ReferralCommand implements BotCommand {
 
     @Override
     public Optional<String> menuDescription() {
-        return Optional.of("Моя реферальная ссылка");
+        return Optional.empty();
     }
 
     @Override

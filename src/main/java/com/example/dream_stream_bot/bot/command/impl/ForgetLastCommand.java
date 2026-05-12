@@ -34,7 +34,7 @@ public class ForgetLastCommand implements BotCommand {
 
     @Override
     public Optional<String> menuDescription() {
-        return Optional.of("Удалить последний обмен из памяти");
+        return Optional.empty();
     }
 
     @Override
