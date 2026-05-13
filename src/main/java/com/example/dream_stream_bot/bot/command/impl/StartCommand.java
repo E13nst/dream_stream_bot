@@ -5,9 +5,11 @@ import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.service.onboarding.OnboardingService;
+import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,10 +21,14 @@ public class StartCommand implements BotCommand {
 
     private final OnboardingService onboardingService;
     private final BotNavigationService botNavigationService;
+    private final GroupLinkWizardService groupLinkWizardService;
 
-    public StartCommand(OnboardingService onboardingService, BotNavigationService botNavigationService) {
+    public StartCommand(OnboardingService onboardingService,
+                        BotNavigationService botNavigationService,
+                        GroupLinkWizardService groupLinkWizardService) {
         this.onboardingService = onboardingService;
         this.botNavigationService = botNavigationService;
+        this.groupLinkWizardService = groupLinkWizardService;
     }
 
     @Override
@@ -53,6 +59,34 @@ public class StartCommand implements BotCommand {
             if (username == null || username.isBlank()) {
                 return BotCommand.reply(OutgoingMessage.of(ctx.getChatId(),
                         "Настройте username у бота, чтобы использовать групповые сценарии."));
+            }
+            String args = ctx.getArgs() == null ? "" : ctx.getArgs().trim();
+            if (args.startsWith("link_group_")) {
+                long telegramUserId;
+                try {
+                    telegramUserId = Long.parseLong(args.substring("link_group_".length()).trim());
+                } catch (NumberFormatException e) {
+                    return BotCommand.reply(OutgoingMessage.of(ctx.getChatId(), "Некорректная ссылка привязки группы."));
+                }
+                if (ctx.getMessage().getFrom() == null || !ctx.getMessage().getFrom().getId().equals(telegramUserId)) {
+                    return BotCommand.reply(OutgoingMessage.of(ctx.getChatId(),
+                            "Эта ссылка предназначена другому пользователю."));
+                }
+                if (ctx.getUser() == null) {
+                    return BotCommand.silent();
+                }
+                Long privateChatId = ctx.getUser().getTelegramId();
+                List<OutgoingMessage> priv = groupLinkWizardService.handleLinkGroupStartFromGroup(
+                        privateChatId, ctx.getBotEntity(), ctx.getUser(), telegramUserId, ctx.getChatId());
+                Integer threadId = ctx.getMessageThreadId();
+                List<OutgoingMessage> out = new ArrayList<>();
+                out.add(OutgoingMessage.builder()
+                        .chatId(ctx.getChatId())
+                        .messageThreadId(threadId)
+                        .text("Продолжите в личке с ботом — там подтверждение выбора группы.")
+                        .build());
+                out.addAll(priv);
+                return out;
             }
             String link = "https://t.me/" + username.trim() + "?start=group_owner_" + ctx.getChatId();
             String text = """

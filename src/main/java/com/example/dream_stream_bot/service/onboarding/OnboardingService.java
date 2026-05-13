@@ -7,10 +7,12 @@ import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
 import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
 import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
+import com.example.dream_stream_bot.model.subscription.TariffScope;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.consent.ConsentService;
 import com.example.dream_stream_bot.service.payment.SubscriptionCheckoutService;
+import com.example.dream_stream_bot.service.subscription.GroupLinkWizardStateHolder;
 import com.example.dream_stream_bot.service.subscription.SubscriptionService;
 import com.example.dream_stream_bot.service.subscription.SubscriptionTariffService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
@@ -54,6 +56,7 @@ public class OnboardingService {
     private final TelegramGroupAdminService telegramGroupAdminService;
     private final BotNavigationService botNavigationService;
     private final SubscriptionCheckoutService subscriptionCheckoutService;
+    private final GroupLinkWizardStateHolder groupLinkWizardStateHolder;
 
     public OnboardingService(UserService userService,
                              SubscriptionService subscriptionService,
@@ -62,7 +65,8 @@ public class OnboardingService {
                              OnboardingScopeHolder scopeHolder,
                              TelegramGroupAdminService telegramGroupAdminService,
                              BotNavigationService botNavigationService,
-                             SubscriptionCheckoutService subscriptionCheckoutService) {
+                             SubscriptionCheckoutService subscriptionCheckoutService,
+                             GroupLinkWizardStateHolder groupLinkWizardStateHolder) {
         this.userService = userService;
         this.subscriptionService = subscriptionService;
         this.subscriptionTariffService = subscriptionTariffService;
@@ -71,6 +75,7 @@ public class OnboardingService {
         this.telegramGroupAdminService = telegramGroupAdminService;
         this.botNavigationService = botNavigationService;
         this.subscriptionCheckoutService = subscriptionCheckoutService;
+        this.groupLinkWizardStateHolder = groupLinkWizardStateHolder;
     }
 
     /** /start payload в личке. */
@@ -84,6 +89,8 @@ public class OnboardingService {
         }
 
         String payload = args == null ? "" : args.trim();
+
+        groupLinkWizardStateHolder.clear(bot.getId(), user.getId());
 
         if (payload.startsWith("group_consent_")) {
             return startParticipantConsent(bot, chatId, user, payload.substring("group_consent_".length()));
@@ -108,6 +115,7 @@ public class OnboardingService {
 
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
+        groupLinkWizardStateHolder.clear(bot.getId(), user.getId());
 
         if (!personalPrivacySatisfied(bot.getId(), user.getId())) {
             return privacyGateReminderOrBanner(bot.getId(), chatId);
@@ -135,6 +143,7 @@ public class OnboardingService {
                 telegramMessageId, "privacy_gate");
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
+        groupLinkWizardStateHolder.clear(bot.getId(), user.getId());
         Optional<SubscriptionEntity> existing = subscriptionService.findPersonal(bot.getId(), user.getId());
         if (existing.isPresent()) {
             return continueOnboardingPersonal(user, bot, chatId, existing.get());
@@ -156,6 +165,11 @@ public class OnboardingService {
                 .stream()
                 .anyMatch(t -> t.getId().equals(tariffId));
         if (!allowed) {
+            return List.of(OutgoingMessage.of(chatId,
+                    "Этот вариант сейчас недоступен. Откройте /start или раздел 💎 Подписка."));
+        }
+        SubscriptionTariffEntity pickedMeta = subscriptionTariffService.require(tariffId);
+        if (pickedMeta.getScope() != TariffScope.PERSONAL) {
             return List.of(OutgoingMessage.of(chatId,
                     "Этот вариант сейчас недоступен. Откройте /start или раздел 💎 Подписка."));
         }
@@ -360,6 +374,21 @@ public class OnboardingService {
         return continueOnboardingGroupOwner(user, bot, chatId, sub);
     }
 
+    /**
+     * Мастер привязки группы: подписка с выбранным тарифом и тот же онбординг владельца группы, что и для {@code group_owner_}.
+     */
+    public List<OutgoingMessage> startGroupOwnerWithChosenTariff(BotEntity bot, Long privateChatId, UserEntity user,
+                                                                 Long scopeChatId, long tariffId) {
+        subscriptionTariffService.requireForBot(bot.getId(), tariffId);
+        SubscriptionEntity sub = subscriptionService.createOrGet(
+                user.getId(), bot.getId(), tariffId, scopeChatId);
+        scopeHolder.setPendingGroupChat(bot.getId(), user.getId(), scopeChatId);
+        scopeHolder.clearPendingParticipant(bot.getId(), user.getId());
+        LOGGER.info("Group wizard onboarding | user={} | bot={} | chat={} | tariff={} | sub={}",
+                user.getId(), bot.getId(), scopeChatId, tariffId, sub.getId());
+        return continueOnboardingGroupOwner(user, bot, privateChatId, sub);
+    }
+
     private List<OutgoingMessage> continueOnboardingPersonal(UserEntity user, BotEntity bot, Long chatId,
                                                           SubscriptionEntity subscription) {
         List<ConsentCode> required = requiredConsentsOwner(bot);
@@ -548,6 +577,45 @@ public class OnboardingService {
                 || subscription.getStatus() == SubscriptionStatus.ACTIVE) {
             scopeHolder.clearPendingGroup(bot.getId(), user.getId());
             return List.of(mainMenuMessage(chatId, activeGreeting(subscription)));
+        }
+
+        SubscriptionTariffEntity tariff = subscriptionTariffService.require(subscription.getTariffId());
+        if (subscription.getStatus() == SubscriptionStatus.PENDING_CONSENT
+                && tariff.getAccessMode() == TariffAccessMode.TRIAL_ONBOARDING) {
+            int days = tariff.getTrialDays() != null ? tariff.getTrialDays() : SubscriptionService.FALLBACK_TRIAL_DAYS;
+            try {
+                SubscriptionEntity activated = subscriptionService.activateTrial(subscription, days, null);
+                scopeHolder.clearPendingGroup(bot.getId(), user.getId());
+                LOGGER.info("🎉 Group trial activated | user={} | bot={} | sub={} | expires={}",
+                        user.getId(), bot.getId(), activated.getId(), activated.getExpiresAt());
+                String instruction = "";
+                if (tariff.getActivationInstruction() != null && !tariff.getActivationInstruction().isBlank()) {
+                    instruction = "\n\n" + tariff.getActivationInstruction().trim();
+                }
+                return List.of(mainMenuMessage(chatId,
+                        """
+                                ✅ Группа подключена. Активирован пробный период на %d дня (до %s).%s
+
+                                Участники должны один раз принять условия в личке:
+                                https://t.me/%s?start=group_consent_%d
+
+                                На нижней клавиатуре — «%s» и «%s»."""
+                                .formatted(
+                                        days,
+                                        formatExpiry(activated.getExpiresAt()),
+                                        instruction,
+                                        bot.getUsername(),
+                                        activated.getId(),
+                                        BotNavigationService.BTN_SETTINGS,
+                                        BotNavigationService.BTN_SUBSCRIPTION)));
+            } catch (IllegalStateException e) {
+                LOGGER.info("Group trial already used | user={} | bot={} | sub={}", user.getId(), bot.getId(), subscription.getId());
+                scopeHolder.clearPendingGroup(bot.getId(), user.getId());
+                return List.of(OutgoingMessage.of(chatId,
+                        """
+                                Пробный групповой период по этому тарифу уже использован.
+                                Выберите другой тариф в /subscriptions или напишите в поддержку."""));
+            }
         }
 
         ConsentCode nextPurchaseConsent = nextMissingConsent(user.getId(), bot.getId(),

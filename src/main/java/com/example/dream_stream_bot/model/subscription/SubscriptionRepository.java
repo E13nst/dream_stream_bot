@@ -11,6 +11,14 @@ import java.util.Optional;
 @Repository
 public interface SubscriptionRepository extends JpaRepository<SubscriptionEntity, Long> {
 
+    /** Групповые подписки владельца на боте (есть scope_chat_id, тариф GROUP, «живые» статусы). */
+    @Query("select s from SubscriptionEntity s join SubscriptionTariffEntity t on t.id = s.tariffId "
+            + "where s.botId = :botId and s.ownerUserId = :ownerUserId and s.scopeChatId is not null "
+            + "and t.scope = 'GROUP' "
+            + "and s.status in ('TRIAL', 'ACTIVE', 'AWAITING_ACTIVATION') "
+            + "order by s.id asc")
+    List<SubscriptionEntity> findGroupByOwner(@Param("botId") Long botId, @Param("ownerUserId") Long ownerUserId);
+
     /** Личная подписка пользователя на этом боте (scope_chat_id IS NULL). */
     @Query("select s from SubscriptionEntity s " +
            "where s.botId = :botId and s.ownerUserId = :ownerUserId and s.scopeChatId is null")

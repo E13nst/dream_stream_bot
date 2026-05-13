@@ -133,6 +133,17 @@
                 <input class="form-control" name="checkoutDescription" maxlength="500" placeholder="по умолчанию — название тарифа">
             </div>
             <div class="col-12">
+                <label class="form-label">Подробное описание для экрана оплаты в боте</label>
+                <textarea class="form-control" name="detailDescription" rows="5" maxlength="3500"
+                          placeholder="Несколько строк; можно начинать с «• »"></textarea>
+                <p class="form-text mb-0">Показывается пользователю после выбора тарифа (цена, срок, условия). До ~3500 символов.</p>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Инструкция после активации (групповые тарифы)</label>
+                <textarea class="form-control" name="activationInstruction" rows="4" maxlength="3500"
+                          placeholder="Права бота в группе и т.п.; для персональных тарифов можно оставить пустым"></textarea>
+            </div>
+            <div class="col-12">
                 <button type="submit" class="btn btn-primary">Создать</button>
             </div>
         </form>
@@ -253,6 +264,17 @@
             <div class="col-12">
                 <label class="form-label">Текст в чеке</label>
                 <input class="form-control" name="checkoutDescription" maxlength="500" th:value="${tariff.checkoutDescription}">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Подробное описание для экрана оплаты в боте</label>
+                <textarea class="form-control" name="detailDescription" rows="5" maxlength="3500"
+                          th:text="${tariff.detailDescription}"></textarea>
+                <p class="form-text mb-0">Показывается после выбора тарифа перед кнопкой ЮKassa.</p>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Инструкция после активации (групповые тарифы)</label>
+                <textarea class="form-control" name="activationInstruction" rows="4" maxlength="3500"
+                          th:text="${tariff.activationInstruction}"></textarea>
             </div>
             <div class="col-12">
                 <button type="submit" class="btn btn-primary">Сохранить</button>

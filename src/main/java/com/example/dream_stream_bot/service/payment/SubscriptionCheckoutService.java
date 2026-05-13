@@ -66,9 +66,18 @@ public class SubscriptionCheckoutService {
 
     @Transactional
     public CheckoutResult createCheckout(Long botId, Long ownerUserId, Long tariffId) {
+        return createCheckout(botId, ownerUserId, tariffId, null);
+    }
+
+    @Transactional
+    public CheckoutResult createCheckout(Long botId, Long ownerUserId, Long tariffId, Long scopeChatId) {
         BotEntity bot = botService.findById(botId);
         if (bot == null) {
             throw new IllegalArgumentException("Бот не найден.");
+        }
+        if (scopeChatId != null) {
+            throw new IllegalStateException(
+                    "Для подключения платного группового тарифа напишите в поддержку.");
         }
         YooKassaCredentials credentials = credentialsResolver.resolve(bot)
                 .orElseThrow(() -> new IllegalStateException(

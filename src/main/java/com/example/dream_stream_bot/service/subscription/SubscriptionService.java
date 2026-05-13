@@ -66,6 +66,11 @@ public class SubscriptionService {
         return subscriptionRepository.findByBotIdAndScopeChatId(botId, chatId);
     }
 
+    /** Групповые подписки пользователя как владельца на боте (для экрана /subscriptions). */
+    public List<SubscriptionEntity> findGroupByOwner(Long ownerUserId, Long botId) {
+        return subscriptionRepository.findGroupByOwner(botId, ownerUserId);
+    }
+
     public List<SubscriptionEntity> findAll() {
         return subscriptionRepository.findAll();
     }

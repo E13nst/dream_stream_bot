@@ -12,6 +12,7 @@ import com.example.dream_stream_bot.config.properties.TelegramProperties;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.access.AccessGate;
 import com.example.dream_stream_bot.service.access.GatingDedup;
+import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.BotMenuSyncService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
@@ -46,6 +47,7 @@ public class BotInitializer {
     private final AccessGate accessGate;
     private final GatingDedup gatingDedup;
     private final PrivateReplyNavigationRouter privateReplyNavigationRouter;
+    private final GroupLinkWizardService groupLinkWizardService;
     private final TelegramProperties telegramProperties;
     private final BotMenuSyncService botMenuSyncService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
@@ -62,6 +64,7 @@ public class BotInitializer {
                           AccessGate accessGate,
                           GatingDedup gatingDedup,
                           PrivateReplyNavigationRouter privateReplyNavigationRouter,
+                          GroupLinkWizardService groupLinkWizardService,
                           TelegramProperties telegramProperties,
                           BotMenuSyncService botMenuSyncService) {
         this.botService = botService;
@@ -77,6 +80,7 @@ public class BotInitializer {
         this.accessGate = accessGate;
         this.gatingDedup = gatingDedup;
         this.privateReplyNavigationRouter = privateReplyNavigationRouter;
+        this.groupLinkWizardService = groupLinkWizardService;
         this.telegramProperties = telegramProperties;
         this.botMenuSyncService = botMenuSyncService;
     }
@@ -146,7 +150,7 @@ public class BotInitializer {
                                 bot, botService, messageHandlerService, userStateService, userService,
                                 messageSender, commandDispatcher, callbackDispatcher,
                                 errorHandler, editedMessageHandler,
-                                accessGate, gatingDedup, privateReplyNavigationRouter);
+                                accessGate, gatingDedup, privateReplyNavigationRouter, groupLinkWizardService);
                         botRegistry.put(bot.getUsername(), telegramBot);
 
                         if (telegramProperties.isLongPolling()) {

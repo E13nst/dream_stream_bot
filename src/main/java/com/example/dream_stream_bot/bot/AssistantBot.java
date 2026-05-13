@@ -15,18 +15,21 @@ import com.example.dream_stream_bot.service.access.AccessGate;
 import com.example.dream_stream_bot.service.access.AccessReason;
 import com.example.dream_stream_bot.service.access.GatingDedup;
 import com.example.dream_stream_bot.service.telegram.BotService;
+import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.user.UserService;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.util.List;
+import java.util.Optional;
 
 public class AssistantBot extends AbstractTelegramBot {
 
     private final AccessGate accessGate;
     private final GatingDedup gatingDedup;
     private final PrivateReplyNavigationRouter privateReplyNavigationRouter;
+    private final GroupLinkWizardService groupLinkWizardService;
 
     public AssistantBot(Long botId, BotService botService,
                         MessageHandlerService messageHandlerService, UserService userService,
@@ -36,12 +39,14 @@ public class AssistantBot extends AbstractTelegramBot {
                         EditedMessageHandler editedMessageHandler,
                         AccessGate accessGate,
                         GatingDedup gatingDedup,
-                        PrivateReplyNavigationRouter privateReplyNavigationRouter) {
+                        PrivateReplyNavigationRouter privateReplyNavigationRouter,
+                        GroupLinkWizardService groupLinkWizardService) {
         super(botId, botService, messageHandlerService, userService, messageSender, commandDispatcher,
                 callbackDispatcher, errorHandler, editedMessageHandler);
         this.accessGate = accessGate;
         this.gatingDedup = gatingDedup;
         this.privateReplyNavigationRouter = privateReplyNavigationRouter;
+        this.groupLinkWizardService = groupLinkWizardService;
     }
 
     @Override
@@ -50,17 +55,48 @@ public class AssistantBot extends AbstractTelegramBot {
         if (botEntity == null) {
             return;
         }
-        if (!update.hasMessage() || !update.getMessage().hasText()) {
+        if (!update.hasMessage()) {
+            return;
+        }
+        Message msg = update.getMessage();
+        var user = ensureUserExists(msg.getFrom());
+        ChatScope scope = ChatScope.fromMessageType(
+                msg.isUserMessage(), msg.isGroupMessage(), msg.isSuperGroupMessage(), msg.isChannelMessage());
+
+        if (scope == ChatScope.PRIVATE && user != null) {
+            if (msg.getForwardDate() != null) {
+                if (msg.getForwardFromChat() != null) {
+                    Optional<List<OutgoingMessage>> w =
+                            groupLinkWizardService.tryHandleForwardedMessage(msg.getChatId(), botEntity, user, msg);
+                    if (w.isPresent()) {
+                        messageSender.sendAll(this, w.get());
+                        return;
+                    }
+                } else {
+                    if (groupLinkWizardService.hasActiveSession(botEntity.getId(), user.getId())) {
+                        messageSender.send(this, OutgoingMessage.of(msg.getChatId(),
+                                "Не удалось определить группу из пересылки (часто так бывает, если в группе запрещена пересылка). "
+                                        + "Используйте кнопку «Выбрать группу»."));
+                        return;
+                    }
+                }
+            }
+            if (msg.hasText()) {
+                Optional<List<OutgoingMessage>> remind =
+                        groupLinkWizardService.tryPlainTextReminder(msg.getChatId(), botEntity, user, msg.getText());
+                if (remind.isPresent()) {
+                    messageSender.sendAll(this, remind.get());
+                    return;
+                }
+            }
+        }
+
+        if (!msg.hasText()) {
             return;
         }
         if (tryDispatchCommand(update)) {
             return;
         }
-
-        Message msg = update.getMessage();
-        var user = ensureUserExists(msg.getFrom());
-        ChatScope scope = ChatScope.fromMessageType(
-                msg.isUserMessage(), msg.isGroupMessage(), msg.isSuperGroupMessage(), msg.isChannelMessage());
 
         if (scope == ChatScope.PRIVATE) {
             CommandContext cmdCtx = new CommandContext(
