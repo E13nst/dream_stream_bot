@@ -10,8 +10,6 @@ import com.example.dream_stream_bot.service.onboarding.OnboardingService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import com.example.dream_stream_bot.service.telegram.TelegramGroupAdminService;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.objects.Chat;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
@@ -20,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Мастер «Подключить группу»: выбор тарифа, пересылка / startgroup, подтверждение, старт онбординга владельца.
+ * Мастер «Подключить группу»: выбор тарифа, {@code startgroup}, подтверждение, старт онбординга владельца.
  */
 @Service
 public class GroupLinkWizardService {
@@ -84,7 +82,7 @@ public class GroupLinkWizardService {
         }
         String uname = bot.getUsername() == null || bot.getUsername().isBlank() ? "bot" : bot.getUsername().trim();
         String startGroupUrl = "https://t.me/" + uname + "?startgroup=link_group_" + user.getTelegramId();
-        stateHolder.startAwaitingForward(bot.getId(), user.getId(), tariffId);
+        stateHolder.startAwaitingGroupPick(bot.getId(), user.getId(), tariffId);
         InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(InlineKeyboardButton.builder()
                         .text("🔗 Выбрать группу")
@@ -118,44 +116,6 @@ public class GroupLinkWizardService {
     }
 
     /**
-     * Обработка пересланного сообщения в личке (до AccessGate).
-     */
-    public Optional<List<OutgoingMessage>> tryHandleForwardedMessage(Long privateChatId, BotEntity bot,
-                                                                   UserEntity user, Message message) {
-        if (user == null || bot == null || message == null || !message.isUserMessage()) {
-            return Optional.empty();
-        }
-        Optional<GroupLinkWizardStateHolder.Session> sessionOpt = stateHolder.get(bot.getId(), user.getId());
-        if (sessionOpt.isEmpty()) {
-            return Optional.empty();
-        }
-        GroupLinkWizardStateHolder.Session session = sessionOpt.get();
-        if (session.getStep() != GroupLinkWizardStateHolder.Step.AWAITING_GROUP_FORWARD
-                && session.getStep() != GroupLinkWizardStateHolder.Step.CONFIRMING_GROUP) {
-            return Optional.empty();
-        }
-        if (session.getStep() == GroupLinkWizardStateHolder.Step.CONFIRMING_GROUP) {
-            stateHolder.backToAwaitingForward(bot.getId(), user.getId());
-        }
-        if (message.getForwardFromChat() == null) {
-            return Optional.of(List.of(OutgoingMessage.of(privateChatId,
-                    "Нужно переслать сообщение из группы (не печатать текст сюда).")));
-        }
-        Chat fromChat = message.getForwardFromChat();
-        String type = fromChat.getType();
-        if (!"group".equals(type) && !"supergroup".equals(type)) {
-            return Optional.of(List.of(OutgoingMessage.of(privateChatId,
-                    "Это не группа. Перешлите сообщение именно из группового чата.")));
-        }
-        Long scopeChatId = fromChat.getId();
-        String title = fromChat.getTitle() != null && !fromChat.getTitle().isBlank()
-                ? fromChat.getTitle()
-                : telegramGroupAdminService.getChatTitle(bot, scopeChatId).orElse("Группа #" + scopeChatId);
-        return Optional.of(applySelectionAndOfferConfirm(privateChatId, bot, user, session.getTariffId(),
-                scopeChatId, title));
-    }
-
-    /**
      * Вызов из группы по {@code /start link_group_<telegramUserId>}.
      */
     public List<OutgoingMessage> handleLinkGroupStartFromGroup(Long privateChatId, BotEntity bot, UserEntity user,
@@ -172,7 +132,7 @@ public class GroupLinkWizardService {
                     .build());
         }
         GroupLinkWizardStateHolder.Session session = sessionOpt.get();
-        if (session.getStep() != GroupLinkWizardStateHolder.Step.AWAITING_GROUP_FORWARD) {
+        if (session.getStep() != GroupLinkWizardStateHolder.Step.AWAITING_GROUP_PICK) {
             return List.of(OutgoingMessage.of(privateChatId,
                     "Сначала завершите подтверждение в личке или нажмите «Другая группа»."));
         }
@@ -183,20 +143,23 @@ public class GroupLinkWizardService {
 
     private List<OutgoingMessage> applySelectionAndOfferConfirm(Long privateChatId, BotEntity bot, UserEntity user,
                                                                 long tariffId, Long scopeChatId, String title) {
-        Optional<String> roleOpt = telegramGroupAdminService.getChatMemberRole(bot, scopeChatId, user.getTelegramId());
-        if (roleOpt.isEmpty()) {
+        Optional<String> elevated = telegramGroupAdminService.resolveElevatedMemberStatus(bot, scopeChatId,
+                user.getTelegramId());
+        if (elevated.isEmpty()) {
+            Optional<String> anyRole = telegramGroupAdminService.getChatMemberRole(bot, scopeChatId,
+                    user.getTelegramId());
+            if (anyRole.isEmpty()) {
+                return List.of(OutgoingMessage.of(privateChatId,
+                        "Не удалось проверить группу. Убедитесь, что бот @" + safeUsername(bot)
+                                + " добавлен в группу и попробуйте снова."));
+            }
             return List.of(OutgoingMessage.of(privateChatId,
-                    "Не удалось проверить группу. Убедитесь, что бот @" + safeUsername(bot)
-                            + " добавлен в группу и попробуйте снова."));
+                    "Вы не являетесь администратором этой группы. Выберите группу, где у вас такая роль, "
+                            + "кнопкой «Выбрать группу»."));
         }
-        String role = roleOpt.get();
-        if (!"creator".equals(role) && !"administrator".equals(role)) {
-            return List.of(OutgoingMessage.of(privateChatId,
-                    "Вы не являетесь администратором этой группы. Перешлите сообщение из группы, где вы администратор, "
-                            + "или выберите другую группу кнопкой «Выбрать группу»."));
-        }
-        String roleRu = "creator".equals(role) ? "Создатель" : "Администратор";
-        stateHolder.setConfirming(bot.getId(), user.getId(), tariffId, scopeChatId, title, role);
+        String role = elevated.get();
+        String roleRu = ("creator".equals(role) || "owner".equals(role)) ? "Создатель" : "Администратор";
+        stateHolder.setConfirming(bot.getId(), user.getId(), tariffId, scopeChatId);
         InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(
                         InlineKeyboardButton.builder().text("✅ Продолжить").callbackData(BotNavigationService.CALLBACK_GRP + ":go").build(),
@@ -245,11 +208,11 @@ public class GroupLinkWizardService {
         }
         long tariffId = s.get().getTariffId();
         stateHolder.clear(bot.getId(), user.getId());
-        stateHolder.startAwaitingForward(bot.getId(), user.getId(), tariffId);
+        stateHolder.startAwaitingGroupPick(bot.getId(), user.getId(), tariffId);
         return onPickTariff(privateChatId, bot, user, tariffId);
     }
 
-    /** Напоминание при обычном тексте в состоянии ожидания пересылки. */
+    /** Напоминание при обычном тексте в активной сессии мастера (без перехвата команд — см. AssistantBot). */
     public Optional<List<OutgoingMessage>> tryPlainTextReminder(Long privateChatId, BotEntity bot, UserEntity user,
                                                                  String text) {
         if (user == null || text == null || text.isBlank()) {
@@ -268,7 +231,7 @@ public class GroupLinkWizardService {
             return Optional.of(List.of(OutgoingMessage.of(privateChatId,
                     "Используйте кнопки под сообщением с подтверждением: «Продолжить», «Другая группа» или «Отмена».")));
         }
-        if (session.getStep() != GroupLinkWizardStateHolder.Step.AWAITING_GROUP_FORWARD) {
+        if (session.getStep() != GroupLinkWizardStateHolder.Step.AWAITING_GROUP_PICK) {
             return Optional.empty();
         }
         String t = text.trim();
@@ -276,7 +239,7 @@ public class GroupLinkWizardService {
             return Optional.of(onCancel(privateChatId, bot, user));
         }
         return Optional.of(List.of(OutgoingMessage.of(privateChatId,
-                "Нужно переслать сообщение из группы, а не печатать текст. Если пересылка запрещена — используйте кнопку «Выбрать группу».")));
+                "Используйте кнопку «🔗 Выбрать группу» в сообщении выше, затем подтвердите выбор в этом чате.")));
     }
 
     private static String safeUsername(BotEntity bot) {

@@ -8,6 +8,7 @@ import com.example.dream_stream_bot.service.onboarding.OnboardingService;
 import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,9 +69,13 @@ public class StartCommand implements BotCommand {
                 } catch (NumberFormatException e) {
                     return BotCommand.reply(OutgoingMessage.of(ctx.getChatId(), "Некорректная ссылка привязки группы."));
                 }
-                if (ctx.getMessage().getFrom() == null || !ctx.getMessage().getFrom().getId().equals(telegramUserId)) {
-                    return BotCommand.reply(OutgoingMessage.of(ctx.getChatId(),
-                            "Эта ссылка предназначена другому пользователю."));
+                Message msg = ctx.getMessage();
+                boolean samePerson = msg.getFrom() != null && msg.getFrom().getId().equals(telegramUserId);
+                if (!samePerson) {
+                    String hint = msg.getSenderChat() != null
+                            ? "Ссылка выдана вашему личному аккаунту, а здесь сообщение не от личного профиля (часто так в обсуждении канала). Продолжите привязку из группы, где вы пишете как пользователь, или используйте другой чат для подключения."
+                            : "Эта ссылка привязки выдана другому пользователю Telegram. Попросите того, кто настраивает подписку, открыть бота в личке и заново получить ссылку «Выбрать группу».";
+                    return BotCommand.reply(OutgoingMessage.of(ctx.getChatId(), hint));
                 }
                 if (ctx.getUser() == null) {
                     return BotCommand.silent();

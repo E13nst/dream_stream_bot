@@ -376,7 +376,10 @@ public class OnboardingService {
         }
         if (!telegramGroupAdminService.isUserChatAdministrator(bot, tgChatId, user.getTelegramId())) {
             return List.of(OutgoingMessage.of(chatId,
-                    "Вы должны быть администратором группы с id " + tgChatId + ", чтобы активировать подписку."));
+                    """
+                            Не удалось подтвердить, что вы создатель или администратор этой группы.
+                            Откройте ссылку с того же аккаунта Telegram, с которого заходите в чат, и убедитесь, что бот добавлен в группу."""
+                            .strip()));
         }
 
         SubscriptionEntity sub = subscriptionService.createOrGet(

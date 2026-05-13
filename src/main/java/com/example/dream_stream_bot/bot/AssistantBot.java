@@ -64,29 +64,16 @@ public class AssistantBot extends AbstractTelegramBot {
                 msg.isUserMessage(), msg.isGroupMessage(), msg.isSuperGroupMessage(), msg.isChannelMessage());
 
         if (scope == ChatScope.PRIVATE && user != null) {
-            if (msg.getForwardDate() != null) {
-                if (msg.getForwardFromChat() != null) {
-                    Optional<List<OutgoingMessage>> w =
-                            groupLinkWizardService.tryHandleForwardedMessage(msg.getChatId(), botEntity, user, msg);
-                    if (w.isPresent()) {
-                        messageSender.sendAll(this, w.get());
-                        return;
-                    }
-                } else {
-                    if (groupLinkWizardService.hasActiveSession(botEntity.getId(), user.getId())) {
-                        messageSender.send(this, OutgoingMessage.of(msg.getChatId(),
-                                "Не удалось определить группу из пересылки (часто так бывает, если в группе запрещена пересылка). "
-                                        + "Используйте кнопку «Выбрать группу»."));
-                        return;
-                    }
-                }
-            }
             if (msg.hasText()) {
-                Optional<List<OutgoingMessage>> remind =
-                        groupLinkWizardService.tryPlainTextReminder(msg.getChatId(), botEntity, user, msg.getText());
-                if (remind.isPresent()) {
-                    messageSender.sendAll(this, remind.get());
-                    return;
+                String raw = msg.getText();
+                // Команды (/start, /subscriptions, …) должны обрабатываться CommandDispatcher, а не напоминанием мастера.
+                if (!raw.isBlank() && !raw.stripLeading().startsWith("/")) {
+                    Optional<List<OutgoingMessage>> remind =
+                            groupLinkWizardService.tryPlainTextReminder(msg.getChatId(), botEntity, user, raw);
+                    if (remind.isPresent()) {
+                        messageSender.sendAll(this, remind.get());
+                        return;
+                    }
                 }
             }
         }
