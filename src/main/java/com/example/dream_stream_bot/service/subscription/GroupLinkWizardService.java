@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -56,8 +58,11 @@ public class GroupLinkWizardService {
         }
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         for (SubscriptionTariffEntity t : tariffs) {
+            String titlePart = (t.getTitle() == null || t.getTitle().isBlank()) ? "Тариф" : t.getTitle().trim();
+            String rub = formatRub(t.getPriceAmountMinor());
+            String label = truncateButton(titlePart + " — " + rub + " ₽");
             rows.add(List.of(InlineKeyboardButton.builder()
-                    .text(truncateButton(t.getTitle()))
+                    .text(label)
                     .callbackData(BotNavigationService.CALLBACK_GRP + ":pick:" + t.getId())
                     .build()));
         }
@@ -251,5 +256,13 @@ public class GroupLinkWizardService {
             return "Тариф";
         }
         return title.length() <= 64 ? title : title.substring(0, 61) + "…";
+    }
+
+    /** Формат цены как на шаге «Выберите тариф для оплаты» (копейки → рубли). */
+    private static String formatRub(Long minor) {
+        if (minor == null) {
+            return "?";
+        }
+        return BigDecimal.valueOf(minor).divide(BigDecimal.valueOf(100), 2, RoundingMode.UNNECESSARY).toPlainString();
     }
 }
