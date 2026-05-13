@@ -22,10 +22,6 @@ public class SubscriptionTariffService {
     static final String CODE_PERSONAL_TRIAL = "PERSONAL_TRIAL";
     static final String CODE_PERSONAL_FREE = "PERSONAL_FREE";
 
-    private static final String DEFAULT_GROUP_TRIAL_ACTIVATION = """
-            Добавьте бота в группу как администратора с правами, нужными для вашего сценария (например, удаление сообщений, закрепление).
-            Участники должны один раз принять условия в личке с ботом по ссылке из приветственного сообщения после активации.""";
-
     private final SubscriptionTariffRepository tariffRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final TrialUsageRepository trialUsageRepository;
@@ -111,7 +107,7 @@ public class SubscriptionTariffService {
                 false, null, null, true, null);
         saveNew(botId, "GROUP_TRIAL", "Группа (пробный период 3 дня)", TariffScope.GROUP,
                 TariffAccessMode.TRIAL_ONBOARDING, 3, 50, order++, false, false,
-                false, null, null, true, DEFAULT_GROUP_TRIAL_ACTIVATION);
+                false, null, null, true, null);
         saveNew(botId, "GROUP_S", "Группа (до 10)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
                 null, 10, order++, false, true,
                 false, null, null, true, null);

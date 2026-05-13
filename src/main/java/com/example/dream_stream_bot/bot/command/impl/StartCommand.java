@@ -93,7 +93,7 @@ public class StartCommand implements BotCommand {
                     Чтобы активировать групповую подписку, администратор группы должен открыть бота в личке по ссылке:
                     %s
                     
-                    После активации участники смогут принять согласие по своей персональной ссылке из приветственного сообщения владельца.
+                    После активации он сможет отправить в группу приглашение со ссылкой на согласие для участников.
                     """.formatted(link);
             Integer threadId = ctx.getMessageThreadId();
             return BotCommand.reply(OutgoingMessage.builder()

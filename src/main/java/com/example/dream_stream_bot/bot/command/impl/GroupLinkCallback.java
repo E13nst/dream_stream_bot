@@ -7,6 +7,7 @@ import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
+import com.example.dream_stream_bot.service.subscription.GroupOwnerInviteService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +19,12 @@ import java.util.List;
 public class GroupLinkCallback implements CallbackHandler {
 
     private final GroupLinkWizardService groupLinkWizardService;
+    private final GroupOwnerInviteService groupOwnerInviteService;
 
-    public GroupLinkCallback(GroupLinkWizardService groupLinkWizardService) {
+    public GroupLinkCallback(GroupLinkWizardService groupLinkWizardService,
+                             GroupOwnerInviteService groupOwnerInviteService) {
         this.groupLinkWizardService = groupLinkWizardService;
+        this.groupOwnerInviteService = groupOwnerInviteService;
     }
 
     @Override
@@ -63,6 +67,17 @@ public class GroupLinkCallback implements CallbackHandler {
         if (payload.startsWith("pick:")) {
             long tariffId = Long.parseLong(payload.substring("pick:".length()));
             return groupLinkWizardService.onPickTariff(chatId, bot, user, tariffId);
+        }
+        if (payload.startsWith("invite:")) {
+            long subscriptionId;
+            try {
+                subscriptionId = Long.parseLong(payload.substring("invite:".length()).trim());
+            } catch (NumberFormatException e) {
+                return CallbackHandler.silent();
+            }
+            // Отправка в группу выполняется здесь (trySend), а не через ответы диспетчера — иначе нет признака ошибки Telegram API.
+            return groupOwnerInviteService.sendInviteToGroupAndNotifyOwner(
+                    chatId, bot, user, subscriptionId, ctx.getSender());
         }
         return CallbackHandler.silent();
     }

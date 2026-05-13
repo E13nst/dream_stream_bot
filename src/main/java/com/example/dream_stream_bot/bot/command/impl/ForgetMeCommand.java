@@ -44,6 +44,11 @@ public class ForgetMeCommand implements BotCommand {
     }
 
     @Override
+    public boolean appliesIn(ChatScope scope) {
+        return scope == ChatScope.PRIVATE;
+    }
+
+    @Override
     public Optional<String> menuDescription() {
         return Optional.empty();
     }

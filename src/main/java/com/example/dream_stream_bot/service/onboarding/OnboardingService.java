@@ -139,6 +139,14 @@ public class OnboardingService {
             return List.of(OutgoingMessage.of(chatId,
                     "Версия политики устарела или не найдена. Нажмите /start ещё раз."));
         }
+        Optional<Long> pendingParticipantSub = scopeHolder.getPendingParticipantSubscription(bot.getId(), user.getId());
+        if (pendingParticipantSub.isPresent()) {
+            consentService.recordAcceptance(user.getId(), privacyDocumentId, pendingParticipantSub.get(), chatId,
+                    telegramMessageId, "privacy_gate");
+            scopeHolder.clearPendingGroup(bot.getId(), user.getId());
+            groupLinkWizardStateHolder.clear(bot.getId(), user.getId());
+            return continueParticipantOnboarding(user, bot, chatId);
+        }
         consentService.recordAcceptance(user.getId(), privacyDocumentId, null, chatId,
                 telegramMessageId, "privacy_gate");
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
@@ -259,7 +267,7 @@ public class OnboardingService {
         List<OutgoingMessage> out = new LinkedList<>();
         out.add(OutgoingMessage.of(chatId,
                 "Подтвердите ознакомление с политикой — нажмите «Начать» во втором сообщении после команды /start."));
-        out.add(privacyConsentInlineMessage(chatId, doc));
+        out.add(privacyConsentInlineMessage(chatId, doc, null));
         return out;
     }
 
@@ -299,14 +307,20 @@ public class OnboardingService {
                     .replyMarkup(botNavigationService.privateMainKeyboard())
                     .build());
         }
-        return List.of(privacyConsentInlineMessage(chatId, doc));
+        return List.of(privacyConsentInlineMessage(chatId, doc, null));
     }
 
-    private OutgoingMessage privacyConsentInlineMessage(Long chatId, ConsentDocumentEntity doc) {
+    /**
+     * @param prefixPlainLine необязательная строка без разметки (например контекст для участника группы); экранируется для Markdown.
+     */
+    private OutgoingMessage privacyConsentInlineMessage(Long chatId, ConsentDocumentEntity doc, String prefixPlainLine) {
         String url = markdownEscapeTelegram(doc.getExternalUrl());
-        String text = """
+        String core = """
                 Нажимая кнопку «Начать», вы подтверждаете, что ознакомились с [Политикой конфиденциальности](%s) и даёте согласие на обработку персональных данных."""
                 .formatted(url);
+        String text = (prefixPlainLine == null || prefixPlainLine.isBlank())
+                ? core
+                : escapeMd(prefixPlainLine.strip()) + "\n\n" + core;
         InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(InlineKeyboardButton.builder()
                         .text(BotNavigationService.BTN_START)
@@ -412,6 +426,37 @@ public class OnboardingService {
     private List<OutgoingMessage> continueParticipantOnboarding(UserEntity user, BotEntity bot, Long chatId) {
         List<ConsentCode> required = requiredConsentsParticipant(bot);
         ConsentCode next = nextMissingConsent(user.getId(), bot.getId(), required);
+        if (next == ConsentCode.PRIVACY_POLICY) {
+            Optional<ConsentDocumentEntity> privacy =
+                    consentService.getActiveForBot(bot.getId(), ConsentCode.PRIVACY_POLICY);
+            if (privacy.isEmpty()) {
+                return promptConsent(bot.getId(), chatId, ConsentCode.PRIVACY_POLICY);
+            }
+            ConsentDocumentEntity doc = privacy.get();
+            String url = doc.getExternalUrl();
+            if (url == null || url.isBlank()) {
+                return List.of(OutgoingMessage.builder()
+                        .chatId(chatId)
+                        .text("""
+                                Документ «%s» ещё не опубликован администратором (нет ссылки).
+
+                                После публикации нажмите /start ещё раз.""".formatted(ConsentCode.PRIVACY_POLICY.getDefaultTitle()).trim())
+                        .replyMarkup(botNavigationService.privateMainKeyboard())
+                        .build());
+            }
+            Optional<Long> pendingSubId = scopeHolder.getPendingParticipantSubscription(bot.getId(), user.getId());
+            if (pendingSubId.isEmpty()) {
+                return List.of(OutgoingMessage.of(chatId,
+                        "Сессия истекла. Откройте ссылку из группы заново."));
+            }
+            SubscriptionEntity pendingSub = subscriptionService.requireById(pendingSubId.get());
+            Long scopeChatId = pendingSub.getScopeChatId();
+            String groupTitle = scopeChatId == null
+                    ? "группу"
+                    : telegramGroupAdminService.getChatTitle(bot, scopeChatId).orElse("Группа #" + scopeChatId);
+            String prefix = "Вы присоединяетесь к боту через группу " + groupTitle;
+            return List.of(privacyConsentInlineMessage(chatId, doc, prefix));
+        }
         if (next != null) {
             return promptConsent(bot.getId(), chatId, next);
         }
@@ -592,22 +637,39 @@ public class OnboardingService {
                 if (tariff.getActivationInstruction() != null && !tariff.getActivationInstruction().isBlank()) {
                     instruction = "\n\n" + tariff.getActivationInstruction().trim();
                 }
-                return List.of(mainMenuMessage(chatId,
-                        """
-                                ✅ Группа подключена. Активирован пробный период на %d дня (до %s).%s
+                Long scopeChatId = activated.getScopeChatId();
+                String groupTitle = scopeChatId == null
+                        ? "Группа"
+                        : telegramGroupAdminService.getChatTitle(bot, scopeChatId).orElse("Группа #" + scopeChatId);
+                String mainText = """
+                        ✅ Группа %s подключена до %s.%s
 
-                                Участники должны один раз принять условия в личке:
-                                https://t.me/%s?start=group_consent_%d
-
-                                На нижней клавиатуре — «%s» и «%s»."""
-                                .formatted(
-                                        days,
-                                        formatExpiry(activated.getExpiresAt()),
-                                        instruction,
-                                        bot.getUsername(),
-                                        activated.getId(),
-                                        BotNavigationService.BTN_SETTINGS,
-                                        BotNavigationService.BTN_SUBSCRIPTION)));
+                        Отправьте участникам приглашение, чтобы они могли общаться с ботом."""
+                        .formatted(groupTitle, formatExpiry(activated.getExpiresAt()), instruction)
+                        .strip();
+                InlineKeyboardMarkup successKb = InlineKeyboardMarkup.builder()
+                        .keyboardRow(List.of(
+                                InlineKeyboardButton.builder()
+                                        .text("📢 Отправить приглашение в группу")
+                                        .callbackData(BotNavigationService.CALLBACK_GRP + ":invite:" + activated.getId())
+                                        .build(),
+                                InlineKeyboardButton.builder()
+                                        .text(BotNavigationService.BTN_SUBSCRIPTION)
+                                        .callbackData(botNavigationService.navPayload("subscriptions"))
+                                        .build()))
+                        .build();
+                OutgoingMessage withInline = OutgoingMessage.builder()
+                        .chatId(chatId)
+                        .text(mainText)
+                        .replyMarkup(successKb)
+                        .build();
+                OutgoingMessage withReplyKb = OutgoingMessage.builder()
+                        .chatId(chatId)
+                        .text(("Ниже — «%s» и «%s».")
+                                .formatted(BotNavigationService.BTN_SETTINGS, BotNavigationService.BTN_SUBSCRIPTION))
+                        .replyMarkup(botNavigationService.privateMainKeyboard())
+                        .build();
+                return List.of(withInline, withReplyKb);
             } catch (IllegalStateException e) {
                 LOGGER.info("Group trial already used | user={} | bot={} | sub={}", user.getId(), bot.getId(), subscription.getId());
                 scopeHolder.clearPendingGroup(bot.getId(), user.getId());
@@ -801,6 +863,10 @@ public class OnboardingService {
                 .build();
     }
 
+    /**
+     * Дата окончания для текстов «до …». При {@code expiresAt == null} не использовать формулировку «до {дата}»
+     * в пользовательских сообщениях — вместо этого «Подписка активна» (правило на будущее; триал всегда с датой).
+     */
     private static String formatExpiry(OffsetDateTime expiresAt) {
         if (expiresAt == null) {
             return "—";

@@ -85,6 +85,13 @@ public class MessageSender {
      * бизнес-поток не должен падать из-за неудачной доставки.
      */
     public void send(AbsSender bot, OutgoingMessage message) {
+        trySend(bot, message);
+    }
+
+    /**
+     * Как {@link #send}, но возвращает признак успеха (для UX при доставке в группу по кнопке).
+     */
+    public boolean trySend(AbsSender bot, OutgoingMessage message) {
         SendMessage sm = toSendMessage(message);
         try {
             bot.execute(sm);
@@ -93,8 +100,10 @@ public class MessageSender {
                     message.getMessageThreadId(),
                     message.getReplyToMessageId(),
                     truncate(message.getText(), 100));
+            return true;
         } catch (TelegramApiException e) {
             LOGGER.error("❌ Send failed | chat={} | error={}", message.getChatId(), e.getMessage(), e);
+            return false;
         }
     }
 
