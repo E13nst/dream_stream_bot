@@ -1,12 +1,16 @@
 package com.example.dream_stream_bot.service.subscription;
 
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
+import com.example.dream_stream_bot.model.subscription.SubscriptionEntity;
+import com.example.dream_stream_bot.model.subscription.SubscriptionRepository;
+import com.example.dream_stream_bot.model.subscription.SubscriptionStatus;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
 import com.example.dream_stream_bot.model.subscription.TariffAccessMode;
 import com.example.dream_stream_bot.model.subscription.TariffScope;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.onboarding.OnboardingService;
+import com.example.dream_stream_bot.service.payment.SubscriptionCheckoutService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import com.example.dream_stream_bot.service.telegram.TelegramGroupAdminService;
 import org.springframework.stereotype.Service;
@@ -30,17 +34,26 @@ public class GroupLinkWizardService {
     private final TelegramGroupAdminService telegramGroupAdminService;
     private final OnboardingService onboardingService;
     private final BotNavigationService botNavigationService;
+    private final TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionCheckoutService subscriptionCheckoutService;
 
     public GroupLinkWizardService(GroupLinkWizardStateHolder stateHolder,
                                   SubscriptionTariffService tariffService,
                                   TelegramGroupAdminService telegramGroupAdminService,
                                   OnboardingService onboardingService,
-                                  BotNavigationService botNavigationService) {
+                                  BotNavigationService botNavigationService,
+                                  TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder,
+                                  SubscriptionRepository subscriptionRepository,
+                                  SubscriptionCheckoutService subscriptionCheckoutService) {
         this.stateHolder = stateHolder;
         this.tariffService = tariffService;
         this.telegramGroupAdminService = telegramGroupAdminService;
         this.onboardingService = onboardingService;
         this.botNavigationService = botNavigationService;
+        this.tariffCheckoutPreviewTextBuilder = tariffCheckoutPreviewTextBuilder;
+        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionCheckoutService = subscriptionCheckoutService;
     }
 
     public boolean hasActiveSession(Long botId, Long appUserId) {
@@ -88,22 +101,25 @@ public class GroupLinkWizardService {
         String uname = bot.getUsername() == null || bot.getUsername().isBlank() ? "bot" : bot.getUsername().trim();
         String startGroupUrl = "https://t.me/" + uname + "?startgroup=link_group_" + user.getTelegramId();
         stateHolder.startAwaitingGroupPick(bot.getId(), user.getId(), tariffId);
+        String preview = tariffCheckoutPreviewTextBuilder.buildCheckoutPreviewText(tariff, true,
+                TariffCheckoutPreviewTextBuilder.PayFooter.GROUP_CONNECT_NEXT);
         InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(InlineKeyboardButton.builder()
                         .text("🔗 Выбрать группу")
                         .url(startGroupUrl)
                         .build()))
                 .keyboardRow(List.of(InlineKeyboardButton.builder()
-                        .text("❌ Отмена")
-                        .callbackData(BotNavigationService.CALLBACK_GRP + ":cancel")
-                        .build()))
+                        .text("⬅ К тарифам")
+                        .callbackData(BotNavigationService.CALLBACK_GRP + ":begin")
+                        .build(),
+                        InlineKeyboardButton.builder()
+                                .text("❌ Отмена")
+                                .callbackData(BotNavigationService.CALLBACK_GRP + ":cancel")
+                                .build()))
                 .build();
-        String text = """
-                Нажмите кнопку ниже и выберите вашу группу в появившемся окне Telegram. После этого вернитесь в этот чат."""
-                .strip();
         return List.of(OutgoingMessage.builder()
                 .chatId(privateChatId)
-                .text(text.strip())
+                .text(preview)
                 .replyMarkup(kb)
                 .build());
     }
@@ -194,16 +210,137 @@ public class GroupLinkWizardService {
         }
         long tariffId = s.get().getTariffId();
         Long scopeChatId = s.get().getDraftScopeChatId();
-        SubscriptionTariffEntity tariff = tariffService.requireForBot(bot.getId(), tariffId);
+        tariffService.requireForBot(bot.getId(), tariffId);
         stateHolder.clear(bot.getId(), user.getId());
-        if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM) {
+        return onboardingService.startGroupOwnerWithChosenTariff(bot, privateChatId, user, scopeChatId, tariffId);
+    }
+
+    /**
+     * Экран условий перед созданием платежа по групповой подписке (после согласий).
+     */
+    public List<OutgoingMessage> groupPayDetailPreview(Long privateChatId, BotEntity bot, UserEntity user,
+                                                       long subscriptionId) {
+        if (user == null || bot == null) {
+            return List.of();
+        }
+        Optional<SubscriptionEntity> subOpt = loadGroupSubscriptionForYooKassa(bot.getId(), user.getId(), subscriptionId);
+        if (subOpt.isEmpty()) {
             return List.of(OutgoingMessage.builder()
                     .chatId(privateChatId)
-                    .text("Для подключения платного группового тарифа напишите в поддержку.")
+                    .text("Оплата недоступна для этой подписки. Откройте /subscriptions.")
                     .replyMarkup(botNavigationService.subscriptionManageInlineKeyboard())
                     .build());
         }
-        return onboardingService.startGroupOwnerWithChosenTariff(bot, privateChatId, user, scopeChatId, tariffId);
+        SubscriptionTariffEntity tariff = tariffService.requireForBot(bot.getId(), subOpt.get().getTariffId());
+        if (!subscriptionCheckoutService.isPaidCheckoutAvailable(bot, tariff)) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(privateChatId)
+                    .text("Оплата через ЮKassa для этого бота не настроена. Обратитесь в поддержку.")
+                    .replyMarkup(botNavigationService.subscriptionManageInlineKeyboard())
+                    .build());
+        }
+        InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(InlineKeyboardButton.builder()
+                        .text("💳 Оплатить через ЮKassa")
+                        .callbackData(BotNavigationService.CALLBACK_GRP + ":pay:open:" + subscriptionId)
+                        .build()))
+                .keyboardRow(List.of(InlineKeyboardButton.builder()
+                        .text("⬅ К подписке")
+                        .callbackData(botNavigationService.navPayload("subscriptions"))
+                        .build()))
+                .build();
+        return List.of(OutgoingMessage.builder()
+                .chatId(privateChatId)
+                .text(tariffCheckoutPreviewTextBuilder.buildCheckoutPreviewText(tariff, true,
+                        TariffCheckoutPreviewTextBuilder.PayFooter.YOOKASSA_HINT))
+                .replyMarkup(kb)
+                .build());
+    }
+
+    /**
+     * Создание платежа ЮKassa по групповой подписке; новое сообщение со ссылкой и «Я оплатил».
+     */
+    public List<OutgoingMessage> groupPayOpenCheckout(Long privateChatId, BotEntity bot, UserEntity user,
+                                                      long subscriptionId) {
+        if (user == null || bot == null) {
+            return List.of();
+        }
+        Optional<SubscriptionEntity> subOpt = loadGroupSubscriptionForYooKassa(bot.getId(), user.getId(), subscriptionId);
+        if (subOpt.isEmpty()) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(privateChatId)
+                    .text("Оплата недоступна для этой подписки. Откройте /subscriptions.")
+                    .replyMarkup(botNavigationService.subscriptionManageInlineKeyboard())
+                    .build());
+        }
+        SubscriptionTariffEntity tariff = tariffService.requireForBot(bot.getId(), subOpt.get().getTariffId());
+        if (!subscriptionCheckoutService.isPaidCheckoutAvailable(bot, tariff)) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(privateChatId)
+                    .text("Оплата через ЮKassa для этого бота не настроена. Обратитесь в поддержку.")
+                    .replyMarkup(botNavigationService.subscriptionManageInlineKeyboard())
+                    .build());
+        }
+        try {
+            SubscriptionCheckoutService.CheckoutResult result = subscriptionCheckoutService
+                    .createCheckoutForGroupSubscription(bot.getId(), user.getId(), subscriptionId);
+            String body = """
+                    Ссылка на оплату готова ниже.
+
+                    После успешной оплаты доступ включается автоматически. Если этого не случилось (например, при локальном запуске без веб-хука) — нажмите «Я оплатил»."""
+                    .strip();
+            InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
+                    .keyboardRow(List.of(InlineKeyboardButton.builder()
+                            .text("💳 Оплатить через ЮKassa")
+                            .url(result.confirmationUrl())
+                            .build()))
+                    .keyboardRow(List.of(InlineKeyboardButton.builder()
+                            .text("✅ Я оплатил")
+                            .callbackData(BotNavigationService.CALLBACK_PAY + ":status:" + result.localPaymentId())
+                            .build()))
+                    .keyboardRow(List.of(InlineKeyboardButton.builder()
+                            .text("⬅ К подписке")
+                            .callbackData(botNavigationService.navPayload("subscriptions"))
+                            .build()))
+                    .build();
+            return List.of(OutgoingMessage.builder()
+                    .chatId(privateChatId)
+                    .text(body)
+                    .replyMarkup(kb)
+                    .build());
+        } catch (RuntimeException e) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(privateChatId)
+                    .text("Не удалось создать платёж: " + e.getMessage())
+                    .replyMarkup(InlineKeyboardMarkup.builder()
+                            .keyboardRow(List.of(InlineKeyboardButton.builder()
+                                    .text("⬅ К подписке")
+                                    .callbackData(botNavigationService.navPayload("subscriptions"))
+                                    .build()))
+                            .build())
+                    .build());
+        }
+    }
+
+    private Optional<SubscriptionEntity> loadGroupSubscriptionForYooKassa(long botId, long ownerUserId,
+                                                                          long subscriptionId) {
+        Optional<SubscriptionEntity> base = subscriptionRepository.findById(subscriptionId)
+                .filter(s -> s.getBotId().equals(botId))
+                .filter(s -> s.getOwnerUserId().equals(ownerUserId))
+                .filter(s -> s.getScopeChatId() != null)
+                .filter(s -> s.getStatus() == SubscriptionStatus.AWAITING_ACTIVATION);
+        if (base.isEmpty()) {
+            return Optional.empty();
+        }
+        SubscriptionEntity s = base.get();
+        SubscriptionTariffEntity t = tariffService.requireForBot(botId, s.getTariffId());
+        if (t.getScope() != TariffScope.GROUP
+                || t.getAccessMode() != TariffAccessMode.PAID_TERM
+                || t.getPriceAmountMinor() == null
+                || t.getPriceAmountMinor() <= 0) {
+            return Optional.empty();
+        }
+        return Optional.of(s);
     }
 
     public List<OutgoingMessage> onConfirmRetry(Long privateChatId, BotEntity bot, UserEntity user) {

@@ -65,8 +65,31 @@ public class GroupLinkCallback implements CallbackHandler {
             return groupLinkWizardService.onConfirmRetry(chatId, bot, user);
         }
         if (payload.startsWith("pick:")) {
-            long tariffId = Long.parseLong(payload.substring("pick:".length()));
+            long tariffId;
+            try {
+                tariffId = Long.parseLong(payload.substring("pick:".length()).trim());
+            } catch (NumberFormatException e) {
+                return CallbackHandler.silent();
+            }
             return groupLinkWizardService.onPickTariff(chatId, bot, user, tariffId);
+        }
+        if (payload.startsWith("pay:detail:")) {
+            long subscriptionId;
+            try {
+                subscriptionId = Long.parseLong(payload.substring("pay:detail:".length()).trim());
+            } catch (NumberFormatException e) {
+                return CallbackHandler.silent();
+            }
+            return groupLinkWizardService.groupPayDetailPreview(chatId, bot, user, subscriptionId);
+        }
+        if (payload.startsWith("pay:open:")) {
+            long subscriptionId;
+            try {
+                subscriptionId = Long.parseLong(payload.substring("pay:open:".length()).trim());
+            } catch (NumberFormatException e) {
+                return CallbackHandler.silent();
+            }
+            return groupLinkWizardService.groupPayOpenCheckout(chatId, bot, user, subscriptionId);
         }
         if (payload.startsWith("invite:")) {
             long subscriptionId;

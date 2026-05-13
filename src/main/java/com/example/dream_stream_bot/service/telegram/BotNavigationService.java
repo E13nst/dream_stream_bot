@@ -24,7 +24,7 @@ public class BotNavigationService {
      */
     public static final String CALLBACK_PAY = "pay";
 
-    /** Мастер привязки группы: {@code grp:begin}, {@code grp:pick:tariffId}, … */
+    /** Мастер привязки группы: {@code grp:begin}, {@code grp:pick:tariffId}, {@code grp:pay:detail:subId}, {@code grp:pay:open:subId}, … */
     public static final String CALLBACK_GRP = "grp";
 
     public ReplyKeyboard privateMainKeyboard() {

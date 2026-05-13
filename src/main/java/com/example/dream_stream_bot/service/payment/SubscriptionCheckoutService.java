@@ -66,18 +66,9 @@ public class SubscriptionCheckoutService {
 
     @Transactional
     public CheckoutResult createCheckout(Long botId, Long ownerUserId, Long tariffId) {
-        return createCheckout(botId, ownerUserId, tariffId, null);
-    }
-
-    @Transactional
-    public CheckoutResult createCheckout(Long botId, Long ownerUserId, Long tariffId, Long scopeChatId) {
         BotEntity bot = botService.findById(botId);
         if (bot == null) {
             throw new IllegalArgumentException("Бот не найден.");
-        }
-        if (scopeChatId != null) {
-            throw new IllegalStateException(
-                    "Для подключения платного группового тарифа напишите в поддержку.");
         }
         YooKassaCredentials credentials = credentialsResolver.resolve(bot)
                 .orElseThrow(() -> new IllegalStateException(
@@ -90,13 +81,62 @@ public class SubscriptionCheckoutService {
         validateSubscriptionStatus(subscription);
 
         SubscriptionTariffEntity tariff = tariffService.requireForBot(botId, tariffId);
-        validateTariffForCheckout(tariff);
+        validateTariffPaidTerm(tariff, TariffScope.PERSONAL);
 
         if (!subscription.getTariffId().equals(tariffId)) {
             subscription.setTariffId(tariffId);
             subscriptionRepository.save(subscription);
         }
 
+        return chargeYooKassa(bot, credentials, subscription, tariff, ownerUserId, tariffId, null);
+    }
+
+    /**
+     * Оплата групповой подписки после согласий, в статусе {@link SubscriptionStatus#AWAITING_ACTIVATION}.
+     */
+    @Transactional
+    public CheckoutResult createCheckoutForGroupSubscription(long botId, long ownerUserId, long subscriptionId) {
+        BotEntity bot = botService.findById(botId);
+        if (bot == null) {
+            throw new IllegalArgumentException("Бот не найден.");
+        }
+        YooKassaCredentials credentials = credentialsResolver.resolve(bot)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Оплата не настроена для этого бота. Обратитесь к поддержке."));
+
+        SubscriptionEntity subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new IllegalArgumentException("Подписка не найдена."));
+        if (!subscription.getBotId().equals(botId)) {
+            throw new IllegalArgumentException("Подписка не относится к этому боту.");
+        }
+        if (!subscription.getOwnerUserId().equals(ownerUserId)) {
+            throw new IllegalArgumentException("Недостаточно прав для оплаты этой подписки.");
+        }
+        if (subscription.getScopeChatId() == null) {
+            throw new IllegalArgumentException("Ожидалась групповая подписка.");
+        }
+        if (subscription.getStatus() != SubscriptionStatus.AWAITING_ACTIVATION) {
+            throw new IllegalStateException(
+                    "Оплата доступна только для подписки в статусе ожидания активации. Откройте /subscriptions.");
+        }
+
+        validateSubscriptionStatus(subscription);
+
+        SubscriptionTariffEntity tariff = tariffService.requireForBot(botId, subscription.getTariffId());
+        validateTariffPaidTerm(tariff, TariffScope.GROUP);
+
+        long tariffId = tariff.getId();
+        return chargeYooKassa(bot, credentials, subscription, tariff, ownerUserId, tariffId,
+                subscription.getScopeChatId());
+    }
+
+    private CheckoutResult chargeYooKassa(BotEntity bot,
+                                          YooKassaCredentials credentials,
+                                          SubscriptionEntity subscription,
+                                          SubscriptionTariffEntity tariff,
+                                          long ownerUserId,
+                                          long tariffIdForPaymentRow,
+                                          Long scopeChatIdForMetadata) {
         UserEntity user = userRepository.findById(ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден."));
 
@@ -114,8 +154,8 @@ public class SubscriptionCheckoutService {
 
         SubscriptionPaymentEntity row = new SubscriptionPaymentEntity();
         row.setSubscriptionId(subscription.getId());
-        row.setTariffId(tariffId);
-        row.setBotId(botId);
+        row.setTariffId(tariffIdForPaymentRow);
+        row.setBotId(bot.getId());
         row.setOwnerUserId(ownerUserId);
         row.setProvider("yookassa");
         row.setIdempotencyKey(idempotencyKey);
@@ -144,10 +184,13 @@ public class SubscriptionCheckoutService {
 
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("subscription_id", String.valueOf(subscription.getId()));
-        metadata.put("tariff_id", String.valueOf(tariffId));
-        metadata.put("bot_id", String.valueOf(botId));
+        metadata.put("tariff_id", String.valueOf(tariffIdForPaymentRow));
+        metadata.put("bot_id", String.valueOf(bot.getId()));
         metadata.put("owner_user_id", String.valueOf(ownerUserId));
         metadata.put("payment_record_id", String.valueOf(row.getId()));
+        if (scopeChatIdForMetadata != null) {
+            metadata.put("scope_chat_id", String.valueOf(scopeChatIdForMetadata));
+        }
         body.put("metadata", metadata);
 
         if (bot.isYookassaReceiptEnabled()) {
@@ -199,12 +242,12 @@ public class SubscriptionCheckoutService {
         }
     }
 
-    private static void validateTariffForCheckout(SubscriptionTariffEntity tariff) {
+    private static void validateTariffPaidTerm(SubscriptionTariffEntity tariff, TariffScope expectedScope) {
         if (!Boolean.TRUE.equals(tariff.isActive())) {
             throw new IllegalArgumentException("Этот тариф недоступен.");
         }
-        if (tariff.getScope() != TariffScope.PERSONAL) {
-            throw new IllegalArgumentException("Оплата в боте доступна только для персональных тарифов.");
+        if (tariff.getScope() != expectedScope) {
+            throw new IllegalArgumentException("Тариф не подходит для этого способа оплаты.");
         }
         if (tariff.getAccessMode() != TariffAccessMode.PAID_TERM) {
             throw new IllegalArgumentException("Тариф не предполагает оплату срока.");

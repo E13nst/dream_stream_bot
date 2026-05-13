@@ -692,8 +692,31 @@ public class OnboardingService {
         scopeHolder.clearPendingGroup(bot.getId(), user.getId());
         SubscriptionEntity awaiting = subscriptionService.markAwaitingActivation(subscription);
 
-        Optional<Long> sc = subscription.getScopeChatId() != null
-                ? Optional.of(subscription.getScopeChatId()) : Optional.empty();
+        if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM
+                && subscriptionCheckoutService.isPaidCheckoutAvailable(bot, tariff)) {
+            String receiptHint = bot.isYookassaReceiptEnabled()
+                    ? "\n\nДля чека по 54‑ФЗ укажите email командой:\n/billing_email ваш@email.ru"
+                    : "";
+            InlineKeyboardMarkup payKb = InlineKeyboardMarkup.builder()
+                    .keyboardRow(List.of(InlineKeyboardButton.builder()
+                            .text("💳 Оплатить в Telegram")
+                            .callbackData(BotNavigationService.CALLBACK_GRP + ":pay:detail:" + awaiting.getId())
+                            .build()))
+                    .build();
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("""
+                            Спасибо! Согласия приняты. Оплатите подписку на группу, чтобы активировать доступ.%s
+
+                            После успешной оплаты доступ откроется автоматически (обычно в течение минуты).
+                            Статус: /subscriptions
+                            """.formatted(receiptHint).strip())
+                    .replyMarkup(payKb)
+                    .build());
+        }
+
+        Optional<Long> sc = awaiting.getScopeChatId() != null
+                ? Optional.of(awaiting.getScopeChatId()) : Optional.empty();
         Long scope = sc.orElse(null);
         String invite = scope != null
                 ? """

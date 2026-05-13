@@ -11,6 +11,7 @@ import com.example.dream_stream_bot.model.subscription.TariffScope;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
 import com.example.dream_stream_bot.service.payment.SubscriptionCheckoutService;
 import com.example.dream_stream_bot.service.payment.SubscriptionPaymentCompletionService;
+import com.example.dream_stream_bot.service.subscription.TariffCheckoutPreviewTextBuilder;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -28,17 +29,20 @@ public class PaymentCallback implements CallbackHandler {
     private final SubscriptionPaymentCompletionService completionService;
     private final SubscriptionPaymentRepository paymentRepository;
     private final BotNavigationService botNavigationService;
+    private final TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder;
 
     public PaymentCallback(SubscriptionTariffRepository tariffRepository,
                            SubscriptionCheckoutService checkoutService,
                            SubscriptionPaymentCompletionService completionService,
                            SubscriptionPaymentRepository paymentRepository,
-                           BotNavigationService botNavigationService) {
+                           BotNavigationService botNavigationService,
+                           TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder) {
         this.tariffRepository = tariffRepository;
         this.checkoutService = checkoutService;
         this.completionService = completionService;
         this.paymentRepository = paymentRepository;
         this.botNavigationService = botNavigationService;
+        this.tariffCheckoutPreviewTextBuilder = tariffCheckoutPreviewTextBuilder;
     }
 
     @Override
@@ -170,7 +174,7 @@ public class PaymentCallback implements CallbackHandler {
                 .build();
         return List.of(OutgoingMessage.builder()
                 .chatId(chatId)
-                .text(detailMessageText(tariff))
+                .text(tariffCheckoutPreviewTextBuilder.buildPersonalCheckoutPreviewText(tariff))
                 .replyMarkup(kb)
                 .build());
     }
@@ -233,48 +237,6 @@ public class PaymentCallback implements CallbackHandler {
             return null;
         }
         return tariff;
-    }
-
-    private static String detailMessageText(SubscriptionTariffEntity tariff) {
-        Integer days = tariff.getPaidTermDays();
-        String termLine = days == null ? "⌛ Срок: —" : ("⌛ Срок: " + daysPluralRu(days));
-
-        String detail = tariff.getDetailDescription();
-        if (detail == null || detail.isBlank()) {
-            detail = "• Доступ активируется после успешной оплаты.";
-        }
-
-        String price = formatRub(tariff.getPriceAmountMinor());
-        return """
-                ✅ Вы выбрали: %s
-
-                💰 Цена: %s ₽
-                %s
-
-                %s
-
-                Нажмите «Оплатить через ЮKassa», когда будете готовы перейти к оплате."""
-                .formatted(trimTitle(tariff.getTitle()), price, termLine, detail.trim()).strip();
-    }
-
-    private static String trimTitle(String title) {
-        return title == null ? "" : title.trim();
-    }
-
-    private static String daysPluralRu(int n) {
-        int abs = Math.abs(n);
-        int mod100 = abs % 100;
-        int mod10 = abs % 10;
-        if (mod100 >= 11 && mod100 <= 19) {
-            return abs + " дней";
-        }
-        if (mod10 == 1) {
-            return abs + " день";
-        }
-        if (mod10 >= 2 && mod10 <= 4) {
-            return abs + " дня";
-        }
-        return abs + " дней";
     }
 
     private List<OutgoingMessage> checkStatus(Long chatId, long paymentRecordId, long ownerUserId) {
