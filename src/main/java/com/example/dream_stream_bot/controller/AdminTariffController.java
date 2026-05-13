@@ -112,6 +112,8 @@ public class AdminTariffController {
                          @RequestParam(required = false) String currency,
                          @RequestParam(required = false) Integer paidTermDays,
                          @RequestParam(required = false) String checkoutDescription,
+                         @RequestParam(required = false) String detailDescription,
+                         @RequestParam(required = false) String activationInstruction,
                          RedirectAttributes ra) {
         try {
             boolean activeEffective = !Boolean.FALSE.equals(active);
@@ -123,7 +125,8 @@ public class AdminTariffController {
             SubscriptionTariffEntity t = tariffService.create(botId, code.trim(), title, scope,
                     accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG,
                     refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly,
-                    priceMinor, blankToNull(currency), paidTermDays, checkoutDescription);
+                    priceMinor, blankToNull(currency), paidTermDays, checkoutDescription, detailDescription,
+                    activationInstruction);
             ra.addFlashAttribute("success", "Тариф «" + t.getCode() + "» создан");
             return "redirect:/admin/tariffs?botId=" + botId;
         } catch (Exception e) {
@@ -153,6 +156,8 @@ public class AdminTariffController {
                          @RequestParam(required = false) String currency,
                          @RequestParam(required = false) Integer paidTermDays,
                          @RequestParam(required = false) String checkoutDescription,
+                         @RequestParam(required = false) String detailDescription,
+                         @RequestParam(required = false) String activationInstruction,
                          RedirectAttributes ra) {
         try {
             boolean activeEffective = Boolean.TRUE.equals(active);
@@ -164,7 +169,8 @@ public class AdminTariffController {
             tariffService.update(id, botId, code.trim(), title, scope,
                     accessMode, trialDays, maxParticipants, sortOrder, activeEffective, defP, defG,
                     refEnabled, referralReferrerDays, referralReferredDays, firstPaymentOnly,
-                    priceMinor, blankToNull(currency), paidTermDays, checkoutDescription);
+                    priceMinor, blankToNull(currency), paidTermDays, checkoutDescription, detailDescription,
+                    activationInstruction);
             ra.addFlashAttribute("success", "Тариф обновлён");
             return "redirect:/admin/tariffs?botId=" + botId;
         } catch (Exception e) {

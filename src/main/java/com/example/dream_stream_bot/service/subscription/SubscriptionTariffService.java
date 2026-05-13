@@ -22,6 +22,10 @@ public class SubscriptionTariffService {
     static final String CODE_PERSONAL_TRIAL = "PERSONAL_TRIAL";
     static final String CODE_PERSONAL_FREE = "PERSONAL_FREE";
 
+    private static final String DEFAULT_GROUP_TRIAL_ACTIVATION = """
+            Добавьте бота в группу как администратора с правами, нужными для вашего сценария (например, удаление сообщений, закрепление).
+            Участники должны один раз принять условия в личке с ботом по ссылке из приветственного сообщения после активации.""";
+
     private final SubscriptionTariffRepository tariffRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final TrialUsageRepository trialUsageRepository;
@@ -46,7 +50,6 @@ public class SubscriptionTariffService {
         return tariffRepository.findByBotIdOrderBySortOrderAscIdAsc(botId);
     }
 
-    /** Персональные активные тарифы: FREE_UNLIMITED и TRIAL_ONBOARDING без израсходованного триала для владельца. */
     public List<SubscriptionTariffEntity> listPersonalTrialAndFreeEligible(long botId, long ownerUserId) {
         List<SubscriptionTariffEntity> tariffs = tariffRepository.findByBotIdOrderBySortOrderAscIdAsc(botId);
         List<SubscriptionTariffEntity> out = new ArrayList<>();
@@ -66,6 +69,11 @@ public class SubscriptionTariffService {
             }
         }
         return out;
+    }
+
+    /** Активные групповые тарифы бота (витрина мастера привязки). */
+    public List<SubscriptionTariffEntity> listActiveGroupTariffs(long botId) {
+        return tariffRepository.findByBotIdAndActiveTrueAndScopeOrderBySortOrderAscIdAsc(botId, TariffScope.GROUP);
     }
 
     public SubscriptionTariffEntity requireForBot(Long botId, Long tariffId) {
@@ -97,26 +105,30 @@ public class SubscriptionTariffService {
         int order = 0;
         saveNew(botId, CODE_PERSONAL_TRIAL, "Персональный (пробный период)", TariffScope.PERSONAL,
                 TariffAccessMode.TRIAL_ONBOARDING, 3, null, order++, true, false,
-                false, null, null, true);
+                false, null, null, true, null);
         saveNew(botId, CODE_PERSONAL_FREE, "Персональный (бесплатно)", TariffScope.PERSONAL,
                 TariffAccessMode.FREE_UNLIMITED, null, null, order++, false, false,
-                false, null, null, true);
+                false, null, null, true, null);
+        saveNew(botId, "GROUP_TRIAL", "Группа (пробный период 3 дня)", TariffScope.GROUP,
+                TariffAccessMode.TRIAL_ONBOARDING, 3, 50, order++, false, false,
+                false, null, null, true, DEFAULT_GROUP_TRIAL_ACTIVATION);
         saveNew(botId, "GROUP_S", "Группа (до 10)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
                 null, 10, order++, false, true,
-                false, null, null, true);
+                false, null, null, true, null);
         saveNew(botId, "GROUP_M", "Группа (до 25)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
                 null, 25, order++, false, false,
-                false, null, null, true);
+                false, null, null, true, null);
         saveNew(botId, "GROUP_L", "Группа (до 50)", TariffScope.GROUP, TariffAccessMode.PAID_TERM,
                 null, 50, order++, false, false,
-                false, null, null, true);
+                false, null, null, true, null);
     }
 
     private void saveNew(Long botId, String code, String title, TariffScope scope,
                          TariffAccessMode mode, Integer trialDays, Integer maxParticipants, int sortOrder,
                          boolean defaultPersonal, boolean defaultGroup,
                          boolean referralEnabled, Integer referralReferrerDays,
-                         Integer referralReferredDays, boolean referralFirstPaymentOnly) {
+                         Integer referralReferredDays, boolean referralFirstPaymentOnly,
+                         String activationInstruction) {
         SubscriptionTariffEntity e = new SubscriptionTariffEntity();
         e.setBotId(botId);
         e.setCode(code);
@@ -132,6 +144,7 @@ public class SubscriptionTariffService {
         e.setReferralReferrerDays(referralReferrerDays);
         e.setReferralReferredDays(referralReferredDays);
         e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
+        applyActivationInstruction(e, activationInstruction);
         validate(e);
         tariffRepository.save(e);
     }
@@ -144,7 +157,8 @@ public class SubscriptionTariffService {
                                              boolean referralEnabled, Integer referralReferrerDays,
                                              Integer referralReferredDays, boolean referralFirstPaymentOnly,
                                              Long priceAmountMinor, String currency, Integer paidTermDays,
-                                             String checkoutDescription) {
+                                             String checkoutDescription, String detailDescription,
+                                             String activationInstruction) {
         SubscriptionTariffEntity e = new SubscriptionTariffEntity();
         e.setBotId(botId);
         e.setCode(normalizeCode(code));
@@ -159,7 +173,8 @@ public class SubscriptionTariffService {
         e.setReferralReferrerDays(referralReferrerDays);
         e.setReferralReferredDays(referralReferredDays);
         e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
-        applyCommerceFields(e, priceAmountMinor, currency, paidTermDays, checkoutDescription);
+        applyCommerceFields(e, priceAmountMinor, currency, paidTermDays, checkoutDescription, detailDescription);
+        applyActivationInstruction(e, activationInstruction);
         applyDefaultFlags(e, defaultPersonal, defaultGroup);
         validate(e);
         return tariffRepository.save(e);
@@ -173,7 +188,8 @@ public class SubscriptionTariffService {
                                              boolean referralEnabled, Integer referralReferrerDays,
                                              Integer referralReferredDays, boolean referralFirstPaymentOnly,
                                              Long priceAmountMinor, String currency, Integer paidTermDays,
-                                             String checkoutDescription) {
+                                             String checkoutDescription, String detailDescription,
+                                             String activationInstruction) {
         SubscriptionTariffEntity e = requireForBot(botId, id);
         e.setCode(normalizeCode(code));
         e.setTitle(title.trim());
@@ -187,7 +203,8 @@ public class SubscriptionTariffService {
         e.setReferralReferrerDays(referralReferrerDays);
         e.setReferralReferredDays(referralReferredDays);
         e.setReferralFirstPaymentOnly(referralFirstPaymentOnly);
-        applyCommerceFields(e, priceAmountMinor, currency, paidTermDays, checkoutDescription);
+        applyCommerceFields(e, priceAmountMinor, currency, paidTermDays, checkoutDescription, detailDescription);
+        applyActivationInstruction(e, activationInstruction);
         applyDefaultFlags(e, defaultPersonal, defaultGroup);
         validate(e);
         return tariffRepository.save(e);
@@ -306,8 +323,17 @@ public class SubscriptionTariffService {
         }
     }
 
+    private static void applyActivationInstruction(SubscriptionTariffEntity e, String raw) {
+        if (raw != null && !raw.isBlank()) {
+            e.setActivationInstruction(raw.trim());
+        } else {
+            e.setActivationInstruction(null);
+        }
+    }
+
     private static void applyCommerceFields(SubscriptionTariffEntity e, Long priceAmountMinor, String currency,
-                                           Integer paidTermDays, String checkoutDescription) {
+                                           Integer paidTermDays, String checkoutDescription,
+                                           String detailDescription) {
         e.setPriceAmountMinor(priceAmountMinor);
         if (currency != null && !currency.isBlank()) {
             e.setCurrency(currency.trim().toUpperCase());
@@ -317,6 +343,11 @@ public class SubscriptionTariffService {
             e.setCheckoutDescription(checkoutDescription.trim());
         } else {
             e.setCheckoutDescription(null);
+        }
+        if (detailDescription != null && !detailDescription.isBlank()) {
+            e.setDetailDescription(detailDescription.trim());
+        } else {
+            e.setDetailDescription(null);
         }
     }
 

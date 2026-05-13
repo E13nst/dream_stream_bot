@@ -82,6 +82,14 @@ public class SubscriptionTariffEntity {
     @Column(name = "checkout_description", columnDefinition = "TEXT")
     private String checkoutDescription;
 
+    /** Многострочный текст условий/включено в тариф (экран перед оплатой в боте). */
+    @Column(name = "detail_description", columnDefinition = "TEXT")
+    private String detailDescription;
+
+    /** Для групповых тарифов: инструкция после активации (права бота и т.д.); для персональных — null. */
+    @Column(name = "activation_instruction", columnDefinition = "TEXT")
+    private String activationInstruction;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -161,6 +169,12 @@ public class SubscriptionTariffEntity {
 
     public String getCheckoutDescription() { return checkoutDescription; }
     public void setCheckoutDescription(String checkoutDescription) { this.checkoutDescription = checkoutDescription; }
+
+    public String getDetailDescription() { return detailDescription; }
+    public void setDetailDescription(String detailDescription) { this.detailDescription = detailDescription; }
+
+    public String getActivationInstruction() { return activationInstruction; }
+    public void setActivationInstruction(String activationInstruction) { this.activationInstruction = activationInstruction; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
