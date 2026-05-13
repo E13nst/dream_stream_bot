@@ -68,9 +68,13 @@ public class PaymentCallback implements CallbackHandler {
         if ("history".equals(payload)) {
             return paymentHistory(chatId, botId, ownerUserId);
         }
+        if (payload.startsWith("detail:")) {
+            long tariffId = Long.parseLong(payload.substring("detail:".length()));
+            return tariffDetailPreview(chatId, botId, tariffId);
+        }
         if (payload.startsWith("open:")) {
             long tariffId = Long.parseLong(payload.substring("open:".length()));
-            return openCheckout(chatId, botId, ownerUserId, tariffId);
+            return tariffOpenCheckout(chatId, botId, ownerUserId, tariffId);
         }
         if (payload.startsWith("status:")) {
             long paymentRecordId = Long.parseLong(payload.substring("status:".length()));
@@ -134,7 +138,7 @@ public class PaymentCallback implements CallbackHandler {
             String rub = formatRub(t.getPriceAmountMinor());
             kb.keyboardRow(List.of(InlineKeyboardButton.builder()
                     .text(t.getTitle() + " — " + rub + " ₽")
-                    .callbackData(BotNavigationService.CALLBACK_PAY + ":open:" + t.getId())
+                    .callbackData(BotNavigationService.CALLBACK_PAY + ":detail:" + t.getId())
                     .build()));
         }
         return List.of(OutgoingMessage.builder()
@@ -144,35 +148,133 @@ public class PaymentCallback implements CallbackHandler {
                 .build());
     }
 
-    private List<OutgoingMessage> openCheckout(Long chatId, long botId, long ownerUserId, long tariffId) {
+    /** Условия тарифа без вызова ЮKassa; оплата — отдельным нажатием {@code pay:open:…}. */
+    private List<OutgoingMessage> tariffDetailPreview(Long chatId, long botId, long tariffId) {
+        SubscriptionTariffEntity tariff = loadPayablePersonalTariff(botId, tariffId);
+        if (tariff == null) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("Этот тариф недоступен. Выберите другой вариант.")
+                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .build());
+        }
+        InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(InlineKeyboardButton.builder()
+                        .text("💳 Оплатить через ЮKassa")
+                        .callbackData(BotNavigationService.CALLBACK_PAY + ":open:" + tariffId)
+                        .build()))
+                .keyboardRow(List.of(InlineKeyboardButton.builder()
+                        .text("⬅ К тарифам")
+                        .callbackData(BotNavigationService.CALLBACK_PAY + ":list")
+                        .build()))
+                .build();
+        return List.of(OutgoingMessage.builder()
+                .chatId(chatId)
+                .text(detailMessageText(tariff))
+                .replyMarkup(kb)
+                .build());
+    }
+
+    /** Создание платежа в ЮKassa; ответ — новым сообщением (ссылка, «Я оплатил», назад к списку). */
+    private List<OutgoingMessage> tariffOpenCheckout(Long chatId, long botId, long ownerUserId, long tariffId) {
+        if (loadPayablePersonalTariff(botId, tariffId) == null) {
+            return List.of(OutgoingMessage.builder()
+                    .chatId(chatId)
+                    .text("Этот тариф недоступен. Выберите другой вариант.")
+                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .build());
+        }
         try {
             SubscriptionCheckoutService.CheckoutResult result =
                     checkoutService.createCheckout(botId, ownerUserId, tariffId);
+            String body = """
+                    Ссылка на оплату готова ниже.
+
+                    После успешной оплаты доступ включается автоматически. Если этого не случилось (например, при локальном запуске без веб-хука) — нажмите «Я оплатил»."""
+                    .strip();
             InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
                     .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("💳 Перейти к оплате")
+                            .text("💳 Оплатить через ЮKassa")
                             .url(result.confirmationUrl())
                             .build()))
                     .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("✅ Проверить оплату")
+                            .text("✅ Я оплатил")
                             .callbackData(BotNavigationService.CALLBACK_PAY + ":status:" + result.localPaymentId())
+                            .build()))
+                    .keyboardRow(List.of(InlineKeyboardButton.builder()
+                            .text("⬅ К тарифам")
+                            .callbackData(BotNavigationService.CALLBACK_PAY + ":list")
                             .build()))
                     .build();
             return List.of(OutgoingMessage.builder()
                     .chatId(chatId)
-                    .text("""
-                            Откройте оплату кнопкой ниже. После успешной оплаты доступ активируется автоматически в течение короткого времени.
-
-                            Если статус не обновился — нажмите «Проверить оплату».""")
+                    .text(body)
                     .replyMarkup(kb)
                     .build());
         } catch (RuntimeException e) {
             return List.of(OutgoingMessage.builder()
                     .chatId(chatId)
                     .text("Не удалось создать платёж: " + e.getMessage())
-                    .replyMarkup(botNavigationService.privateMainKeyboard())
+                    .replyMarkup(InlineKeyboardMarkup.builder()
+                            .keyboardRow(List.of(InlineKeyboardButton.builder()
+                                    .text("⬅ К тарифам")
+                                    .callbackData(BotNavigationService.CALLBACK_PAY + ":list")
+                                    .build()))
+                            .build())
                     .build());
         }
+    }
+
+    /** {@code null}, если тариф не из этого бота, неактивен, не персональный или без цены. */
+    private SubscriptionTariffEntity loadPayablePersonalTariff(long botId, long tariffId) {
+        SubscriptionTariffEntity tariff = tariffRepository.findById(tariffId).orElse(null);
+        if (tariff == null || !tariff.getBotId().equals(botId) || Boolean.FALSE.equals(tariff.isActive())
+                || tariff.getPriceAmountMinor() == null || tariff.getScope() != TariffScope.PERSONAL) {
+            return null;
+        }
+        return tariff;
+    }
+
+    private static String detailMessageText(SubscriptionTariffEntity tariff) {
+        Integer days = tariff.getPaidTermDays();
+        String termLine = days == null ? "⌛ Срок: —" : ("⌛ Срок: " + daysPluralRu(days));
+
+        String detail = tariff.getDetailDescription();
+        if (detail == null || detail.isBlank()) {
+            detail = "• Доступ активируется после успешной оплаты.";
+        }
+
+        String price = formatRub(tariff.getPriceAmountMinor());
+        return """
+                ✅ Вы выбрали: %s
+
+                💰 Цена: %s ₽
+                %s
+
+                %s
+
+                Нажмите «Оплатить через ЮKassa», когда будете готовы перейти к оплате."""
+                .formatted(trimTitle(tariff.getTitle()), price, termLine, detail.trim()).strip();
+    }
+
+    private static String trimTitle(String title) {
+        return title == null ? "" : title.trim();
+    }
+
+    private static String daysPluralRu(int n) {
+        int abs = Math.abs(n);
+        int mod100 = abs % 100;
+        int mod10 = abs % 10;
+        if (mod100 >= 11 && mod100 <= 19) {
+            return abs + " дней";
+        }
+        if (mod10 == 1) {
+            return abs + " день";
+        }
+        if (mod10 >= 2 && mod10 <= 4) {
+            return abs + " дня";
+        }
+        return abs + " дней";
     }
 
     private List<OutgoingMessage> checkStatus(Long chatId, long paymentRecordId, long ownerUserId) {
