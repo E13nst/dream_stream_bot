@@ -66,6 +66,14 @@ public class SubscriptionCheckoutService {
 
     @Transactional
     public CheckoutResult createCheckout(Long botId, Long ownerUserId, Long tariffId) {
+        return createCheckout(botId, ownerUserId, tariffId, null);
+    }
+
+    /**
+     * @param receiptEmailOverride email для чека; если {@code null}, используется {@link UserEntity#getBillingEmail()}
+     */
+    @Transactional
+    public CheckoutResult createCheckout(Long botId, Long ownerUserId, Long tariffId, String receiptEmailOverride) {
         BotEntity bot = botService.findById(botId);
         if (bot == null) {
             throw new IllegalArgumentException("Бот не найден.");
@@ -88,7 +96,7 @@ public class SubscriptionCheckoutService {
             subscriptionRepository.save(subscription);
         }
 
-        return chargeYooKassa(bot, credentials, subscription, tariff, ownerUserId, tariffId, null);
+        return chargeYooKassa(bot, credentials, subscription, tariff, ownerUserId, tariffId, null, receiptEmailOverride);
     }
 
     /**
@@ -96,6 +104,15 @@ public class SubscriptionCheckoutService {
      */
     @Transactional
     public CheckoutResult createCheckoutForGroupSubscription(long botId, long ownerUserId, long subscriptionId) {
+        return createCheckoutForGroupSubscription(botId, ownerUserId, subscriptionId, null);
+    }
+
+    /**
+     * @param receiptEmailOverride см. {@link #createCheckout(Long, Long, Long, String)}
+     */
+    @Transactional
+    public CheckoutResult createCheckoutForGroupSubscription(long botId, long ownerUserId, long subscriptionId,
+                                                             String receiptEmailOverride) {
         BotEntity bot = botService.findById(botId);
         if (bot == null) {
             throw new IllegalArgumentException("Бот не найден.");
@@ -127,7 +144,7 @@ public class SubscriptionCheckoutService {
 
         long tariffId = tariff.getId();
         return chargeYooKassa(bot, credentials, subscription, tariff, ownerUserId, tariffId,
-                subscription.getScopeChatId());
+                subscription.getScopeChatId(), receiptEmailOverride);
     }
 
     private CheckoutResult chargeYooKassa(BotEntity bot,
@@ -136,15 +153,17 @@ public class SubscriptionCheckoutService {
                                           SubscriptionTariffEntity tariff,
                                           long ownerUserId,
                                           long tariffIdForPaymentRow,
-                                          Long scopeChatIdForMetadata) {
+                                          Long scopeChatIdForMetadata,
+                                          String receiptEmailOverride) {
         UserEntity user = userRepository.findById(ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден."));
 
         if (bot.isYookassaReceiptEnabled()) {
-            String email = user.getBillingEmail();
-            if (email == null || email.isBlank()) {
+            String effective = firstNonBlank(receiptEmailOverride, user.getBillingEmail());
+            if (effective == null || effective.isBlank()) {
                 throw new IllegalStateException(
-                        "Для оплаты с чеком укажите email: команда /billing_email ваш@email.ru");
+                        "Для оплаты с чеком укажите email: нажмите «Оплатить» и отправьте адрес следующим сообщением "
+                                + "или команда /billing_email ваш@email.ru");
             }
         }
 
@@ -194,7 +213,8 @@ public class SubscriptionCheckoutService {
         body.put("metadata", metadata);
 
         if (bot.isYookassaReceiptEnabled()) {
-            body.put("receipt", buildReceipt(user.getBillingEmail().trim(), itemTitle, amountStr, currency));
+            String effective = firstNonBlank(receiptEmailOverride, user.getBillingEmail()).trim();
+            body.put("receipt", buildReceipt(effective, itemTitle, amountStr, currency));
         }
 
         try {
@@ -260,6 +280,16 @@ public class SubscriptionCheckoutService {
 
     private static String formatAmountMinor(long minor) {
         return BigDecimal.valueOf(minor).divide(BigDecimal.valueOf(100), 2, RoundingMode.UNNECESSARY).toPlainString();
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) {
+            return a.trim();
+        }
+        if (b != null && !b.isBlank()) {
+            return b.trim();
+        }
+        return null;
     }
 
     private static Map<String, Object> buildReceipt(String email, String itemTitle, String amountStr, String currency) {

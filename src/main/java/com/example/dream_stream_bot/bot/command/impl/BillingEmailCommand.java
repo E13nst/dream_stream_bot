@@ -5,15 +5,16 @@ import com.example.dream_stream_bot.bot.command.ChatScope;
 import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.user.UserEntity;
+import com.example.dream_stream_bot.service.payment.ReceiptEmailAwaitService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import com.example.dream_stream_bot.service.user.UserService;
+import com.example.dream_stream_bot.util.EmailPatterns;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Сохранение email для чека ЮKassa (54‑ФЗ), если у бота включён чек.
@@ -21,15 +22,16 @@ import java.util.regex.Pattern;
 @Component
 public class BillingEmailCommand implements BotCommand {
 
-    private static final Pattern EMAIL = Pattern.compile(
-            "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,}$");
-
     private final UserService userService;
     private final BotNavigationService botNavigationService;
+    private final ReceiptEmailAwaitService receiptEmailAwaitService;
 
-    public BillingEmailCommand(UserService userService, BotNavigationService botNavigationService) {
+    public BillingEmailCommand(UserService userService,
+                               BotNavigationService botNavigationService,
+                               ReceiptEmailAwaitService receiptEmailAwaitService) {
         this.userService = userService;
         this.botNavigationService = botNavigationService;
+        this.receiptEmailAwaitService = receiptEmailAwaitService;
     }
 
     @Override
@@ -65,11 +67,13 @@ public class BillingEmailCommand implements BotCommand {
             return BotCommand.reply(OutgoingMessage.builder()
                     .chatId(message.getChatId())
                     .messageThreadId(ctx.getMessageThreadId())
-                    .text("Укажите email одним сообщением, например:\n/billing_email name@example.ru")
+                    .text("Email для чека запрашивается после нажатия «Оплатить» в подписках: следующим сообщением "
+                            + "отправьте только адрес (например name@example.ru).\n\n"
+                            + "Либо сохраните его заранее одной командой:\n/billing_email name@example.ru")
                     .replyMarkup(botNavigationService.privateMainKeyboard())
                     .build());
         }
-        if (!EMAIL.matcher(raw).matches()) {
+        if (!EmailPatterns.isValidBillingEmail(raw)) {
             return BotCommand.reply(OutgoingMessage.builder()
                     .chatId(message.getChatId())
                     .messageThreadId(ctx.getMessageThreadId())
@@ -78,6 +82,9 @@ public class BillingEmailCommand implements BotCommand {
                     .build());
         }
         userService.updateBillingEmail(user.getId(), raw);
+        if (ctx.getBotEntity() != null) {
+            receiptEmailAwaitService.clearAwaiting(ctx.getBotEntity().getId(), user.getId());
+        }
         return BotCommand.reply(OutgoingMessage.builder()
                 .chatId(message.getChatId())
                 .messageThreadId(ctx.getMessageThreadId())

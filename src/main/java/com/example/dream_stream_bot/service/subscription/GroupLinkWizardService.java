@@ -10,7 +10,9 @@ import com.example.dream_stream_bot.model.subscription.TariffScope;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
 import com.example.dream_stream_bot.service.onboarding.OnboardingService;
+import com.example.dream_stream_bot.service.payment.ReceiptEmailAwaitService;
 import com.example.dream_stream_bot.service.payment.SubscriptionCheckoutService;
+import com.example.dream_stream_bot.service.payment.YooKassaCheckoutOutgoingFactory;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import com.example.dream_stream_bot.service.telegram.TelegramGroupAdminService;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,8 @@ public class GroupLinkWizardService {
     private final TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder;
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionCheckoutService subscriptionCheckoutService;
+    private final ReceiptEmailAwaitService receiptEmailAwaitService;
+    private final YooKassaCheckoutOutgoingFactory yooKassaCheckoutOutgoingFactory;
 
     public GroupLinkWizardService(GroupLinkWizardStateHolder stateHolder,
                                   SubscriptionTariffService tariffService,
@@ -45,7 +49,9 @@ public class GroupLinkWizardService {
                                   BotNavigationService botNavigationService,
                                   TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder,
                                   SubscriptionRepository subscriptionRepository,
-                                  SubscriptionCheckoutService subscriptionCheckoutService) {
+                                  SubscriptionCheckoutService subscriptionCheckoutService,
+                                  ReceiptEmailAwaitService receiptEmailAwaitService,
+                                  YooKassaCheckoutOutgoingFactory yooKassaCheckoutOutgoingFactory) {
         this.stateHolder = stateHolder;
         this.tariffService = tariffService;
         this.telegramGroupAdminService = telegramGroupAdminService;
@@ -54,6 +60,8 @@ public class GroupLinkWizardService {
         this.tariffCheckoutPreviewTextBuilder = tariffCheckoutPreviewTextBuilder;
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionCheckoutService = subscriptionCheckoutService;
+        this.receiptEmailAwaitService = receiptEmailAwaitService;
+        this.yooKassaCheckoutOutgoingFactory = yooKassaCheckoutOutgoingFactory;
     }
 
     public boolean hasActiveSession(Long botId, Long appUserId) {
@@ -281,33 +289,17 @@ public class GroupLinkWizardService {
                     .replyMarkup(botNavigationService.subscriptionManageInlineKeyboard())
                     .build());
         }
+        if (Boolean.TRUE.equals(bot.isYookassaReceiptEnabled())) {
+            String billing = user.getBillingEmail();
+            if (billing == null || billing.isBlank()) {
+                receiptEmailAwaitService.startAwaitingGroup(bot.getId(), user.getId(), subscriptionId);
+                return receiptEmailAwaitService.promptMessages(privateChatId, null, true);
+            }
+        }
         try {
             SubscriptionCheckoutService.CheckoutResult result = subscriptionCheckoutService
                     .createCheckoutForGroupSubscription(bot.getId(), user.getId(), subscriptionId);
-            String body = """
-                    Ссылка на оплату готова ниже.
-
-                    После успешной оплаты доступ включается автоматически. Если этого не случилось (например, при локальном запуске без веб-хука) — нажмите «Я оплатил»."""
-                    .strip();
-            InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
-                    .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("💳 Оплатить через ЮKassa")
-                            .url(result.confirmationUrl())
-                            .build()))
-                    .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("✅ Я оплатил")
-                            .callbackData(BotNavigationService.CALLBACK_PAY + ":status:" + result.localPaymentId())
-                            .build()))
-                    .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("⬅ К подписке")
-                            .callbackData(botNavigationService.navPayload("subscriptions"))
-                            .build()))
-                    .build();
-            return List.of(OutgoingMessage.builder()
-                    .chatId(privateChatId)
-                    .text(body)
-                    .replyMarkup(kb)
-                    .build());
+            return yooKassaCheckoutOutgoingFactory.groupSubscriptionPaymentReady(privateChatId, null, result);
         } catch (RuntimeException e) {
             return List.of(OutgoingMessage.builder()
                     .chatId(privateChatId)

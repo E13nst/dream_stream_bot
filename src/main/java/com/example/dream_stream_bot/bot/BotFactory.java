@@ -8,6 +8,7 @@ import com.example.dream_stream_bot.bot.message.MessageSender;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.access.AccessGate;
 import com.example.dream_stream_bot.service.access.GatingDedup;
+import com.example.dream_stream_bot.service.payment.ReceiptEmailAwaitService;
 import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.BotService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
@@ -36,7 +37,8 @@ public class BotFactory {
                                                 AccessGate accessGate,
                                                 GatingDedup gatingDedup,
                                                 PrivateReplyNavigationRouter privateReplyNavigationRouter,
-                                                GroupLinkWizardService groupLinkWizardService) {
+                                                GroupLinkWizardService groupLinkWizardService,
+                                                ReceiptEmailAwaitService receiptEmailAwaitService) {
         String type = botEntity.getType();
         if (type == null) {
             throw new IllegalArgumentException("Bot type is not specified");
@@ -54,7 +56,8 @@ public class BotFactory {
                     messageSender, commandDispatcher, callbackDispatcher, errorHandler, editedMessageHandler);
             case "assistant" -> new AssistantBot(id, botService, messageHandlerService, userService,
                     messageSender, commandDispatcher, callbackDispatcher, errorHandler, editedMessageHandler,
-                    accessGate, gatingDedup, privateReplyNavigationRouter, groupLinkWizardService);
+                    accessGate, gatingDedup, privateReplyNavigationRouter, groupLinkWizardService,
+                    receiptEmailAwaitService);
             default -> throw new IllegalArgumentException("Unknown bot type: " + type + ". Supported types: copycat, assistant");
         };
     }

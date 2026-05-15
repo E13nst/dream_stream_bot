@@ -162,7 +162,8 @@ public class SubscriptionsCommand implements BotCommand {
             sb.append("Нажмите /start или оформите доступ кнопкой «💳 Продлить» ниже.");
         }
         if (bot.isYookassaReceiptEnabled()) {
-            sb.append("\n\nДля чека по 54‑ФЗ: /billing_email ваш@example.ru");
+            sb.append("\n\nДля чека по 54‑ФЗ: после «Оплатить» отправьте email одной строкой; "
+                    + "либо заранее /billing_email ваш@example.ru");
         }
         return sb.toString().trim();
     }

@@ -564,7 +564,8 @@ public class OnboardingService {
 
                 if (subscriptionCheckoutService.isPaidCheckoutAvailable(bot, tariff)) {
                     String receiptHint = bot.isYookassaReceiptEnabled()
-                            ? "\n\nДля чека по 54‑ФЗ укажите email командой:\n/billing_email ваш@example.ru"
+                            ? "\n\nДля чека по 54‑ФЗ: после «Оплатить» отправьте email одной строкой; "
+                            + "либо заранее /billing_email ваш@example.ru"
                             : "";
                     InlineKeyboardMarkup payKb = InlineKeyboardMarkup.builder()
                             .keyboardRow(List.of(InlineKeyboardButton.builder()
@@ -695,7 +696,8 @@ public class OnboardingService {
         if (tariff.getAccessMode() == TariffAccessMode.PAID_TERM
                 && subscriptionCheckoutService.isPaidCheckoutAvailable(bot, tariff)) {
             String receiptHint = bot.isYookassaReceiptEnabled()
-                    ? "\n\nДля чека по 54‑ФЗ укажите email командой:\n/billing_email ваш@email.ru"
+                    ? "\n\nДля чека по 54‑ФЗ: после «Оплатить» отправьте email одной строкой; "
+                    + "либо заранее /billing_email ваш@email.ru"
                     : "";
             InlineKeyboardMarkup payKb = InlineKeyboardMarkup.builder()
                     .keyboardRow(List.of(InlineKeyboardButton.builder()

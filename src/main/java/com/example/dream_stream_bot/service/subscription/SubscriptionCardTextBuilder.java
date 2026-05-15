@@ -34,7 +34,8 @@ public class SubscriptionCardTextBuilder {
 
     private static void appendBillingHint(BotEntity bot, StringBuilder sb) {
         if (bot != null && bot.isYookassaReceiptEnabled()) {
-            sb.append("\n\nДля чека по 54‑ФЗ укажите email: /billing_email ваш@example.ru");
+            sb.append("\n\nДля чека по 54‑ФЗ: после кнопки «Оплатить» отправьте email одной строкой; "
+                    + "либо заранее /billing_email ваш@example.ru");
         }
     }
 

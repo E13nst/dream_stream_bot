@@ -15,6 +15,7 @@ import com.example.dream_stream_bot.service.access.AccessGate;
 import com.example.dream_stream_bot.service.access.AccessReason;
 import com.example.dream_stream_bot.service.access.GatingDedup;
 import com.example.dream_stream_bot.service.telegram.BotService;
+import com.example.dream_stream_bot.service.payment.ReceiptEmailAwaitService;
 import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.MessageHandlerService;
 import com.example.dream_stream_bot.service.user.UserService;
@@ -30,6 +31,7 @@ public class AssistantBot extends AbstractTelegramBot {
     private final GatingDedup gatingDedup;
     private final PrivateReplyNavigationRouter privateReplyNavigationRouter;
     private final GroupLinkWizardService groupLinkWizardService;
+    private final ReceiptEmailAwaitService receiptEmailAwaitService;
 
     public AssistantBot(Long botId, BotService botService,
                         MessageHandlerService messageHandlerService, UserService userService,
@@ -40,13 +42,15 @@ public class AssistantBot extends AbstractTelegramBot {
                         AccessGate accessGate,
                         GatingDedup gatingDedup,
                         PrivateReplyNavigationRouter privateReplyNavigationRouter,
-                        GroupLinkWizardService groupLinkWizardService) {
+                        GroupLinkWizardService groupLinkWizardService,
+                        ReceiptEmailAwaitService receiptEmailAwaitService) {
         super(botId, botService, messageHandlerService, userService, messageSender, commandDispatcher,
                 callbackDispatcher, errorHandler, editedMessageHandler);
         this.accessGate = accessGate;
         this.gatingDedup = gatingDedup;
         this.privateReplyNavigationRouter = privateReplyNavigationRouter;
         this.groupLinkWizardService = groupLinkWizardService;
+        this.receiptEmailAwaitService = receiptEmailAwaitService;
     }
 
     @Override
@@ -68,6 +72,13 @@ public class AssistantBot extends AbstractTelegramBot {
                 String raw = msg.getText();
                 // Команды (/start, /subscriptions, …) должны обрабатываться CommandDispatcher, а не напоминанием мастера.
                 if (!raw.isBlank() && !raw.stripLeading().startsWith("/")) {
+                    Integer threadId = Boolean.TRUE.equals(msg.getIsTopicMessage()) ? msg.getMessageThreadId() : null;
+                    Optional<List<OutgoingMessage>> receipt = receiptEmailAwaitService.tryHandlePlainText(
+                            msg.getChatId(), threadId, botEntity, user, raw);
+                    if (receipt.isPresent()) {
+                        messageSender.sendAll(this, receipt.get());
+                        return;
+                    }
                     Optional<List<OutgoingMessage>> remind =
                             groupLinkWizardService.tryPlainTextReminder(msg.getChatId(), botEntity, user, raw);
                     if (remind.isPresent()) {

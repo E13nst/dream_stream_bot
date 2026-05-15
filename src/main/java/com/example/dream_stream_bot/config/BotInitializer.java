@@ -12,6 +12,7 @@ import com.example.dream_stream_bot.config.properties.TelegramProperties;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.service.access.AccessGate;
 import com.example.dream_stream_bot.service.access.GatingDedup;
+import com.example.dream_stream_bot.service.payment.ReceiptEmailAwaitService;
 import com.example.dream_stream_bot.service.subscription.GroupLinkWizardService;
 import com.example.dream_stream_bot.service.telegram.BotMenuSyncService;
 import com.example.dream_stream_bot.service.telegram.BotService;
@@ -48,6 +49,7 @@ public class BotInitializer {
     private final GatingDedup gatingDedup;
     private final PrivateReplyNavigationRouter privateReplyNavigationRouter;
     private final GroupLinkWizardService groupLinkWizardService;
+    private final ReceiptEmailAwaitService receiptEmailAwaitService;
     private final TelegramProperties telegramProperties;
     private final BotMenuSyncService botMenuSyncService;
     private final Map<String, AbstractTelegramBot> botRegistry = new java.util.concurrent.ConcurrentHashMap<>();
@@ -65,6 +67,7 @@ public class BotInitializer {
                           GatingDedup gatingDedup,
                           PrivateReplyNavigationRouter privateReplyNavigationRouter,
                           GroupLinkWizardService groupLinkWizardService,
+                          ReceiptEmailAwaitService receiptEmailAwaitService,
                           TelegramProperties telegramProperties,
                           BotMenuSyncService botMenuSyncService) {
         this.botService = botService;
@@ -81,6 +84,7 @@ public class BotInitializer {
         this.gatingDedup = gatingDedup;
         this.privateReplyNavigationRouter = privateReplyNavigationRouter;
         this.groupLinkWizardService = groupLinkWizardService;
+        this.receiptEmailAwaitService = receiptEmailAwaitService;
         this.telegramProperties = telegramProperties;
         this.botMenuSyncService = botMenuSyncService;
     }
@@ -150,7 +154,8 @@ public class BotInitializer {
                                 bot, botService, messageHandlerService, userStateService, userService,
                                 messageSender, commandDispatcher, callbackDispatcher,
                                 errorHandler, editedMessageHandler,
-                                accessGate, gatingDedup, privateReplyNavigationRouter, groupLinkWizardService);
+                                accessGate, gatingDedup, privateReplyNavigationRouter, groupLinkWizardService,
+                                receiptEmailAwaitService);
                         botRegistry.put(bot.getUsername(), telegramBot);
 
                         if (telegramProperties.isLongPolling()) {

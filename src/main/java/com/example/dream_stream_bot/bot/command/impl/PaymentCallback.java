@@ -9,11 +9,14 @@ import com.example.dream_stream_bot.model.subscription.SubscriptionPaymentStatus
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffEntity;
 import com.example.dream_stream_bot.model.subscription.TariffScope;
 import com.example.dream_stream_bot.model.subscription.SubscriptionTariffRepository;
+import com.example.dream_stream_bot.service.payment.ReceiptEmailAwaitService;
 import com.example.dream_stream_bot.service.payment.SubscriptionCheckoutService;
 import com.example.dream_stream_bot.service.payment.SubscriptionPaymentCompletionService;
+import com.example.dream_stream_bot.service.payment.YooKassaCheckoutOutgoingFactory;
 import com.example.dream_stream_bot.service.subscription.TariffCheckoutPreviewTextBuilder;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
@@ -30,19 +33,25 @@ public class PaymentCallback implements CallbackHandler {
     private final SubscriptionPaymentRepository paymentRepository;
     private final BotNavigationService botNavigationService;
     private final TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder;
+    private final ReceiptEmailAwaitService receiptEmailAwaitService;
+    private final YooKassaCheckoutOutgoingFactory yooKassaCheckoutOutgoingFactory;
 
     public PaymentCallback(SubscriptionTariffRepository tariffRepository,
                            SubscriptionCheckoutService checkoutService,
                            SubscriptionPaymentCompletionService completionService,
                            SubscriptionPaymentRepository paymentRepository,
                            BotNavigationService botNavigationService,
-                           TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder) {
+                           TariffCheckoutPreviewTextBuilder tariffCheckoutPreviewTextBuilder,
+                           ReceiptEmailAwaitService receiptEmailAwaitService,
+                           YooKassaCheckoutOutgoingFactory yooKassaCheckoutOutgoingFactory) {
         this.tariffRepository = tariffRepository;
         this.checkoutService = checkoutService;
         this.completionService = completionService;
         this.paymentRepository = paymentRepository;
         this.botNavigationService = botNavigationService;
         this.tariffCheckoutPreviewTextBuilder = tariffCheckoutPreviewTextBuilder;
+        this.receiptEmailAwaitService = receiptEmailAwaitService;
+        this.yooKassaCheckoutOutgoingFactory = yooKassaCheckoutOutgoingFactory;
     }
 
     @Override
@@ -78,7 +87,7 @@ public class PaymentCallback implements CallbackHandler {
         }
         if (payload.startsWith("open:")) {
             long tariffId = Long.parseLong(payload.substring("open:".length()));
-            return tariffOpenCheckout(chatId, botId, ownerUserId, tariffId);
+            return tariffOpenCheckout(ctx, chatId, botId, ownerUserId, tariffId);
         }
         if (payload.startsWith("status:")) {
             long paymentRecordId = Long.parseLong(payload.substring("status:".length()));
@@ -180,7 +189,7 @@ public class PaymentCallback implements CallbackHandler {
     }
 
     /** Создание платежа в ЮKassa; ответ — новым сообщением (ссылка, «Я оплатил», назад к списку). */
-    private List<OutgoingMessage> tariffOpenCheckout(Long chatId, long botId, long ownerUserId, long tariffId) {
+    private List<OutgoingMessage> tariffOpenCheckout(CallbackContext ctx, Long chatId, long botId, long ownerUserId, long tariffId) {
         if (loadPayablePersonalTariff(botId, tariffId) == null) {
             return List.of(OutgoingMessage.builder()
                     .chatId(chatId)
@@ -189,32 +198,19 @@ public class PaymentCallback implements CallbackHandler {
                     .build());
         }
         try {
+            var botEntity = ctx.getBotEntity();
+            var userEntity = ctx.getUser();
+            if (Boolean.TRUE.equals(botEntity.isYookassaReceiptEnabled())) {
+                String billing = userEntity.getBillingEmail();
+                if (billing == null || billing.isBlank()) {
+                    receiptEmailAwaitService.startAwaitingPersonal(botId, ownerUserId, tariffId);
+                    return receiptEmailAwaitService.promptMessages(chatId, callbackMessageThreadId(ctx), false);
+                }
+            }
             SubscriptionCheckoutService.CheckoutResult result =
                     checkoutService.createCheckout(botId, ownerUserId, tariffId);
-            String body = """
-                    Ссылка на оплату готова ниже.
-
-                    После успешной оплаты доступ включается автоматически. Если этого не случилось (например, при локальном запуске без веб-хука) — нажмите «Я оплатил»."""
-                    .strip();
-            InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
-                    .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("💳 Оплатить через ЮKassa")
-                            .url(result.confirmationUrl())
-                            .build()))
-                    .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("✅ Я оплатил")
-                            .callbackData(BotNavigationService.CALLBACK_PAY + ":status:" + result.localPaymentId())
-                            .build()))
-                    .keyboardRow(List.of(InlineKeyboardButton.builder()
-                            .text("⬅ К тарифам")
-                            .callbackData(BotNavigationService.CALLBACK_PAY + ":list")
-                            .build()))
-                    .build();
-            return List.of(OutgoingMessage.builder()
-                    .chatId(chatId)
-                    .text(body)
-                    .replyMarkup(kb)
-                    .build());
+            return yooKassaCheckoutOutgoingFactory.personalTariffPaymentReady(
+                    chatId, callbackMessageThreadId(ctx), result);
         } catch (RuntimeException e) {
             return List.of(OutgoingMessage.builder()
                     .chatId(chatId)
@@ -253,6 +249,13 @@ public class PaymentCallback implements CallbackHandler {
                 .text("Платёж ещё не в статусе «успешно» или данные обрабатываются. Подождите минуту и попробуйте снова.")
                 .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
+    }
+
+    private static Integer callbackMessageThreadId(CallbackContext ctx) {
+        if (ctx.getCallbackQuery() == null || !(ctx.getCallbackQuery().getMessage() instanceof Message msg)) {
+            return null;
+        }
+        return Boolean.TRUE.equals(msg.getIsTopicMessage()) ? msg.getMessageThreadId() : null;
     }
 
     private static String formatRub(Long minor) {
