@@ -62,4 +62,10 @@ public class OnboardingScopeHolder {
         }
         pendingParticipantSubscriptionId.remove(key(botId, appUserId));
     }
+
+    /** Сброс всего временного контекста онбординга для пары bot + user. */
+    public void clearAll(Long botId, Long appUserId) {
+        clearPendingGroup(botId, appUserId);
+        clearPendingParticipant(botId, appUserId);
+    }
 }

@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot.model.subscription;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,4 +20,9 @@ public interface SubscriptionParticipantRepository extends JpaRepository<Subscri
     @Query("select count(p) from SubscriptionParticipantEntity p " +
            "where p.subscriptionId = :id and p.lastSeenAt >= :since")
     long countActiveSince(@Param("id") Long subscriptionId, @Param("since") OffsetDateTime since);
+
+    @Modifying
+    @Query("delete from SubscriptionParticipantEntity p where p.telegramId = :telegramId "
+            + "and p.subscriptionId in (select s.id from SubscriptionEntity s where s.botId = :botId)")
+    int deleteByTelegramIdOnBot(@Param("telegramId") Long telegramId, @Param("botId") Long botId);
 }

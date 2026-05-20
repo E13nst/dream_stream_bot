@@ -6,9 +6,8 @@ import com.example.dream_stream_bot.bot.command.CommandContext;
 import com.example.dream_stream_bot.bot.message.OutgoingMessage;
 import com.example.dream_stream_bot.model.telegram.BotEntity;
 import com.example.dream_stream_bot.model.user.UserEntity;
-import com.example.dream_stream_bot.service.consent.ConsentService;
-import com.example.dream_stream_bot.service.memory.ChatMemoryService;
-import com.example.dream_stream_bot.service.subscription.SubscriptionService;
+import com.example.dream_stream_bot.service.privacy.ErasureResult;
+import com.example.dream_stream_bot.service.privacy.UserDataErasureService;
 import com.example.dream_stream_bot.service.telegram.BotNavigationService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -18,23 +17,18 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * /forget_me — отзыв согласий по подпискам этого бота, отмена ваших подписок как владельца на этом боте и полная очистка истории для вас в этом боте.
+ * /forget_me — полное удаление данных пользователя в рамках этого бота:
+ * подписки, согласия, память диалога, участие в группах; фиксация факта в журнале.
  */
 @Component
 public class ForgetMeCommand implements BotCommand {
 
-    private final ChatMemoryService chatMemoryService;
-    private final ConsentService consentService;
-    private final SubscriptionService subscriptionService;
+    private final UserDataErasureService userDataErasureService;
     private final BotNavigationService botNavigationService;
 
-    public ForgetMeCommand(ChatMemoryService chatMemoryService,
-                          ConsentService consentService,
-                          SubscriptionService subscriptionService,
+    public ForgetMeCommand(UserDataErasureService userDataErasureService,
                           BotNavigationService botNavigationService) {
-        this.chatMemoryService = chatMemoryService;
-        this.consentService = consentService;
-        this.subscriptionService = subscriptionService;
+        this.userDataErasureService = userDataErasureService;
         this.botNavigationService = botNavigationService;
     }
 
@@ -50,7 +44,7 @@ public class ForgetMeCommand implements BotCommand {
 
     @Override
     public Optional<String> menuDescription() {
-        return Optional.empty();
+        return Optional.of("Отозвать согласия и удалить мои данные");
     }
 
     @Override
@@ -72,18 +66,27 @@ public class ForgetMeCommand implements BotCommand {
                     .text("Не удалось выполнить запрос. Напишите /forget_me в чате с ботом после /start.")
                     .build());
         }
-        int revoked = consentService.revokeConsentsLinkedToBot(user.getId(), botId);
-        int cancelled = subscriptionService.cancelSubscriptionsOwnedByUserOnBot(user.getId(), botId);
-        int removed = chatMemoryService.forgetUser(botId, tgUserId);
 
-        String text = "Выполнено: отозвано записей согласий (по этому боту): " + revoked
-                + "; отменено подписок как владельца: " + cancelled
-                + "; удалено сообщений из памяти диалога: " + removed + ".";
+        ErasureResult result = userDataErasureService.eraseForBot(botId, user.getId(), tgUserId);
+        String text = formatResult(result);
+
         return BotCommand.reply(OutgoingMessage.builder()
                 .chatId(message.getChatId())
                 .messageThreadId(ctx.getMessageThreadId())
                 .text(text)
                 .replyMarkup(botNavigationService.privateMainKeyboard())
                 .build());
+    }
+
+    private static String formatResult(ErasureResult result) {
+        if (result.alreadyErased()) {
+            return "Данные по этому боту уже были удалены ранее. При необходимости начните заново через /start.";
+        }
+        return "Выполнено: удалено подписок: " + result.subscriptionsDeleted()
+                + "; записей участия в группах: " + result.participantsRemoved()
+                + "; записей согласий: " + result.consentsDeleted()
+                + "; реферальных начислений: " + result.referralGrantsDeleted()
+                + "; сообщений из памяти диалога: " + result.chatMemoryRowsDeleted()
+                + ".";
     }
 }

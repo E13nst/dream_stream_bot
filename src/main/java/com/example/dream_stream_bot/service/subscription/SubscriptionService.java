@@ -268,12 +268,21 @@ public class SubscriptionService {
      * плюс сброс учёта триала по этому тарифу и владельцу (можно снова выдать триал).
      */
     @Transactional
-    public void deleteFullyForAdmin(Long subscriptionId) {
-        SubscriptionEntity sub = requireById(subscriptionId);
+    public void deleteFully(SubscriptionEntity sub) {
+        if (sub == null) {
+            return;
+        }
         Long scopeKey = sub.getScopeChatId() != null ? sub.getScopeChatId() : 0L;
         trialUsageRepository.deleteByTariffIdAndOwnerUserIdAndScopeChatId(
                 sub.getTariffId(), sub.getOwnerUserId(), scopeKey);
         subscriptionRepository.delete(sub);
+        LOGGER.info("🗑 Deleted subscription fully | sub={} | bot={} | owner={}",
+                sub.getId(), sub.getBotId(), sub.getOwnerUserId());
+    }
+
+    @Transactional
+    public void deleteFullyForAdmin(Long subscriptionId) {
+        deleteFully(requireById(subscriptionId));
     }
 
     private SubscriptionEntity extend(SubscriptionEntity subscription, PeriodSource source, int days,

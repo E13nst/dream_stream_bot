@@ -85,6 +85,10 @@ springdoc:
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
 
+app:
+  privacy:
+    erasure-salt: ${APP_PRIVACY_ERASURE_SALT:dev-change-me-in-production}
+
 yookassa:
   shop-id: ${YOOKASSA_SHOP_ID:}
   secret-key: ${YOOKASSA_SECRET_KEY:}

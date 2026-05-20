@@ -28,4 +28,9 @@ public interface UserConsentRepository extends JpaRepository<UserConsentEntity, 
     int revokeLinkedToSubscriptionsOnBot(@Param("userId") Long userId,
                                            @Param("botId") Long botId,
                                            @Param("now") OffsetDateTime now);
+
+    @Modifying
+    @Query("delete from UserConsentEntity uc where uc.userId = :userId "
+            + "and uc.documentId in (select b.documentId from BotConsentBindingEntity b where b.botId = :botId)")
+    int deleteForUserOnBot(@Param("userId") Long userId, @Param("botId") Long botId);
 }

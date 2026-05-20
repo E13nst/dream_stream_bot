@@ -1,6 +1,7 @@
 package com.example.dream_stream_bot;
 
 import com.example.dream_stream_bot.config.properties.AdminProperties;
+import com.example.dream_stream_bot.config.properties.PrivacyProperties;
 import com.example.dream_stream_bot.config.properties.TelegramProperties;
 import com.example.dream_stream_bot.config.properties.YooKassaProperties;
 import org.springframework.boot.SpringApplication;
@@ -12,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableAsync(proxyTargetClass = true)
 @EnableScheduling
-@EnableConfigurationProperties({TelegramProperties.class, AdminProperties.class, YooKassaProperties.class})
+@EnableConfigurationProperties({TelegramProperties.class, AdminProperties.class, YooKassaProperties.class, PrivacyProperties.class})
 public class TelegramBotApplication {
 
 	public static void main(String[] args) {

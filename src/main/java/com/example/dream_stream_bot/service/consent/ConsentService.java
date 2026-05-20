@@ -388,6 +388,19 @@ public class ConsentService {
         return n;
     }
 
+    /**
+     * Полное удаление записей принятия согласий по документам, привязанным к боту.
+     */
+    @Transactional
+    public int deleteConsentsForUserOnBot(Long userId, Long botId) {
+        if (userId == null || botId == null) {
+            return 0;
+        }
+        int n = userConsentRepository.deleteForUserOnBot(userId, botId);
+        LOGGER.info("🗑 Deleted {} consent rows for user {} on bot {}", n, userId, botId);
+        return n;
+    }
+
     private void triggerMaterialGrace() {
         OffsetDateTime until = OffsetDateTime.now().plusDays(MATERIAL_GRACE_DAYS);
         List<SubscriptionEntity> all = subscriptionRepository.findAll();
