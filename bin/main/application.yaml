@@ -71,15 +71,6 @@ spring:
           time_zone: UTC
         connection:
           provider_disables_autocommit: true
-  data:
-    redis:
-      host: ${REDIS_HOST:amvera-e13nst-run-redis}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      database: ${REDIS_DATABASE:0}
-      timeout: 10s
-      ssl:
-        enabled: ${REDIS_SSL_ENABLED:false}
 
 # Swagger/OpenAPI конфигурация
 springdoc:
@@ -94,6 +85,14 @@ springdoc:
   default-produces-media-type: application/json
   default-consumes-media-type: application/json
 
+app:
+  privacy:
+    erasure-salt: ${APP_PRIVACY_ERASURE_SALT:dev-change-me-in-production}
+
+yookassa:
+  shop-id: ${YOOKASSA_SHOP_ID:}
+  secret-key: ${YOOKASSA_SECRET_KEY:}
+  return-url-template: ${YOOKASSA_RETURN_URL_TEMPLATE:https://t.me/{botUsername}}
 
 # Подробное логирование для диагностики
 logging:

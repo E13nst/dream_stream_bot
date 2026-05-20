@@ -37,6 +37,19 @@
                                 th:value="${botType.value}">assistant</option>
                     </select>
                 </div>
+                <div class="mb-3" th:if="${selectedBot.type == 'assistant'}">
+                    <label class="form-label" for="botDetailAgent">LLM Agent</label>
+                    <select class="form-select form-select-sm" id="botDetailAgent" name="agentConfigId" required>
+                        <option disabled value="" th:selected="${selectedBot.agentConfig == null}">— выберите агента —</option>
+                        <option th:each="ag : ${allAgents}"
+                                th:selected="${selectedBot.agentConfig != null && selectedBot.agentConfig.id == ag.id}"
+                                th:text="${ag.name + ' (id ' + ag.id + ', ' + ag.model + ')'}"
+                                th:value="${ag.id}">agent</option>
+                    </select>
+                    <div class="form-text">
+                        Промпт и параметры модели — только в <a th:href="@{/admin/agents}">Agents</a>. Один агент может быть привязан к нескольким ботам.
+                    </div>
+                </div>
                 <div class="mb-3">
                     <label class="form-label" for="botDetailKeywords">Keywords (comma separated)</label>
                     <input class="form-control form-control-sm" id="botDetailKeywords" name="keywords" th:value="${selectedBotKeywords}">
@@ -51,28 +64,67 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="botDetailDescription">Description</label>
-                    <input class="form-control form-control-sm" id="botDetailDescription" name="description" th:value="${selectedBot.description}">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label" for="botDetailMemWindow">Memory Window</label>
-                    <input class="form-control form-control-sm admin-num" id="botDetailMemWindow" min="1" name="memWindow" th:value="${selectedBot.memWindow}" type="number">
+                    <textarea class="form-control form-control-sm" id="botDetailDescription" name="description" rows="5"
+                              th:text="${selectedBot.description}"></textarea>
                 </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" id="selectedBotActive" name="isActive" th:checked="${selectedBot.isActive}" type="checkbox" value="true">
                     <label class="form-check-label" for="selectedBotActive">Active</label>
                 </div>
+                <p class="admin-section-heading small text-muted">ЮKassa (переопределяет env YOOKASSA_* если заполнено)</p>
+                <div class="mb-3">
+                    <label class="form-label" for="yooShopId">YooKassa shop id</label>
+                    <input class="form-control form-control-sm" id="yooShopId" name="yookassaShopId"
+                           autocomplete="off" th:value="${selectedBot.yookassaShopId}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="yooSecret">YooKassa secret key</label>
+                    <input class="form-control form-control-sm" id="yooSecret" name="yookassaSecretKey"
+                           type="password" autocomplete="new-password"
+                           placeholder="Оставьте пустым при сохранении, чтобы не менять ключ">
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" id="yooReceipt" name="yookassaReceiptEnabled" type="checkbox" value="true"
+                           th:checked="${selectedBot.yookassaReceiptEnabled}">
+                    <label class="form-check-label" for="yooReceipt">Формировать чек 54‑ФЗ (email после «Оплатить» или /billing_email)</label>
+                </div>
                 <button class="btn btn-primary btn-sm" type="submit">Save Parameters</button>
             </form>
 
-            <p class="admin-section-heading">Промпт</p>
-            <form method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/prompt'}">
+            <p class="admin-section-heading">Consent bindings</p>
+            <p class="small text-muted mb-2">
+                Создание документа в разделе <a th:href="@{/admin/consents}">Consents</a> не привязывает его к боту автоматически.
+                Для бота задаются версии только для <strong>политики</strong> и <strong>оферты</strong> (оферта — для платежного шага).
+                Нажмите <strong>Save consent bindings</strong>.
+            </p>
+            <form class="mb-2" method="post" th:action="@{'/admin/bots/' + ${selectedBot.id} + '/consents'}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <div class="mb-3">
-                    <label class="form-label" for="botDetailPrompt">Prompt</label>
-                    <textarea class="form-control form-control-sm" id="botDetailPrompt" name="prompt" rows="8" th:text="${selectedBot.prompt}"></textarea>
+                <div class="row g-3">
+                    <div class="col-12" th:each="code : ${consentCodes}"
+                         th:with="codeKey=${code.name()}, docList=${consentDocumentsByCode.get(codeKey)}, selDocId=${selectedBotBindingDocumentIds.get(codeKey)}">
+                        <label class="form-label" th:for="${'binding_' + codeKey}"
+                               th:text="${codeKey + ' — ' + code.defaultTitle}">PRIVACY_POLICY</label>
+                        <select class="form-select form-select-sm"
+                                th:id="${'binding_' + codeKey}"
+                                th:name="${'binding_' + codeKey}">
+                            <option value="">— не требовать для этого бота —</option>
+                            <option th:each="doc : ${docList}"
+                                    th:value="${doc.id}"
+                                    th:selected="${selDocId != null && doc.id != null && #strings.equals(#strings.toString(selDocId), #strings.toString(doc.id))}"
+                                    th:text="${'v' + doc.version + (doc.current ? ' · current' : '') + ' · ' + doc.title}">
+                                v1
+                            </option>
+                        </select>
+                        <div class="form-text text-warning" th:if="${docList == null or #lists.isEmpty(docList)}">
+                            Нет ни одной версии в разделе <a th:href="@{/admin/consents}">Consents</a> для этого кода — сначала создайте черновик (New version).
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-outline-primary btn-sm" type="submit">Update Prompt</button>
+                <button class="btn btn-outline-primary btn-sm mt-3" type="submit">Save consent bindings</button>
             </form>
+            <p class="form-text small text-muted mb-0">
+                Сохранение — обычный POST (в Network смотрите тип «Doc» или «All», не только XHR).
+            </p>
         </div>
     </div>
     <div class="admin-empty-state card" th:if="${selectedBot == null}">

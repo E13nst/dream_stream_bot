@@ -1,4 +1,8 @@
 # Тестовая конфигурация
+app:
+  privacy:
+    erasure-salt: test-erasure-salt-fixed
+
 spring:
   flyway:
     enabled: false
